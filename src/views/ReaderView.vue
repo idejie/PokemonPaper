@@ -21,6 +21,9 @@ type Tab = 'abstract' | 'pdf' | 'summary'
 const tab = ref<Tab>(route.query.tab === 'pdf' ? 'pdf' : 'abstract')
 const summarizing = ref(false)
 const pdfBusy = ref(false)
+const editingSummary = ref(false)
+const summaryDraft = ref('')
+const savingSummary = ref(false)
 
 const paper = computed(() => store.byId(props.id))
 const lv = computed(() => (paper.value ? paperLevel(paper.value) : null))
@@ -68,6 +71,30 @@ function exportSummary() {
   store.notify(t('已导出 Markdown'))
 }
 
+function startEditSummary() {
+  summaryDraft.value = paper.value?.summary ?? ''
+  editingSummary.value = true
+}
+
+function cancelEditSummary() {
+  editingSummary.value = false
+  summaryDraft.value = ''
+}
+
+async function saveManualSummary() {
+  if (!props.id) return
+  savingSummary.value = true
+  try {
+    await store.update(props.id, { summary: summaryDraft.value } as never)
+    editingSummary.value = false
+    store.notify(t('总结已保存'))
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('保存失败'))
+  } finally {
+    savingSummary.value = false
+  }
+}
+
 async function generateSummary() {
   if (!settings.ready) {
     ui.openSettings()
@@ -75,6 +102,7 @@ async function generateSummary() {
   }
   if (!props.id || !paper.value) return
   summarizing.value = true
+  editingSummary.value = false
   try {
     // 有全文时总结更准；提取失败（扫描版）就退回摘要
     if (!paper.value.hasFullText) {
@@ -181,6 +209,22 @@ onMounted(async () => {
             <button v-if="summary" type="button" class="btn sm ghost" @click="exportSummary">
               {{ t('导出 Markdown') }}
             </button>
+            <button
+              v-if="summary && !editingSummary"
+              type="button"
+              class="btn sm ghost"
+              @click="startEditSummary"
+            >
+              {{ t('编辑') }}
+            </button>
+            <button
+              v-if="!summary && !editingSummary"
+              type="button"
+              class="btn sm ghost"
+              @click="startEditSummary"
+            >
+              {{ t('手动写总结') }}
+            </button>
             <button v-if="!settings.ready" type="button" class="btn sm" @click="ui.openSettings()">
               {{ t('去配置') }}
             </button>
@@ -194,7 +238,29 @@ onMounted(async () => {
               {{ summarizing ? t('生成中…') : summary ? t('重新生成') : t('生成总结') }}
             </button>
           </div>
-          <MarkdownLite v-if="summary" :source="summary" />
+          <div v-if="editingSummary" class="summary-edit">
+            <textarea
+              v-model="summaryDraft"
+              class="textarea"
+              :placeholder="t('用 Markdown 写总结：问题、方法、结果、局限…')"
+            />
+            <div class="row">
+              <span class="hint">{{ t('支持 Markdown：标题、列表、加粗') }}</span>
+              <span class="spacer" />
+              <button type="button" class="btn sm ghost" @click="cancelEditSummary">
+                {{ t('取消') }}
+              </button>
+              <button
+                type="button"
+                class="btn sm"
+                :disabled="savingSummary"
+                @click="saveManualSummary"
+              >
+                {{ savingSummary ? t('保存中…') : t('保存总结') }}
+              </button>
+            </div>
+          </div>
+          <MarkdownLite v-else-if="summary" :source="summary" />
           <p v-else class="empty">
             {{ t('基于摘要和全文生成一份 600–900 字的中文总结：问题、方法、结果、局限、适合谁读。') }}
           </p>
@@ -325,6 +391,23 @@ onMounted(async () => {
   line-height: 1.95;
   color: var(--text);
   white-space: pre-wrap;
+}
+
+.summary-edit {
+  display: grid;
+  gap: 8px;
+}
+
+.summary-edit .textarea {
+  min-height: 320px;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.summary-edit .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .toolbar {

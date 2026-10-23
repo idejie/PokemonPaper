@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| ✍️ **Manual summary** | Write or edit Markdown in the summary tab; shares the same field as AI generation |
 | 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user, 16 pixel avatars; scrypt password hashing, HttpOnly session cookie |
@@ -259,6 +260,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段 |
 | 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个像素头像可选；密码 scrypt 哈希，会话存 HttpOnly Cookie |

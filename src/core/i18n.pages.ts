@@ -222,4 +222,10 @@ export const pagesDict: Record<string, string> = {
   '你': 'You',
   '加载失败': 'Failed to load',
   '还没有其他训练家，先去读一篇。': 'No other trainers yet. Go read one.',
+  '编辑': 'Edit',
+  '手动写总结': 'Write manually',
+  '保存总结': 'Save summary',
+  '总结已保存': 'Summary saved',
+  '用 Markdown 写总结：问题、方法、结果、局限…': 'Write with Markdown: problem, method, results, limits…',
+  '支持 Markdown：标题、列表、加粗': 'Markdown supported: headings, lists, bold',
 }
