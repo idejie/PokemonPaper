@@ -5,6 +5,7 @@ import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const DIST = join(ROOT, 'dist')
@@ -25,7 +26,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS papers (
     id         TEXT PRIMARY KEY,
-    arxiv      TEXT UNIQUE,
+    arxiv      TEXT,
     title      TEXT NOT NULL,
     authors    TEXT NOT NULL DEFAULT '',
     venue      TEXT NOT NULL DEFAULT '',
@@ -83,6 +84,33 @@ if (!userColumns.includes('is_admin')) {
 }
 db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('registration', 'open')").run()
 
+// 老库升级：把 papers.arxiv 的全局 UNIQUE 换成 (user_id, arxiv) 的部分唯一索引
+const papersSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='papers'").get()
+if (papersSql && /arxiv\s+TEXT\s+UNIQUE/i.test(papersSql.sql)) {
+  const cols = db.prepare('PRAGMA table_info(papers)').all()
+  const defs = cols
+    .map((col) => {
+      const pk = col.name === 'id' ? ' PRIMARY KEY' : ''
+      const notNull = col.notnull ? ' NOT NULL' : ''
+      const dflt = col.dflt_value !== null ? ` DEFAULT ${col.dflt_value}` : ''
+      return `${col.name} ${col.type}${pk}${notNull}${dflt}`
+    })
+    .join(', ')
+  const names = cols.map((col) => col.name).join(', ')
+  db.exec('PRAGMA foreign_keys = OFF')
+  db.exec('BEGIN')
+  db.exec(`CREATE TABLE papers_new (${defs})`)
+  db.exec(`INSERT INTO papers_new (${names}) SELECT ${names} FROM papers`)
+  db.exec('DROP TABLE papers')
+  db.exec('ALTER TABLE papers_new RENAME TO papers')
+  db.exec('COMMIT')
+  db.exec('PRAGMA foreign_keys = ON')
+  console.log('[paperdex] migrated papers: per-user arxiv uniqueness')
+}
+db.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_user_arxiv ON papers(user_id, arxiv) WHERE arxiv IS NOT NULL AND arxiv != ''",
+)
+
 // 老库升级：没有任何管理员时，把最早注册的用户提升为管理员
 const adminCount = db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').get().n
 if (adminCount === 0) {
@@ -100,6 +128,10 @@ for (const [name, ddl] of [
   ['citations', "INTEGER NOT NULL DEFAULT 0"],
   ['metrics_at', "TEXT"],
   ['user_id', "TEXT"],
+  ['full_text', "TEXT NOT NULL DEFAULT ''"],
+  ['full_text_at', "TEXT"],
+  ['summary_text', "TEXT NOT NULL DEFAULT ''"],
+  ['summary_at', "TEXT"],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -117,6 +149,7 @@ const FIELDS = {
   notes: 'notes',
   abstract: 'abstract',
   explain: 'explain',
+  summary: 'summary_text',
   codeUrl: 'code_url',
   stars: 'stars',
   citations: 'citations',
@@ -145,6 +178,10 @@ function rowToPaper(row) {
     stars: row.stars ?? 0,
     citations: row.citations ?? 0,
     metricsAt: row.metrics_at ?? null,
+    summary: row.summary_text ?? '',
+    summaryAt: row.summary_at ?? null,
+    hasFullText: Boolean(row.full_text),
+    fullTextChars: row.full_text ? row.full_text.length : 0,
     url: row.url ?? '',
     addedAt: row.added_at,
     readAt: row.read_at ?? null,
@@ -490,35 +527,21 @@ function buildExplainPrompt(paper) {
   ].join('\n')
 }
 
-async function callLLM(config, paper) {
+async function chatCompletion(config, messages, maxTokens = 1400) {
   const baseUrl = String(config.baseUrl || '').replace(/\/+$/, '')
   const apiKey = String(config.apiKey || '').trim()
   const model = String(config.model || '').trim()
   if (!baseUrl || !apiKey || !model) {
     throw new HttpError(400, '模型配置不完整：需要 baseUrl、apiKey、model')
   }
-  if (!paper.title && !paper.abstract) {
-    throw new HttpError(400, '这篇论文还没有标题和摘要，先抓取元数据')
-  }
 
   let response
   try {
     response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        max_tokens: 1400,
-        messages: [
-          { role: 'system', content: '你是严谨的论文速读助手，只输出合法 JSON。' },
-          { role: 'user', content: buildExplainPrompt(paper) },
-        ],
-      }),
-      signal: AbortSignal.timeout(120000),
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, temperature: 0.2, max_tokens: maxTokens, messages }),
+      signal: AbortSignal.timeout(180000),
     })
   } catch (error) {
     throw new HttpError(502, `连不上模型服务：${error?.message || error}`)
@@ -531,10 +554,75 @@ async function callLLM(config, paper) {
 
   const data = await response.json()
   const content = data?.choices?.[0]?.message?.content
-  const parsed = extractJson(typeof content === 'string' ? content : '')
+  if (typeof content !== 'string' || !content.trim()) {
+    throw new HttpError(502, '模型没有返回内容')
+  }
+  return content.trim()
+}
+
+async function callLLM(config, paper) {
+  if (!paper.title && !paper.abstract) {
+    throw new HttpError(400, '这篇论文还没有标题和摘要，先抓取元数据')
+  }
+  const content = await chatCompletion(config, [
+    { role: 'system', content: '你是严谨的论文速读助手，只输出合法 JSON。' },
+    { role: 'user', content: buildExplainPrompt(paper) },
+  ])
+  const parsed = extractJson(content)
   if (!parsed) throw new HttpError(502, '模型没有返回可解析的 JSON，换个模型试试')
   return normalizeExplain(parsed)
 }
+
+/* --------------------------------------------------------------- text */
+
+async function extractPdfText(file) {
+  const data = new Uint8Array(await readFile(file))
+  const loadingTask = getDocument({ data, useSystemFonts: false, isEvalSupported: false })
+  const doc = await loadingTask.promise
+  const pages = doc.numPages
+  const chunks = []
+  for (let page = 1; page <= pages; page += 1) {
+    const pdfPage = await doc.getPage(page)
+    const content = await pdfPage.getTextContent()
+    const line = content.items
+      .map((item) => ('str' in item ? item.str : ''))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (line) chunks.push(line)
+  }
+  await loadingTask.destroy?.()
+  // PDF 断词：把行尾的 "mo- tions" 接回 "motions"
+  const text = chunks.join('\n\n').replace(/([a-z])-\s+([a-z])/g, '$1$2')
+  return { text, pages }
+}
+
+function buildSummaryPrompt(paper, fullText) {
+  const limit = 18000
+  let excerpt = fullText || ''
+  if (excerpt.length > limit) {
+    excerpt = `${excerpt.slice(0, 12000)}\n\n……（中段省略）……\n\n${excerpt.slice(-6000)}`
+  }
+  return [
+    '你是一位机器人与具身智能方向的研究者，请基于下面的论文内容写一份中文总结。',
+    '输出 Markdown，不要代码块，不要客套话。结构固定为：',
+    '## 一句话',
+    '## 研究问题',
+    '## 方法',
+    '## 主要结果',
+    '## 局限',
+    '## 适合谁读',
+    '要求：数字只能来自原文，原文没有就写「原文未提及」，禁止编造；总长度 600–900 字。',
+    '',
+    `标题：${paper.title || ''}`,
+    `作者：${paper.authors || ''}`,
+    `摘要：${paper.abstract || '（无摘要）'}`,
+    '',
+    '全文：',
+    excerpt || '（没有全文，只能基于摘要总结）',
+  ].join('\n')
+}
+
 
 
 /* --------------------------------------------------------------- pdf */
@@ -1170,6 +1258,70 @@ async function api(req, res, url) {
     return sendJSON(res, 200, { paper: fresh, notes })
   }
 
+
+  const textMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/text$/)
+  if (textMatch) {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(textMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+
+    if (method === 'GET') {
+      if (!row.full_text) return sendJSON(res, 404, { error: '还没提取全文' })
+      return sendJSON(res, 200, { text: row.full_text, chars: row.full_text.length })
+    }
+
+    if (method === 'POST') {
+      if (row.full_text) {
+        return sendJSON(res, 200, { text: row.full_text, chars: row.full_text.length, cached: true })
+      }
+      const paper = await ensurePdf(row)
+      const file = join(PDF_DIR, paper.pdfPath)
+      const { text, pages } = await extractPdfText(file)
+      if (!text) throw new HttpError(502, 'PDF 里没有可提取的文字（可能是扫描版）')
+      db.prepare('UPDATE papers SET full_text = ?, full_text_at = ? WHERE id = ?').run(
+        text,
+        new Date().toISOString(),
+        row.id,
+      )
+      return sendJSON(res, 200, { text, chars: text.length, pages })
+    }
+  }
+
+  const summaryMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/summary$/)
+  if (summaryMatch) {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(summaryMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+
+    if (method === 'GET') {
+      if (!row.summary_text) return sendJSON(res, 404, { error: '还没有总结' })
+      return sendJSON(res, 200, { summary: row.summary_text, summaryAt: row.summary_at })
+    }
+
+    if (method === 'POST') {
+      const body = await readBody(req)
+      if (!row.abstract && !row.full_text) {
+        throw new HttpError(400, '这篇还没有摘要和全文，没法总结')
+      }
+      const content = await chatCompletion(
+        body.config || {},
+        [
+          { role: 'system', content: '你是论文总结助手，输出中文 Markdown，只输出正文。' },
+          { role: 'user', content: buildSummaryPrompt(row, row.full_text) },
+        ],
+        2200,
+      )
+      db.prepare('UPDATE papers SET summary_text = ?, summary_at = ? WHERE id = ?').run(
+        content,
+        new Date().toISOString(),
+        row.id,
+      )
+      return sendJSON(res, 200, { summary: content })
+    }
+  }
+
   const pdfMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/pdf$/)
   if (pdfMatch) {
     const row = db
@@ -1201,6 +1353,7 @@ async function api(req, res, url) {
     if (method === 'PATCH') {
       const body = await readBody(req)
       const patch = pick(body)
+      if (patch.summary_text !== undefined) patch.summary_at = new Date().toISOString()
       if (patch.status === 'read' && !patch.read_at) patch.read_at = new Date().toISOString()
       if (patch.status && patch.status !== 'read' && body.readAt === undefined) patch.read_at = null
       const keys = Object.keys(patch)

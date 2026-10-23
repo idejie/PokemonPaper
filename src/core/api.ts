@@ -134,6 +134,20 @@ export const api = {
     return `/api/papers/${id}/pdf`
   },
 
+  async paperText(id: string, extract = false): Promise<{ text: string; chars: number; pages?: number }> {
+    return request<{ text: string; chars: number; pages?: number }>(`/api/papers/${id}/text`, {
+      method: extract ? 'POST' : 'GET',
+    })
+  },
+
+  async paperSummary(id: string, config?: unknown): Promise<string> {
+    const data = await request<{ summary: string }>(`/api/papers/${id}/summary`, {
+      method: 'POST',
+      body: JSON.stringify({ config }),
+    })
+    return data.summary
+  },
+
   async syncMetrics(
     id: string,
     scholar?: { provider: string; apiKey: string },

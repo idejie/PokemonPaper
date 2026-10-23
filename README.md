@@ -41,6 +41,7 @@
 | 🗂️ **两种布局** | 卡片看精灵，列表看信息；选择记在本地 |
 | ⚔️ **论文等级** | Lv.1–100，由开源代码、GitHub star、引用量共同决定，分普通/稀有/史诗/传说 |
 | 🤖 **AI 速读卡** | 一句话 / 问题 / 方法 / 关键数字 / 局限 / 下一步，OpenAI 兼容接口，Key 存本地 |
+| 📖 **在线阅读器** | 摘要 / 全文 / 总结三个标签；全文用 pdfjs 抽取并缓存，总结由模型基于全文生成 |
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
 | 💾 **可迁移** | 一键导出 JSON，按 arXiv 号合并导入 |
@@ -177,6 +178,22 @@ level = 15 + 85 × log10(1 + stars) / log10(50001)
 - 服务端支持 `Range` 请求，浏览器 PDF 阅读器可以边下边翻
 - `data/pdfs/` 和 `*.db` 都在 `.gitignore` 里
 
+## 在线阅读器
+
+点详情页的「在线阅读」，或直接访问 `/p/<id>/read`，三块内容：
+
+- **摘要**：arXiv 摘要 + 作者、会议、年份、类型
+- **全文**：`pdfjs-dist` 从本地 PDF 抽文字，按页拼接，处理了行尾断词（`mo- tions` → `motions`），结果缓存在 SQLite 的 `full_text`
+- **总结**：把摘要 + 全文首尾（超长时截到 1.8 万字）交给模型，生成 600–900 字的中文总结：问题 / 方法 / 结果 / 局限 / 适合谁读
+
+![阅读器](docs/reader.png)
+
+![全文](docs/reader-text.png)
+
+![总结](docs/reader-summary.png)
+
+> 扫描版 PDF 没有文字层，提取会失败并提示；复杂双栏排版会丢失段落结构，但正文可读。
+
 ## 技术栈
 
 | 层 | 选型 | 说明 |
@@ -184,6 +201,7 @@ level = 15 + 85 × log10(1 + stars) / log10(50001)
 | 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router | 深链接 `/p/<id>` |
 | 后端 | Node `http` 单文件服务 | 零运行时依赖 |
 | 数据库 | `node:sqlite` | Node 22+ 内置，无原生模块编译 |
+| PDF 解析 | `pdfjs-dist` | 纯 JS，无需 poppler |
 
 生产环境只有一个进程：同一个 Node 服务托管 API 和 `dist/` 静态资源。
 
@@ -281,6 +299,8 @@ src/
 | `GET` | `/api/papers/:id/pdf` | 流式返回 PDF（支持 Range） |
 | `POST` | `/api/explain` | 调模型生成速读卡（配置随请求传入） |
 | `POST` | `/api/papers/:id/metrics` | 同步 GitHub star 与引用量 |
+| `GET` `POST` | `/api/papers/:id/text` | 读取 / 提取全文 |
+| `GET` `POST` | `/api/papers/:id/summary` | 读取 / 生成总结 |
 | `GET` | `/api/export` | 全量导出 JSON |
 | `POST` | `/api/import` | 按 arXiv 合并导入 |
 | `GET` | `/api/health` | 健康检查 |
@@ -346,6 +366,8 @@ interface Paper {
 - [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 - [x] 训练家等级（XP / 称号 / 徽章）
 - [x] 卡片与列表两种布局
+- [x] 在线阅读器（摘要 / 全文 / 总结）
+- [ ] 全文内搜索与高亮
 - [ ] 统计页：按属性、年份、会议分布
 - [ ] 解读导出为 Markdown / 独立 HTML 精读页
 - [ ] 多人共用（当前是单机单用户）
@@ -359,6 +381,7 @@ interface Paper {
 - star 来自 GitHub，有分钟级延迟；引用量有几天到几周的滞后
 - Google Scholar 直连基本被 403，想要 GS 引用数需要 SerpAPI / Serper 的 Key（且不影响等级）
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
+- 扫描版 PDF 提取不出文字；双栏排版会丢段落结构
 - 精灵生成器是模板式的，形状会有重复，但配色和细节组合足够区分
 - 未做全文检索，只搜已录入的字段
 

@@ -31,6 +31,10 @@ export interface Paper {
   stars: number
   citations: number
   metricsAt: string | null
+  summary: string
+  summaryAt: string | null
+  hasFullText: boolean
+  fullTextChars: number
   url: string
   addedAt: string
   readAt: string | null

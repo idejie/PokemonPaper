@@ -350,13 +350,14 @@ onBeforeUnmount(() => {
               <span class="pdf-state">
                 {{ paper?.pdfPath ? `已存本地 · ${paper.pdfPath}` : '未下载，点右侧从 arXiv 拉取' }}
               </span>
+              <RouterLink v-if="id" class="btn sm ghost" :to="`/p/${id}/read`">在线阅读</RouterLink>
               <button
                 type="button"
                 class="btn sm"
                 :disabled="pdfBusy || !props.id || !form.arxiv"
                 @click="openPdf"
               >
-                {{ pdfBusy ? '处理中…' : paper?.pdfPath ? '阅读原文' : '下载并阅读' }}
+                {{ pdfBusy ? '处理中…' : paper?.pdfPath ? '打开 PDF' : '下载 PDF' }}
               </button>
             </div>
 
