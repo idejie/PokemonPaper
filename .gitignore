@@ -10,3 +10,4 @@ data/pdfs/
 .env
 .env.*
 !.env.example
+.mock/

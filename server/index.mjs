@@ -1,7 +1,8 @@
 import { createServer } from 'node:http'
+import { createServer as createHttpsServer } from 'node:https'
 import { DatabaseSync } from 'node:sqlite'
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,6 +25,8 @@ const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || '127.0.0.1'
 // 反向代理终止 TLS 时设 COOKIE_SECURE=1，让 Cookie 只在 HTTPS 下发送
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1' ? '; Secure' : ''
+const HTTPS_KEY = process.env.HTTPS_KEY || ''
+const HTTPS_CERT = process.env.HTTPS_CERT || ''
 const PUBLIC_URL = (process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`).replace(/\/$/, '')
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || ''
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || ''
@@ -3043,7 +3046,7 @@ async function serveStatic(res, pathname) {
   }
 }
 
-const server = createServer(async (req, res) => {
+async function handler(req, res) {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
   try {
     if (url.pathname.startsWith('/api/')) {
@@ -3056,10 +3059,15 @@ const server = createServer(async (req, res) => {
     if (!res.headersSent) sendJSON(res, status, { error: String(error?.message || error) })
     else res.end()
   }
-})
+}
+
+const server =
+  HTTPS_KEY && HTTPS_CERT
+    ? createHttpsServer({ key: readFileSync(HTTPS_KEY), cert: readFileSync(HTTPS_CERT) }, handler)
+    : createServer(handler)
 
 server.listen(PORT, HOST, () => {
-  console.log(`PokemonPaper API  http://${HOST}:${PORT}`)
+  console.log(`PokemonPaper API  ${HTTPS_KEY && HTTPS_CERT ? 'https' : 'http'}://${HOST}:${PORT}`)
   console.log(`SQLite        ${DB_PATH}`)
 
   if (METRICS_HOURS > 0) {

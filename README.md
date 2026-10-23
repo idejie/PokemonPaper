@@ -200,6 +200,17 @@ papers.example.com {
 - Registration is invite-only by default: the first account is the admin and can generate codes under Settings
 - SQLite is a single file, so run exactly one instance and back up `data/`
 
+### Local GitHub OAuth mock
+
+To develop the GitHub binding without a real OAuth App:
+
+```bash
+node scripts/mock-local.mjs
+./scripts/open-mock-chrome.sh
+```
+
+This serves the app at `https://pokemonpaper.com:8787` with a self-signed cert, maps the domain to `127.0.0.1` inside Chrome, and runs a mock GitHub OAuth server. The mock profile is `@mock-octocat`; no real GitHub credentials are used. Stop with `Ctrl+C`.
+
 ## AI paper cards
 
 The detail sheet has an **AI paper card** button. It turns the abstract into a structured card:
@@ -806,7 +817,18 @@ papers.example.com {
 - SQLite 是单文件，只能跑一个实例，记得备份 `data/`
 - `METRICS_REFRESH_HOURS=0` 关闭后台 star 刷新（默认 12 小时）
 
-## 数据
+### 本地 GitHub OAuth mock
+
+不配置真实 OAuth App 也能开发绑定流程：
+
+```bash
+node scripts/mock-local.mjs
+./scripts/open-mock-chrome.sh
+```
+
+应用跑在 `https://pokemonpaper.com:8787`，使用自签证书；Chrome 把域名映射到 `127.0.0.1`，并启动 mock GitHub OAuth。绑定后的账号是 `@mock-octocat`，不调用真实 GitHub。`Ctrl+C` 停止。
+
+## AI 速读卡
 
 - 默认库：`data/pokemonpaper.db`，首次启动自动建表并写入两条示例
 - 自定义位置：`POKEMONPAPER_DB=/path/to.db pnpm start`
