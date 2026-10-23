@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { api } from '../core/api'
 import type { Paper, PaperInput } from '../core/types'
+import { computeProgress } from '../core/progress'
 
 export interface ToastMessage {
   id: number
@@ -19,7 +20,8 @@ export const usePapersStore = defineStore('papers', () => {
   const total = computed(() => items.value.length)
   const readCount = computed(() => items.value.filter((p) => p.status === 'read').length)
   const readingCount = computed(() => items.value.filter((p) => p.status === 'reading').length)
-  const level = computed(() => 1 + Math.floor(readCount.value / 5))
+  const xp = computed(() => computeProgress(items.value))
+  const level = computed(() => xp.value.level)
   const progress = computed(() =>
     total.value === 0 ? 0 : Math.round((readCount.value / total.value) * 100),
   )
@@ -136,6 +138,7 @@ export const usePapersStore = defineStore('papers', () => {
     error,
     toast,
     total,
+    xp,
     readCount,
     readingCount,
     level,

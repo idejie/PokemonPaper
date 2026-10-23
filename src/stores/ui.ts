@@ -5,6 +5,7 @@ export const useUiStore = defineStore('ui', () => {
   const settingsOpen = ref(false)
   const importOpen = ref(false)
   const avatarOpen = ref(false)
+  const profileOpen = ref(false)
 
   function openSettings() {
     settingsOpen.value = true
@@ -18,6 +19,12 @@ export const useUiStore = defineStore('ui', () => {
   function closeImport() {
     importOpen.value = false
   }
+  function openProfile() {
+    profileOpen.value = true
+  }
+  function closeProfile() {
+    profileOpen.value = false
+  }
   function openAvatar() {
     avatarOpen.value = true
   }
@@ -29,6 +36,9 @@ export const useUiStore = defineStore('ui', () => {
     settingsOpen,
     importOpen,
     avatarOpen,
+    profileOpen,
+    openProfile,
+    closeProfile,
     openAvatar,
     closeAvatar,
     openSettings,

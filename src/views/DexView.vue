@@ -2,9 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePapersStore } from '../stores/papers'
 import PaperCard from '../components/PaperCard.vue'
+import PaperRow from '../components/PaperRow.vue'
+import { usePrefsStore } from '../stores/prefs'
 import { paperLevel } from '../core/level'
 
 const store = usePapersStore()
+const prefs = usePrefsStore()
 const query = ref('')
 const filter = ref<'all' | 'read' | 'reading' | 'unread'>('all')
 const sort = ref<'arxiv' | 'added' | 'rating' | 'level'>('arxiv')
@@ -83,6 +86,25 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         </button>
       </div>
 
+      <div class="layout-switch" role="group" aria-label="布局">
+        <button
+          type="button"
+          :class="{ on: prefs.layout === 'grid' }"
+          title="卡片布局"
+          @click="prefs.setLayout('grid')"
+        >
+          ▦
+        </button>
+        <button
+          type="button"
+          :class="{ on: prefs.layout === 'list' }"
+          title="列表布局"
+          @click="prefs.setLayout('list')"
+        >
+          ☰
+        </button>
+      </div>
+
       <select v-model="sort" class="select sort" aria-label="排序">
         <option value="arxiv">按编号</option>
         <option value="added">按收录时间</option>
@@ -112,8 +134,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
       <button class="btn ghost" @click="(query = ''), (filter = 'all')">清空筛选</button>
     </div>
 
-    <div v-else class="grid">
+    <div v-else-if="prefs.layout === 'grid'" class="grid">
       <PaperCard v-for="paper in filtered" :key="paper.id" :paper="paper" />
+    </div>
+
+    <div v-else class="list">
+      <PaperRow v-for="paper in filtered" :key="paper.id" :paper="paper" />
     </div>
 
     <p class="hint">
@@ -182,6 +208,42 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
 .chips .pill.on b {
   color: var(--gold);
+}
+
+.layout-switch {
+  display: inline-flex;
+  border: 2.5px solid var(--ink);
+  border-radius: 8px;
+  overflow: hidden;
+  flex: none;
+  background: var(--panel);
+}
+
+.layout-switch button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.layout-switch button + button {
+  border-left: 2.5px solid var(--ink);
+}
+
+.layout-switch button.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.list {
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 .sort {
