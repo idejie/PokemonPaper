@@ -81,7 +81,8 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
   <a href="docs/demo.mp4"><img src="docs/preview.png" width="760" alt="Watch the 40-second demo"></a>
 </p>
 
-[▶ Watch the 40-second demo](docs/demo.mp4) — 1080p, with sound.
+[▶ Watch the 40-second demo](docs/demo.mp4) — 1080p, with sound  
+[▶ Watch the 39-second vertical cut](docs/demo-vertical.mp4) — 1080×1920, for phones / social
 
 ## Screenshots
 
@@ -535,7 +536,8 @@ MIT © idejie
   <a href="docs/demo.mp4"><img src="docs/preview.png" width="760" alt="观看 40 秒演示视频"></a>
 </p>
 
-[▶ 观看 40 秒演示视频](docs/demo.mp4) — 1080p，带配乐。
+[▶ 观看 40 秒演示视频](docs/demo.mp4) — 1080p，带配乐  
+[▶ 观看 39 秒竖版](docs/demo-vertical.mp4) — 1080×1920，适合手机 / 社交平台
 
 ## 界面截图
 
