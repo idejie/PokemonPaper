@@ -39,7 +39,7 @@
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
 | 🎖️ **训练家等级** | 经验值、等级曲线、6 个称号、8 枚徽章；完成度直接变成 XP |
 | 🗂️ **两种布局** | 卡片看精灵，列表看信息；选择记在本地 |
-| ⚔️ **论文等级** | Lv.1–100，由开源代码、GitHub star、引用量共同决定，分普通/稀有/史诗/传说 |
+| ⚔️ **论文等级** | Lv.1–100，由开源代码与 GitHub star 决定，分普通/稀有/史诗/传说 |
 | 🤖 **AI 速读卡** | 一句话 / 问题 / 方法 / 关键数字 / 局限 / 下一步，OpenAI 兼容接口，Key 存本地 |
 | 📖 **PDF 阅读器** | 原版 PDF 逐页渲染，选中文字可高亮、写批注，按用户持久化 |
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
@@ -166,7 +166,7 @@ level = 15 + 85 × log10(1 + stars) / log10(50001)
 
 对数刻度的用意：10 star 和 100 star 的差距，应该比 10k 和 20k 的差距更明显。
 
-**引用量不参与等级计算**，只作为参考信息记录在库里。想抓的话在设置里配 Google Scholar 通道（SerpAPI / Serper），否则保持手动填。
+等级只认「有没有代码」和「社区认不认」，不掺引用量——引用数受学科、年份和数据库覆盖影响太大，反而失真。
 
 **同步 star**：详情页点「同步指标」。没配 `GITHUB_TOKEN` 时 GitHub API 容易触发未认证限流（60 次/时），会自动退回抓取仓库页面里的星数。
 
@@ -242,7 +242,6 @@ pnpm start     # http://127.0.0.1:8787
 - 自定义位置：`POKEMONPAPER_DB=/path/to.db pnpm start`
 - 自定义端口：`PORT=9000 pnpm start`
 - 可选：`GITHUB_TOKEN=ghp_xxx pnpm start`，把 GitHub API 限额从 60 次/时提到 5000
-- 引用量的 SerpAPI / Serper Key 在页面「设置」里填，不用环境变量
 - 备份：界面右上角「导出」；恢复用「导入」，按 arXiv 号合并
 
 `data/`、`dist/`、`node_modules/` 都在 `.gitignore` 里，不会进版本库。
@@ -304,7 +303,7 @@ src/
 | `POST` | `/api/papers/:id/pdf` | 确保 PDF 在本地（没有就下载） |
 | `GET` | `/api/papers/:id/pdf` | 流式返回 PDF（支持 Range） |
 | `POST` | `/api/explain` | 调模型生成速读卡（配置随请求传入） |
-| `POST` | `/api/papers/:id/metrics` | 同步 GitHub star 与引用量 |
+| `POST` | `/api/papers/:id/metrics` | 同步 GitHub star |
 | `GET` `POST` | `/api/papers/:id/text` | 读取 / 提取全文（供总结用） |
 | `GET` `POST` | `/api/papers/:id/annotations` | 标注列表 / 新建 |
 | `PATCH` `DELETE` | `/api/annotations/:id` | 改批注 / 删除 |
@@ -349,7 +348,6 @@ interface Paper {
   pdfPath: string        // 相对 data/pdfs/ 的文件名，空表示未下载
   codeUrl: string        // 开源仓库，空表示未开源
   stars: number          // GitHub stars
-  citations: number      // 引用量
   metricsAt: string | null
   url: string
   addedAt: string
@@ -364,7 +362,7 @@ interface Paper {
 - [x] 批量导入（arXiv / BibTeX / JSON）
 - [x] PDF 本地化与 Range 流式阅读
 - [x] AI 速读卡（OpenAI 兼容，预设 DeepSeek 等）
-- [x] 论文等级：开源 + star + 引用量
+- [x] 论文等级：开源 + star
 - [x] 改密码
 - [x] 管理员 + 邀请码
 - [x] 注销账号与数据导出
@@ -387,8 +385,7 @@ interface Paper {
 - 会话存在 SQLite，多实例部署需要共享数据库
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
 - 批量下载 PDF 还没做，目前是一篇一篇点
-- star 来自 GitHub，有分钟级延迟；引用量有几天到几周的滞后
-- Google Scholar 直连基本被 403，想要 GS 引用数需要 SerpAPI / Serper 的 Key（且不影响等级）
+- star 来自 GitHub，有分钟级延迟
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 扫描版 PDF 没有文字层，无法选中标注，总结也只能靠摘要
 - 跨页选择暂不支持，一次标注请在同一页内

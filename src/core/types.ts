@@ -29,7 +29,6 @@ export interface Paper {
   pdfPath: string
   codeUrl: string
   stars: number
-  citations: number
   metricsAt: string | null
   summary: string
   summaryAt: string | null
@@ -101,13 +100,9 @@ export interface Invite {
   usedAt: string | null
 }
 
-export type ScholarProvider = 'off' | 'serpapi' | 'serper'
-
 export interface LlmConfig {
   providerId: string
   baseUrl: string
   apiKey: string
   model: string
-  scholarProvider: ScholarProvider
-  scholarKey: string
 }

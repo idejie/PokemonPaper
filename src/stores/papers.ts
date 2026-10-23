@@ -85,12 +85,9 @@ export const usePapersStore = defineStore('papers', () => {
     }
   }
 
-  async function syncMetrics(
-    id: string,
-    scholar?: { provider: string; apiKey: string },
-  ): Promise<{ paper: Paper; notes: string[] } | null> {
+  async function syncMetrics(id: string): Promise<{ paper: Paper; notes: string[] } | null> {
     try {
-      const result = await api.syncMetrics(id, scholar)
+      const result = await api.syncMetrics(id)
       items.value = items.value.map((p) => (p.id === id ? result.paper : p))
       return result
     } catch (err) {

@@ -13,7 +13,6 @@ export interface LevelInfo {
  * 1. 有没有开源代码 —— 没有就是 Lv.1「普通」
  * 2. GitHub star —— 对数刻度，0 star 从 Lv.15 起，5 万 star 封顶 Lv.100
  *
- * 引用量不再参与计算，只作为参考信息展示。
  */
 export function paperLevel(paper: Pick<Paper, 'codeUrl' | 'stars'>): LevelInfo {
   if (!paper.codeUrl) {

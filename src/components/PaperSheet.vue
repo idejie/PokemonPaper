@@ -32,7 +32,6 @@ const form = reactive({
   abstract: '',
   codeUrl: '',
   stars: 0,
-  citations: 0,
 })
 
 const typeTouched = ref(false)
@@ -48,10 +47,6 @@ const missing = computed(() => !creating.value && !store.loading && !paper.value
 const seed = computed(() => form.arxiv || form.title || 'pokemonpaper-new')
 const typeDef = computed(() => TYPES[form.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.normal)
-
-const scholarUrl = computed(
-  () => `https://scholar.google.com/scholar?q=${encodeURIComponent(`"${form.title}"`)}`,
-)
 
 const level = computed(() => paperLevel({ codeUrl: form.codeUrl, stars: form.stars }))
 
@@ -80,7 +75,6 @@ function apply(entry: Paper) {
   form.abstract = entry.abstract
   form.codeUrl = entry.codeUrl
   form.stars = entry.stars
-  form.citations = entry.citations
   typeTouched.value = true
 }
 
@@ -126,7 +120,6 @@ function payload() {
     abstract: form.abstract.trim(),
     codeUrl: form.codeUrl.trim(),
     stars: Number(form.stars) || 0,
-    citations: Number(form.citations) || 0,
     url: form.arxiv ? arxivAbsUrl(form.arxiv.trim()) : '',
   }
 }
@@ -218,22 +211,13 @@ async function syncMetrics() {
   try {
     // 先把仓库地址存下来，服务端才能读到
     await store.update(props.id, { codeUrl: form.codeUrl.trim() })
-    const result = await store.syncMetrics(props.id, {
-      provider: settings.config.scholarProvider,
-      apiKey: settings.config.scholarKey,
-    })
+    const result = await store.syncMetrics(props.id)
     if (result) {
       form.stars = result.paper.stars
-      form.citations = result.paper.citations
-      const scholarOn =
-        settings.config.scholarProvider !== 'off' && Boolean(settings.config.scholarKey)
-      const citationFailed = result.notes.some((note) => note.includes('引用量抓取失败'))
-      const parts: string[] = []
-      if (form.codeUrl) parts.push(`${result.paper.stars} star`)
-      if (scholarOn && !citationFailed) parts.push(`${result.paper.citations} 引用`)
-      const suffix = scholarOn && citationFailed ? '，引用量被限流，可手动填' : ''
-      store.notify(parts.length ? `已同步 ${parts.join(' · ')}${suffix}` : `同步失败${suffix}`)
-      if (result.notes.length) console.info('[metrics]', result.notes)
+      const failed = result.notes.find((note) => note.includes('失败'))
+      store.notify(
+        failed ? failed : `已同步 ${result.paper.stars.toLocaleString()} star`,
+      )
     }
   } finally {
     syncing.value = false
@@ -444,19 +428,10 @@ onBeforeUnmount(() => {
               />
             </label>
 
-            <div class="row2">
-              <label class="field">
-                <span>GitHub Stars</span>
-                <input v-model.number="form.stars" class="input mono" type="number" min="0" />
-              </label>
-              <label class="field">
-                <span>
-                  引用量
-                  <a class="gs-link" :href="scholarUrl" target="_blank" rel="noreferrer">Scholar ↗</a>
-                </span>
-                <input v-model.number="form.citations" class="input mono" type="number" min="0" />
-              </label>
-            </div>
+            <label class="field">
+              <span>GitHub Stars</span>
+              <input v-model.number="form.stars" class="input mono" type="number" min="0" />
+            </label>
 
             <label class="field">
               <span>摘要</span>
@@ -747,15 +722,6 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
   align-content: start;
-}
-
-.gs-link {
-  float: right;
-  font-size: 9.5px;
-  color: var(--blue);
-  font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 .levelbar {

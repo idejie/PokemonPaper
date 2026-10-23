@@ -177,7 +177,6 @@ const FIELDS = {
   summary: 'summary_text',
   codeUrl: 'code_url',
   stars: 'stars',
-  citations: 'citations',
   metricsAt: 'metrics_at',
   url: 'url',
   readAt: 'read_at',
@@ -201,7 +200,6 @@ function rowToPaper(row) {
     pdfPath: row.pdf_path ?? '',
     codeUrl: row.code_url ?? '',
     stars: row.stars ?? 0,
-    citations: row.citations ?? 0,
     metricsAt: row.metrics_at ?? null,
     summary: row.summary_text ?? '',
     summaryAt: row.summary_at ?? null,
@@ -774,170 +772,6 @@ async function fetchStars(codeUrl) {
   return starsFromHtml(repo)
 }
 
-function normalizeTitle(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function titleMatches(a, b) {
-  const left = normalizeTitle(a)
-  const right = normalizeTitle(b)
-  if (!left || !right) return false
-  if (left.includes(right) || right.includes(left)) return true
-  const words = new Set(left.split(' ').filter((w) => w.length > 3))
-  const other = right.split(' ').filter((w) => w.length > 3)
-  if (!words.size || !other.length) return false
-  const hit = other.filter((w) => words.has(w)).length
-  return hit / Math.max(words.size, other.length) >= 0.5
-}
-
-async function citationsFromOpenAlex(title) {
-  if (!title) throw new HttpError(502, '没有标题，无法查 OpenAlex')
-  const url =
-    `https://api.openalex.org/works?search=${encodeURIComponent(title)}` +
-    '&per_page=3&select=display_name,cited_by_count&mailto=i@idejie.com'
-
-  let response
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    response = await fetch(url, {
-      headers: { accept: 'application/json', 'user-agent': 'PokemonPaper/0.2 (mailto:i@idejie.com)' },
-      signal: AbortSignal.timeout(15000),
-    })
-    if (response.ok || response.status !== 429) break
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-  }
-  if (!response || !response.ok) {
-    throw new HttpError(502, `OpenAlex 返回 ${response ? response.status : '无响应'}，稍后再试`)
-  }
-  const data = await response.json()
-  const hit = (data.results || []).find((work) => titleMatches(title, work.display_name))
-  if (!hit) throw new HttpError(502, 'OpenAlex 没找到匹配的论文')
-  return Number(hit.cited_by_count) || 0
-}
-
-async function scholarViaSerpApi(title, key) {
-  const url =
-    'https://serpapi.com/search.json?engine=google_scholar' +
-    `&q=${encodeURIComponent(title)}&api_key=${encodeURIComponent(key)}`
-  const response = await fetch(url, { signal: AbortSignal.timeout(20000) })
-  if (!response.ok) throw new HttpError(502, `SerpAPI 返回 ${response.status}`)
-  const data = await response.json()
-  const total = data?.organic_results?.[0]?.inline_links?.cited_by?.total
-  if (typeof total !== 'number') throw new HttpError(502, 'SerpAPI 没返回 cited_by')
-  return total
-}
-
-async function scholarViaSerper(title, key) {
-  const response = await fetch('https://google.serper.dev/scholar', {
-    method: 'POST',
-    headers: { 'X-API-KEY': key, 'content-type': 'application/json' },
-    body: JSON.stringify({ q: title }),
-    signal: AbortSignal.timeout(20000),
-  })
-  if (!response.ok) throw new HttpError(502, `Serper 返回 ${response.status}`)
-  const data = await response.json()
-  const hit = data?.organic?.[0] ?? {}
-  const direct = hit.citedBy ?? hit.cited_by
-  if (typeof direct === 'number') return direct
-  const match = JSON.stringify(hit).match(/Cited by (\d+)/)
-  if (match) return Number(match[1])
-  throw new HttpError(502, 'Serper 没返回引用数')
-}
-
-/** 直连 Google Scholar：机房 IP 基本必被 403，只在住宅网络下有机会 */
-async function scholarDirect(title) {
-  const url = `https://scholar.google.com/scholar?q=${encodeURIComponent(`"${title}"`)}&hl=en`
-  const response = await fetch(url, {
-    headers: {
-      'user-agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36',
-      'accept-language': 'en-US,en;q=0.9',
-    },
-    signal: AbortSignal.timeout(20000),
-  })
-  if (!response.ok) throw new HttpError(502, `Google Scholar 返回 ${response.status}`)
-  const html = await response.text()
-  if (/unusual traffic|captcha|Sorry\.\.\./i.test(html)) {
-    throw new HttpError(502, 'Google Scholar 要求验证码，换 SerpAPI 或手动填')
-  }
-  const match = html.match(/Cited by (\d+)/)
-  if (!match) throw new HttpError(502, '页面里没找到 Cited by')
-  return Number(match[1])
-}
-
-async function scholarCount(title, scholar) {
-  if (!title) throw new HttpError(400, '没有标题，无法搜 Google Scholar')
-  const provider = scholar?.provider
-  const key = scholar?.apiKey
-  if (provider === 'serpapi' && key) {
-    return { count: await scholarViaSerpApi(title, key), source: 'Google Scholar · SerpAPI' }
-  }
-  if (provider === 'serper' && key) {
-    return { count: await scholarViaSerper(title, key), source: 'Google Scholar · Serper' }
-  }
-  return { count: await scholarDirect(title), source: 'Google Scholar' }
-}
-
-async function citationsFromCrossref(title) {
-  const url =
-    'https://api.crossref.org/works?rows=3&select=title,is-referenced-by-count' +
-    `&query.bibliographic=${encodeURIComponent(title)}`
-  const response = await fetch(url, {
-    headers: { accept: 'application/json', 'user-agent': 'PokemonPaper/0.3 (mailto:i@idejie.com)' },
-    signal: AbortSignal.timeout(20000),
-  })
-  if (!response.ok) throw new HttpError(502, `Crossref 返回 ${response.status}`)
-  const data = await response.json()
-  const hit = (data.message?.items || []).find((item) =>
-    titleMatches(title, (item.title || [])[0]),
-  )
-  if (!hit) throw new HttpError(502, 'Crossref 没找到匹配')
-  return Number(hit['is-referenced-by-count']) || 0
-}
-
-async function fetchCitations(arxiv, title, scholar) {
-  const notes = []
-
-  try {
-    const result = await scholarCount(title, scholar)
-    return { ...result, notes }
-  } catch (error) {
-    notes.push(`Google Scholar 失败：${error?.message || error}`)
-  }
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const response = await fetch(
-      `https://api.semanticscholar.org/graph/v1/paper/arXiv:${arxiv}?fields=citationCount`,
-      { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15000) },
-    ).catch(() => null)
-    if (response?.ok) {
-      const data = await response.json()
-      return { count: Number(data.citationCount) || 0, source: 'Semantic Scholar', notes }
-    }
-    if (!response || response.status !== 429) break
-    await new Promise((resolve) => setTimeout(resolve, 2500))
-  }
-  notes.push('Semantic Scholar 也失败了')
-
-  try {
-    const count = await citationsFromOpenAlex(title)
-    return { count, source: 'OpenAlex', notes }
-  } catch (error) {
-    notes.push(`OpenAlex 失败：${error?.message || error}`)
-  }
-
-  try {
-    const count = await citationsFromCrossref(title)
-    return { count, source: 'Crossref（通常低于 Google Scholar）', notes }
-  } catch (error) {
-    notes.push(`Crossref 失败：${error?.message || error}`)
-    throw new HttpError(502, notes.join('；'))
-  }
-}
-
 function upsert(paper, userId) {
   const now = new Date().toISOString()
   const existing = paper.arxiv
@@ -962,8 +796,8 @@ function upsert(paper, userId) {
   const status = paper.status ?? 'unread'
   const readAt = status === 'read' ? paper.readAt || now : null
   db.prepare(`
-    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, citations, url, added_at, read_at, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, url, added_at, read_at, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     paper.arxiv || null,
@@ -980,7 +814,6 @@ function upsert(paper, userId) {
     paper.explain ?? '',
     paper.codeUrl ?? '',
     Number(paper.stars) || 0,
-    Number(paper.citations) || 0,
     paper.url ?? (paper.arxiv ? `https://arxiv.org/abs/${paper.arxiv}` : ''),
     now,
     readAt,
@@ -1242,10 +1075,8 @@ async function api(req, res, url) {
       .get(metricsMatch[1], user.id)
     if (!row) return sendJSON(res, 404, { error: 'not found' })
 
-    const body = await readBody(req).catch(() => ({}))
     const notes = []
     let stars = row.stars ?? 0
-    let citations = row.citations ?? 0
 
     if (row.code_url) {
       try {
@@ -1257,28 +1088,8 @@ async function api(req, res, url) {
       notes.push('没有填开源仓库，跳过 star')
     }
 
-    const scholar = body.scholar
-    const scholarReady = Boolean(
-      scholar && scholar.provider && scholar.provider !== 'off' && scholar.apiKey,
-    )
-    if (!scholarReady) {
-      notes.push('未配置 Google Scholar Key，跳过引用量（不影响等级）')
-    } else if (row.arxiv) {
-      try {
-        const result = await fetchCitations(row.arxiv, row.title, scholar)
-        citations = result.count
-        notes.push(`引用来源：${result.source}`)
-        notes.push(...result.notes)
-      } catch (error) {
-        notes.push(`引用量抓取失败：${error?.message || error}`)
-      }
-    } else {
-      notes.push('没有 arXiv 编号，跳过引用量')
-    }
-
-    db.prepare('UPDATE papers SET stars = ?, citations = ?, metrics_at = ? WHERE id = ?').run(
+    db.prepare('UPDATE papers SET stars = ?, metrics_at = ? WHERE id = ?').run(
       stars,
-      citations,
       new Date().toISOString(),
       row.id,
     )

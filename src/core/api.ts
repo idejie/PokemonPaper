@@ -190,13 +190,9 @@ export const api = {
     return data.summary
   },
 
-  async syncMetrics(
-    id: string,
-    scholar?: { provider: string; apiKey: string },
-  ): Promise<{ paper: Paper; notes: string[] }> {
+  async syncMetrics(id: string): Promise<{ paper: Paper; notes: string[] }> {
     return request<{ paper: Paper; notes: string[] }>(`/api/papers/${id}/metrics`, {
       method: 'POST',
-      body: JSON.stringify({ scholar }),
     })
   },
 
