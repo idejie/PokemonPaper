@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🧑‍🤝‍🧑 **Party of six** | Pin up to six papers; they show as sprites on your profile and your leaderboard row |
 | 🤝 **Trading** | Send a paper with its notes to another account by email; their copy starts unread |
 | ⚔️ **Move set** | Four deterministic moves per paper from title / tags / abstract keywords, shown on cards, details and the share card |
 | 📖 **Pokédex entries** | Two AI-written flavour sentences per paper, generated on demand and toggleable in settings |
@@ -258,6 +259,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] AI Pokédex entries
 - [x] Deterministic move sets
 - [x] Paper trading between accounts
+- [x] Party of six
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -288,6 +290,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🧑‍🤝‍🧑 **六人队伍** | 选最多 6 篇论文组队，展示在训练家档案和天梯行 |
 | 🤝 **论文交换** | 按邮箱把论文连同笔记交换给另一个账号，对方从“未读”开始 |
 | ⚔️ **招式表** | 从标题 / 标签 / 摘要抽取 4 个确定性招式，展示在卡片、详情和分享卡 |
 | 📖 **图鉴描述** | AI 为每篇论文写两句宝可梦图鉴式的观察记录，按需生成，可在设置里关闭 |
@@ -772,6 +775,7 @@ interface Like {
 - [x] AI 图鉴描述
 - [x] 确定性招式表
 - [x] 论文交换
+- [x] 六人队伍
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

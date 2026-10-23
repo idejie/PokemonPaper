@@ -55,6 +55,7 @@ const dexBusy = ref(false)
 const tradeOpen = ref(false)
 const tradeEmail = ref('')
 const tradeBusy = ref(false)
+const inParty = computed(() => store.party.some((member) => member.id === props.id))
 const moves = computed(() => movesFor({ arxiv: form.arxiv, title: form.title, abstract: form.abstract, tags: form.tags }))
 const shinyInfo = computed(() =>
   shinyOf({ arxiv: form.arxiv, venue: form.venue, stars: form.stars, year: form.year }),
@@ -256,6 +257,10 @@ function loadBond() {
   bond.value = bondOf(paper.value, bondStats(props.id))
 }
 
+async function toggleParty() {
+  if (paper.value) await store.toggleParty(paper.value)
+}
+
 async function tradePaper() {
   if (!paper.value || !tradeEmail.value.trim()) return
   tradeBusy.value = true
@@ -431,6 +436,14 @@ onBeforeUnmount(() => {
               @click="tradeOpen = !tradeOpen"
             >
               {{ t('交换') }}
+            </button>
+            <button
+              type="button"
+              class="btn sm ghost art-btn"
+              :disabled="!props.id"
+              @click="toggleParty"
+            >
+              {{ inParty ? t('移出队伍') : t('加入队伍') }}
             </button>
             <div v-if="tradeOpen" class="trade-row">
               <input v-model="tradeEmail" class="input" type="email" :placeholder="t('对方邮箱')" />

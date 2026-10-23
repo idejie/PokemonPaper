@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { t } from '../core/i18n'
 import { api } from '../core/api'
-import type { Paper, PaperInput } from '../core/types'
+import type { Paper, PaperInput, PartyMember } from '../core/types'
 import { computeProgress } from '../core/progress'
 
 export interface ToastMessage {
@@ -23,6 +23,7 @@ export const usePapersStore = defineStore('papers', () => {
   const readingCount = computed(() => items.value.filter((p) => p.status === 'reading').length)
   const likesReceived = ref(0)
   const dailyXp = ref(0)
+  const party = ref<PartyMember[]>([])
   const bonusXp = computed(() => likesReceived.value + dailyXp.value)
   const xp = computed(() => computeProgress(items.value, bonusXp.value))
   const level = computed(() => xp.value.level)
@@ -45,13 +46,15 @@ export const usePapersStore = defineStore('papers', () => {
     loading.value = true
     error.value = ''
     try {
-      const [list, bonus] = await Promise.all([
+      const [list, bonus, members] = await Promise.all([
         api.list(),
         api.progressBonus().catch(() => ({ likes: 0, daily: 0, total: 0 })),
+        api.party().catch(() => []),
       ])
       items.value = list
       likesReceived.value = bonus.likes
       dailyXp.value = bonus.daily
+      party.value = members
     } catch (err) {
       error.value =
         err instanceof Error && err.message
@@ -142,8 +145,32 @@ export const usePapersStore = defineStore('papers', () => {
     return next
   }
 
+  async function toggleParty(paper: Paper): Promise<boolean> {
+    const ids = party.value.map((member) => member.id)
+    const next = ids.includes(paper.id)
+      ? ids.filter((id) => id !== paper.id)
+      : [...ids, paper.id]
+    if (next.length > 6) {
+      notify(t('队伍最多 6 只'))
+      return false
+    }
+    try {
+      party.value = await api.setParty(next)
+      notify(
+        ids.includes(paper.id)
+          ? t('已移出队伍')
+          : t('已加入队伍'),
+      )
+      return true
+    } catch (err) {
+      notify(err instanceof Error ? err.message : t('队伍更新失败'))
+      return false
+    }
+  }
+
   function clear() {
     items.value = []
+    party.value = []
     likesReceived.value = 0
     dailyXp.value = 0
   }
@@ -165,6 +192,8 @@ export const usePapersStore = defineStore('papers', () => {
     xp,
     likesReceived,
     dailyXp,
+    party,
+    toggleParty,
     readCount,
     readingCount,
     level,

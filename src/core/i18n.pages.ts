@@ -277,4 +277,11 @@ export const pagesDict: Record<string, string> = {
   '图鉴描述已生成': 'Pokédex entry generated',
   '显示图鉴描述': 'Show Pokédex entries',
   '招式': 'Moves',
+  '队伍': 'Party',
+  '加入队伍': 'Join party',
+  '移出队伍': 'Leave party',
+  '队伍最多 6 只': 'Party is limited to 6',
+  '已加入队伍': 'Joined the party',
+  '已移出队伍': 'Left the party',
+  '队伍更新失败': 'Could not update party',
 }

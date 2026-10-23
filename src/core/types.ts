@@ -78,6 +78,7 @@ export interface LeaderboardEntry {
   reading: number
   summaries: number
   likes: number
+  party: Array<Pick<PartyMember, 'arxiv' | 'primaryCategory' | 'status'>>
   rank: number
 }
 
@@ -89,6 +90,14 @@ export interface PublicSummary {
   avatarId: string
   likes: number
   likedByMe: boolean
+}
+
+export interface PartyMember {
+  id: string
+  arxiv: string
+  primaryCategory: string
+  status: PaperStatus
+  title: string
 }
 
 export interface DailyPick {

@@ -70,6 +70,13 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+  CREATE TABLE IF NOT EXISTS party_slots (
+    user_id  TEXT NOT NULL,
+    slot     INTEGER NOT NULL,
+    paper_id TEXT NOT NULL,
+    PRIMARY KEY (user_id, slot)
+  );
+
   CREATE TABLE IF NOT EXISTS trades (
     id         TEXT PRIMARY KEY,
     from_user  TEXT NOT NULL,
@@ -824,6 +831,23 @@ function levelForXp(xp) {
   return level
 }
 
+function partyFor(userId) {
+  return db
+    .prepare(
+      `SELECT p.id, p.arxiv, p.primary_category, p.status, p.title
+         FROM party_slots s JOIN papers p ON p.id = s.paper_id
+        WHERE s.user_id = ? ORDER BY s.slot`,
+    )
+    .all(userId)
+    .map((row) => ({
+      id: row.id,
+      arxiv: row.arxiv ?? '',
+      primaryCategory: row.primary_category ?? '',
+      status: row.status ?? 'unread',
+      title: row.title ?? '',
+    }))
+}
+
 function leaderboard() {
   const users = db.prepare('SELECT id, name, avatar_id FROM users').all()
   const papers = db
@@ -847,6 +871,22 @@ function leaderboard() {
   const likesByUser = new Map(
     db.prepare('SELECT owner_id, COUNT(*) AS n FROM likes GROUP BY owner_id').all().map((row) => [row.owner_id, row.n]),
   )
+  const partyByUser = new Map()
+  for (const row of db
+    .prepare(
+      `SELECT s.user_id, p.arxiv, p.primary_category, p.status
+         FROM party_slots s JOIN papers p ON p.id = s.paper_id
+        ORDER BY s.slot`,
+    )
+    .all()) {
+    const list = partyByUser.get(row.user_id) ?? []
+    list.push({
+      arxiv: row.arxiv ?? '',
+      primaryCategory: row.primary_category ?? '',
+      status: row.status ?? 'unread',
+    })
+    partyByUser.set(row.user_id, list)
+  }
   const dailyByUser = new Map(
     db
       .prepare('SELECT user_id, COALESCE(SUM(bonus_xp), 0) AS n FROM daily_picks GROUP BY user_id')
@@ -877,6 +917,7 @@ function leaderboard() {
         likes,
         daily,
         xp: entry.xp + likes + daily,
+        party: partyByUser.get(entry.userId) ?? [],
         level: levelForXp(entry.xp + likes + daily),
       }
     })
@@ -1964,6 +2005,33 @@ async function api(req, res, url) {
     }
   }
 
+  if (pathname === '/api/party') {
+    if (method === 'GET') return sendJSON(res, 200, { party: partyFor(user.id) })
+    if (method === 'PUT') {
+      const body = await readBody(req)
+      const ids = Array.isArray(body.paperIds) ? body.paperIds.map(String) : []
+      if (ids.length > 6) return sendJSON(res, 400, { error: '队伍最多 6 只' })
+      const unique = [...new Set(ids)].slice(0, 6)
+      if (unique.length) {
+        const owned = db
+          .prepare(
+            `SELECT COUNT(*) AS n FROM papers WHERE user_id = ? AND id IN (${unique.map(() => '?').join(',')})`,
+          )
+          .get(user.id, ...unique).n
+        if (owned !== unique.length) return sendJSON(res, 400, { error: '队伍里有不属于你的论文' })
+      }
+      db.prepare('DELETE FROM party_slots WHERE user_id = ?').run(user.id)
+      unique.forEach((paperId, slot) => {
+        db.prepare('INSERT INTO party_slots (user_id, slot, paper_id) VALUES (?, ?, ?)').run(
+          user.id,
+          slot,
+          paperId,
+        )
+      })
+      return sendJSON(res, 200, { party: partyFor(user.id) })
+    }
+  }
+
   const tradeMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/trade$/)
   if (tradeMatch && method === 'POST') {
     const row = db
@@ -2127,6 +2195,7 @@ async function api(req, res, url) {
 
     if (method === 'DELETE') {
       db.prepare('DELETE FROM annotations WHERE paper_id = ? AND user_id = ?').run(id, user.id)
+      db.prepare('DELETE FROM party_slots WHERE paper_id = ?').run(id)
       db.prepare('DELETE FROM papers WHERE id = ? AND user_id = ?').run(id, user.id)
       return sendJSON(res, 200, { ok: true })
     }

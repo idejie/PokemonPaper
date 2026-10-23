@@ -1,5 +1,6 @@
 import type {
   Annotation,
+  PartyMember,
   DailyPick,
   ArxivItem,
   AuthUser,
@@ -147,6 +148,19 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ kind, targetId }),
     })
+  },
+
+  async party(): Promise<PartyMember[]> {
+    const data = await request<{ party: PartyMember[] }>('/api/party')
+    return data.party
+  },
+
+  async setParty(paperIds: string[]): Promise<PartyMember[]> {
+    const data = await request<{ party: PartyMember[] }>('/api/party', {
+      method: 'PUT',
+      body: JSON.stringify({ paperIds }),
+    })
+    return data.party
   },
 
   async tradePaper(id: string, email: string): Promise<{ to: string; arxiv: string }> {

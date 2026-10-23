@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import AvatarSvg from './AvatarSvg.vue'
+import SpriteSvg from './SpriteSvg.vue'
 import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
@@ -95,6 +96,29 @@ onBeforeUnmount(() => {
               <span class="gym-icon">{{ gym.icon }}</span>
               <b>{{ t(gym.name) }}</b>
               <small class="mono">{{ gym.readCount }}/{{ gym.read }} · {{ gym.noteCount }}/{{ gym.notes }}</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="party">
+          <div class="party-head">
+            <h3>{{ t('队伍') }}</h3>
+            <span class="mono dim">{{ store.party.length }}/6</span>
+          </div>
+          <div class="party-grid">
+            <div v-for="n in 6" :key="n" class="party-slot">
+              <template v-if="store.party[n - 1]">
+                <span class="party-pic">
+                  <SpriteSvg
+                    :seed="store.party[n - 1].arxiv || store.party[n - 1].title"
+                    :category="store.party[n - 1].primaryCategory"
+                    :locked="store.party[n - 1].status === 'unread'"
+                    :status="store.party[n - 1].status"
+                  />
+                </span>
+                <small class="mono">{{ store.party[n - 1].arxiv || '—' }}</small>
+              </template>
+              <span v-else class="party-empty">+</span>
             </div>
           </div>
         </section>
@@ -296,6 +320,62 @@ onBeforeUnmount(() => {
 
 .stat b.lit {
   color: var(--red);
+}
+
+.party {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.party-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.party-head h3 {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.party-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+}
+
+.party-slot {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 4px 2px;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.party-slot:has(.party-pic) {
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--panel);
+}
+
+.party-pic {
+  width: 34px;
+  height: 34px;
+}
+
+.party-slot small {
+  font-size: 7.5px;
+  color: var(--muted);
+}
+
+.party-empty {
+  align-self: center;
+  color: var(--line);
+  font-weight: 800;
 }
 
 .gyms {

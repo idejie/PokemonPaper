@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
+import SpriteSvg from '../components/SpriteSvg.vue'
 import { api } from '../core/api'
 import { t } from '../core/i18n'
 import { titleForLevel } from '../core/progress'
@@ -75,6 +76,16 @@ onMounted(async () => {
                 <b v-if="entry.userId === me" class="you">{{ t('你') }}</b>
               </span>
               <span class="title">{{ t(titleForLevel(entry.level)) }}</span>
+              <span v-if="entry.party?.length" class="party-mini">
+                <span v-for="member in entry.party" :key="member.arxiv" class="party-mini-pic">
+                  <SpriteSvg
+                    :seed="member.arxiv || '?'"
+                    :category="member.primaryCategory"
+                    :locked="member.status === 'unread'"
+                    :status="member.status"
+                  />
+                </span>
+              </span>
             </span>
             <span class="mono lv">Lv.{{ entry.level }}</span>
             <span class="mono">{{ entry.xp }}</span>
@@ -192,6 +203,21 @@ onMounted(async () => {
 .rank {
   font-weight: 900;
   font-size: 13px;
+}
+
+.party-mini {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.party-mini-pic {
+  width: 18px;
+  height: 18px;
+  padding: 1px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
 }
 
 .who {
