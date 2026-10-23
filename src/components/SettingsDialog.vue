@@ -4,13 +4,19 @@ import { PROVIDERS, providerById } from '../core/providers'
 import { useSettingsStore } from '../stores/settings'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
+import { usePrefsStore } from '../stores/prefs'
 import { api } from '../core/api'
 import type { PdfJob } from '../core/types'
 import { t } from '../core/i18n'
+import { playCry } from '../core/cry'
 
 const settings = useSettingsStore()
 const store = usePapersStore()
 const ui = useUiStore()
+const prefs = usePrefsStore()
+function toggleCry(event: Event) {
+  prefs.setCry((event.target as HTMLInputElement).checked)
+}
 
 const form = reactive({ ...settings.config })
 const imageForm = reactive({ ...settings.image })
@@ -189,6 +195,19 @@ onBeforeUnmount(() => {
 
         <div class="divider" />
 
+        <h3 class="block-title">{{ t('体验') }}</h3>
+        <div class="cry-row">
+          <label class="check">
+            <input type="checkbox" :checked="prefs.cryEnabled" @change="toggleCry" />
+            {{ t('点亮时播放 8-bit 叫声') }}
+          </label>
+          <button type="button" class="btn sm ghost" @click="playCry('demo-2610.28480', true)">
+            {{ t('试听') }}
+          </button>
+        </div>
+
+        <div class="divider" />
+
         <h3 class="block-title">{{ t('维护') }}</h3>
         <p class="lead">{{ t('把还没有本地 PDF 的论文排队下载，一次一篇，后台执行。') }}</p>
         <div class="maint">
@@ -336,6 +355,21 @@ onBeforeUnmount(() => {
 .hint {
   font-size: 12px;
   color: var(--dim);
+}
+
+.cry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .divider {

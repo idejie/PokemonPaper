@@ -275,4 +275,7 @@ export const dialogsDict: Record<string, string> = {
   '成长体': 'Juvenile',
   '完全体': 'Final form',
   '羁绊形态': 'Bond form',
+  '体验': 'Experience',
+  '点亮时播放 8-bit 叫声': 'Play an 8-bit cry when a paper lights up',
+  '试听': 'Preview',
 }

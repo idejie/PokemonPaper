@@ -6,6 +6,7 @@ import { api } from '../core/api'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
+import { usePrefsStore } from '../stores/prefs'
 import { useAuthStore } from '../stores/auth'
 import { categoryChipColor } from '../core/palette'
 import { TIER_COLORS, paperLevel } from '../core/level'
@@ -13,6 +14,7 @@ import { ARXIV_CATEGORIES } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import { t, locale } from '../core/i18n'
 import { downloadShareCard } from '../core/shareCard'
+import { playCry } from '../core/cry'
 import { bondOf, bondStats, recordVisit, type BondInfo } from '../core/bond'
 import type { Explain, Paper, PaperStatus } from '../core/types'
 
@@ -22,6 +24,7 @@ const store = usePapersStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
 const auth = useAuthStore()
+const prefs = usePrefsStore()
 
 const currentYear = new Date().getFullYear()
 const form = reactive({
@@ -169,8 +172,12 @@ async function save() {
       const created = await store.create({ ...payload(), title: form.title.trim() })
       if (created) close()
     } else if (props.id) {
+      const before = paper.value?.status
       const updated = await store.update(props.id, payload())
       if (updated) {
+        if (before !== 'read' && updated.status === 'read') {
+          playCry(updated.arxiv || updated.id, prefs.cryEnabled)
+        }
         store.notify(t('已保存'))
         close()
       }
@@ -187,12 +194,14 @@ async function markLit() {
     return
   }
   if (!props.id) return
+  const wasRead = paper.value?.status === 'read'
   const updated = await store.update(props.id, {
     ...payload(),
     status: 'read',
     readAt: new Date().toISOString(),
   })
   if (updated) {
+    if (!wasRead) playCry(updated.arxiv || updated.id, prefs.cryEnabled)
     store.notify(t('No.{id} 已点亮！', { id: updated.arxiv || '—' }))
     close()
   }

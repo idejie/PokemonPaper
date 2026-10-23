@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🔊 **8-bit cries** | Every arXiv ID has a deterministic 3–5 note WebAudio cry, played when it lights up; can be muted in settings |
 | ❤️ **Bond** | Notes, revisits and reading time build a 0–100 bond (stored locally); tiers light up hearts on the detail sheet |
 | 🏅 **Gyms** | 12 gyms by arXiv field; read 3 papers and write a note on one to earn the badge, shown on the profile and guide |
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
@@ -246,6 +247,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Daily wild paper with double XP
 - [x] Category gyms (12 badges)
 - [x] Bond from notes, revisits and reading time
+- [x] Deterministic 8-bit cries
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -276,6 +278,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🔊 **8-bit 叫声** | 每个 arXiv 号确定性生成 3–5 个音符的 WebAudio 叫声，点亮时播放，可在设置里关闭 |
 | ❤️ **羁绊** | 笔记、复访和阅读时长累积 0–100 羁绊（本地记录），等级点亮详情页爱心 |
 | 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，读满 3 篇 + 1 篇笔记得徽章，展示在档案和 Guide |
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
@@ -748,6 +751,7 @@ interface Like {
 - [x] 每日野生论文 + 双倍 XP
 - [x] 分类道馆（12 枚徽章）
 - [x] 羁绊值（笔记 / 复访 / 阅读时长）
+- [x] 确定性 8-bit 叫声
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 
