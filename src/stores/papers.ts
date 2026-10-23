@@ -35,6 +35,8 @@ export const usePapersStore = defineStore('papers', () => {
     }, 2600)
   }
 
+  let backfillTried = false
+
   async function load() {
     loading.value = true
     error.value = ''
@@ -48,6 +50,19 @@ export const usePapersStore = defineStore('papers', () => {
       error.value += '（确认 pnpm dev 已启动，API 在 8787）'
     } finally {
       loading.value = false
+    }
+
+    // 老论文没有分类：后台去 arXiv 补一次，不阻塞首屏
+    if (!backfillTried && items.value.some((p) => p.arxiv && !p.primaryCategory)) {
+      backfillTried = true
+      void api
+        .backfillPapers()
+        .then(async (result) => {
+          if (!result.updated) return
+          items.value = await api.list()
+          notify(`已从 arXiv 补全 ${result.updated} 篇分类`)
+        })
+        .catch(() => {})
     }
   }
 

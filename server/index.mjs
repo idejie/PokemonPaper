@@ -520,6 +520,35 @@ function extractJson(text) {
   }
 }
 
+async function backfillRows(rows) {
+  let updated = 0
+  for (let i = 0; i < rows.length; i += 50) {
+    const chunk = rows.slice(i, i + 50)
+    const items = await fetchArxiv(chunk.map((row) => row.arxiv))
+    const byId = new Map(items.map((item) => [item.arxiv, item]))
+    for (const row of chunk) {
+      const item = byId.get(row.arxiv)
+      if (!item) continue
+      db.prepare(
+        `UPDATE papers SET
+           primary_category = ?,
+           categories = ?,
+           abstract = CASE WHEN abstract = '' THEN ? ELSE abstract END,
+           venue = CASE WHEN venue = '' THEN ? ELSE venue END
+         WHERE id = ?`,
+      ).run(
+        item.primaryCategory ?? '',
+        (item.categories ?? []).join(','),
+        item.abstract ?? '',
+        item.venue ?? '',
+        row.id,
+      )
+      updated += 1
+    }
+  }
+  return updated
+}
+
 function asText(value, limit = 600) {
   return typeof value === 'string' ? value.trim().slice(0, limit) : ''
 }
@@ -1066,6 +1095,27 @@ async function api(req, res, url) {
   }
 
 
+  if (pathname === '/api/papers/backfill' && method === 'POST') {
+    const rows = db
+      .prepare(
+        "SELECT id, arxiv FROM papers WHERE user_id = ? AND arxiv != '' AND (primary_category IS NULL OR primary_category = '') LIMIT 50",
+      )
+      .all(user.id)
+    if (!rows.length) return sendJSON(res, 200, { updated: 0, remaining: 0 })
+    let updated = 0
+    try {
+      updated = await backfillRows(rows)
+    } catch (error) {
+      return sendJSON(res, 502, { error: `arXiv 查询失败：${error?.message || error}` })
+    }
+    const remaining = db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM papers WHERE user_id = ? AND arxiv != '' AND (primary_category IS NULL OR primary_category = '')",
+      )
+      .get(user.id).n
+    return sendJSON(res, 200, { updated, remaining })
+  }
+
   if (pathname === '/api/arxiv/preview' && method === 'POST') {
     const body = await readBody(req)
     const ids = [...new Set(
@@ -1374,4 +1424,19 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`PokemonPaper API  http://127.0.0.1:${PORT}`)
   console.log(`SQLite        ${DB_PATH}`)
+
+  // 老数据没有分类：启动后后台去 arXiv 补一轮，不阻塞请求
+  setTimeout(() => {
+    const rows = db
+      .prepare(
+        "SELECT id, arxiv FROM papers WHERE arxiv != '' AND (primary_category IS NULL OR primary_category = '') LIMIT 50",
+      )
+      .all()
+    if (!rows.length) return
+    backfillRows(rows)
+      .then((n) => {
+        if (n) console.log(`[paperdex] backfilled ${n} arxiv categories`)
+      })
+      .catch((error) => console.warn('[paperdex] backfill failed:', error?.message || error))
+  }, 1200)
 })

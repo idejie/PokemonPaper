@@ -118,6 +118,12 @@ export const api = {
     return data.papers
   },
 
+  async backfillPapers(): Promise<{ updated: number; remaining: number }> {
+    return request<{ updated: number; remaining: number }>('/api/papers/backfill', {
+      method: 'POST',
+    })
+  },
+
   async create(input: PaperInput): Promise<Paper> {
     const data = await request<{ paper: Paper }>('/api/papers', {
       method: 'POST',
