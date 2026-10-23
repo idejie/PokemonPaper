@@ -205,6 +205,7 @@ async function exportJson() {
 }
 
 .progress-fill {
+  transition: width 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
   height: 100%;
   background: linear-gradient(to bottom, #ffe27a 0 45%, var(--gold) 45% 100%);
   transition: width 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);

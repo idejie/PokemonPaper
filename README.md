@@ -196,7 +196,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [ ] Scheduled metric refresh (stars / categories)
 - [x] Export AI summaries to Markdown
 - [ ] Password reset by email (needs SMTP)
-- [ ] Level-up animation (card bounce, XP bar, sound)
+- [x] Level-up animation (card bounce, XP bar, sound)
 
 ## Limits
 
@@ -644,7 +644,7 @@ interface Paper {
 - [ ] 指标定时刷新（star / 分类）
 - [x] 解读导出为 Markdown
 - [ ] 邮件找回密码（需要 SMTP）
-- [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
+- [x] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 
 ## 已知限制
 

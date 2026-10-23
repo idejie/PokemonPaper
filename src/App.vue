@@ -19,6 +19,31 @@ const ui = useUiStore()
 
 let lastLevel: number | null = null
 const hydrated = ref(false)
+const levelUp = ref<{ level: number; title: string } | null>(null)
+let levelTimer: number | undefined
+
+function playLevelChime() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new Ctx()
+    const notes = [523.25, 659.25, 783.99]
+    notes.forEach((freq, index) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'square'
+      osc.frequency.value = freq
+      gain.gain.value = 0.025
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      const at = ctx.currentTime + index * 0.09
+      osc.start(at)
+      osc.stop(at + 0.12)
+    })
+    window.setTimeout(() => void ctx.close(), 800)
+  } catch {
+    // 没有音频权限就静默
+  }
+}
 
 // 首次加载 / 切号时不要弹「升级」，只有真实操作导致的升级才提示
 watch(
@@ -27,6 +52,7 @@ watch(
     if (!loading) {
       window.setTimeout(() => {
         hydrated.value = true
+        lastLevel = store.xp.level
       }, 400)
     }
   },
@@ -42,6 +68,12 @@ watch(
     }
     if (level > lastLevel) {
       store.notify(t('升到 Lv.{level} · {title}', { level, title: t(store.xp.title) }))
+      levelUp.value = { level, title: store.xp.title }
+      playLevelChime()
+      window.clearTimeout(levelTimer)
+      levelTimer = window.setTimeout(() => {
+        levelUp.value = null
+      }, 2400)
     }
     lastLevel = level
   },
@@ -83,6 +115,14 @@ watch(
   <template v-else>
     <TrainerBar />
     <RouterView />
+
+    <div v-if="levelUp" class="levelup" @click="levelUp = null">
+      <div class="levelup-card">
+        <span class="kicker mono">LEVEL UP</span>
+        <b class="mono">Lv.{{ levelUp.level }}</b>
+        <span class="title">{{ t(levelUp.title) }}</span>
+      </div>
+    </div>
     <ImportDialog v-if="ui.importOpen" />
     <SettingsDialog v-if="ui.settingsOpen" />
     <AccountDialog v-if="ui.avatarOpen" />
@@ -92,6 +132,69 @@ watch(
 </template>
 
 <style scoped>
+.levelup {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  background: rgba(43, 36, 32, 0.25);
+  animation: fade-in 0.2s ease;
+}
+
+.levelup-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 22px 38px;
+  background: var(--gold);
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 8px 8px 0 var(--ink);
+  animation: level-pop 0.5s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+
+.levelup-card .kicker {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  font-weight: 900;
+}
+
+.levelup-card b {
+  font-size: 46px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: 3px 3px 0 rgba(43, 36, 32, 0.25);
+}
+
+.levelup-card .title {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+@keyframes level-pop {
+  0% {
+    transform: scale(0.6) rotate(-4deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .locale-fixed {
   position: fixed;
   top: 16px;

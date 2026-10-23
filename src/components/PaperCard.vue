@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
@@ -11,6 +11,19 @@ const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
 
 const locked = computed(() => props.paper.status === 'unread')
+const justLit = ref(false)
+
+watch(
+  () => props.paper.status,
+  (next, prev) => {
+    if (next === 'read' && prev !== 'read') {
+      justLit.value = true
+      window.setTimeout(() => {
+        justLit.value = false
+      }, 900)
+    }
+  },
+)
 const catColor = computed(() => categoryChipColor(props.paper.primaryCategory))
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const lv = computed(() => paperLevel(props.paper))
@@ -37,7 +50,7 @@ function readFull() {
 <template>
   <article
     class="card"
-    :class="[`is-${paper.status}`]"
+    :class="[`is-${paper.status}`, { 'just-lit': justLit }]"
     role="link"
     tabindex="0"
     :title="paper.title"
@@ -87,6 +100,26 @@ function readFull() {
   padding: 9px;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.just-lit {
+  animation: lit-pop 0.85s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes lit-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06) rotate(-1deg);
+    box-shadow: 0 0 0 6px rgba(255, 203, 5, 0.55), var(--shadow);
+  }
+  70% {
+    transform: scale(0.99) rotate(0.5deg);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .card:hover,

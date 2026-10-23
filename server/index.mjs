@@ -572,6 +572,40 @@ async function runDownloadJob(userId) {
   job.finishedAt = new Date().toISOString()
 }
 
+const METRICS_HOURS = Number(process.env.METRICS_REFRESH_HOURS ?? 12)
+
+async function refreshStaleMetrics() {
+  const cutoff = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+  const repos = db
+    .prepare(
+      `SELECT code_url, MAX(metrics_at) AS last
+         FROM papers
+        WHERE code_url != ''
+        GROUP BY code_url
+       HAVING last IS NULL OR last < ?
+        ORDER BY last
+        LIMIT 20`,
+    )
+    .all(cutoff)
+  if (!repos.length) return
+  let ok = 0
+  for (const repo of repos) {
+    try {
+      const stars = await fetchStars(repo.code_url)
+      db.prepare('UPDATE papers SET stars = ?, metrics_at = ? WHERE code_url = ?').run(
+        stars,
+        new Date().toISOString(),
+        repo.code_url,
+      )
+      ok += 1
+    } catch (error) {
+      console.warn('[paperdex] metrics refresh failed:', repo.code_url, error?.message || error)
+    }
+    await new Promise((resolve) => setTimeout(resolve, 800))
+  }
+  console.log(`[paperdex] refreshed ${ok}/${repos.length} repos`)
+}
+
 async function backfillRows(rows) {
   let updated = 0
   for (let i = 0; i < rows.length; i += 50) {
@@ -1554,6 +1588,13 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
   console.log(`PokemonPaper API  http://${HOST}:${PORT}`)
   console.log(`SQLite        ${DB_PATH}`)
+
+  if (METRICS_HOURS > 0) {
+    setTimeout(() => {
+      void refreshStaleMetrics()
+      setInterval(() => void refreshStaleMetrics(), METRICS_HOURS * 60 * 60 * 1000)
+    }, 5000)
+  }
 
   // 老数据没有分类：启动后后台去 arXiv 补一轮，不阻塞请求
   setTimeout(() => {
