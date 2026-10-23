@@ -6,3 +6,7 @@ data/*.db-shm
 data/pdfs/
 .DS_Store
 *.log
+
+.env
+.env.*
+!.env.example

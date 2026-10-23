@@ -8,6 +8,13 @@ import { fileURLToPath } from 'node:url'
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
+
+try {
+  process.loadEnvFile(join(ROOT, '.env'))
+} catch {
+  /* no local .env */
+}
+
 const DIST = join(ROOT, 'dist')
 const DATA_DIR = join(ROOT, 'data')
 const PDF_DIR = join(DATA_DIR, 'pdfs')

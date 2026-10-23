@@ -196,7 +196,7 @@ papers.example.com {
 - Set `COOKIE_SECURE=1` once the public URL is HTTPS
 - `PUBLIC_URL` is used in password-reset links; set it to your public origin
 - Optional email: `RESEND_API_KEY` + `MAIL_FROM`; without it, the admin can generate reset links in the account panel (and they are printed to the server log)
-- Optional GitHub binding: create an OAuth App, set `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`, and use `${PUBLIC_URL}/api/auth/github/callback` as the callback; scope `read:user`. `GITHUB_REDIRECT_URI` can override the callback
+- Optional GitHub binding: create a GitHub App or OAuth App, set `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET` in `.env`, and use `${PUBLIC_URL}/api/auth/github/callback` as the callback; scope `read:user`. `GITHUB_REDIRECT_URI` can override the callback. The server loads `.env` automatically; `.env.example` has the keys
 - Registration is invite-only by default: the first account is the admin and can generate codes under Settings
 - SQLite is a single file, so run exactly one instance and back up `data/`
 
@@ -801,7 +801,7 @@ papers.example.com {
 - 公网是 HTTPS 时设 `COOKIE_SECURE=1`
 - `PUBLIC_URL` 用于拼接密码重置链接，设成公网地址
 - 可选邮件：`RESEND_API_KEY` + `MAIL_FROM`；不配也能用，管理员在账号面板生成重置链接（同时打印到服务端日志）
-- 可选 GitHub 绑定：创建 OAuth App，配置 `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`，回调填 `${PUBLIC_URL}/api/auth/github/callback`，scope 选 `read:user`；可用 `GITHUB_REDIRECT_URI` 覆盖
+- 可选 GitHub 绑定：创建 GitHub App 或 OAuth App，在 `.env` 配 `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`，回调填 `${PUBLIC_URL}/api/auth/github/callback`，scope 选 `read:user`；可用 `GITHUB_REDIRECT_URI` 覆盖。服务端会自动读取 `.env`，字段见 `.env.example`
 - 注册默认邀请制：第一个账号是管理员，在「设置」里生成邀请码
 - SQLite 是单文件，只能跑一个实例，记得备份 `data/`
 - `METRICS_REFRESH_HOURS=0` 关闭后台 star 刷新（默认 12 小时）
