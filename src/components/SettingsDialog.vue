@@ -4,6 +4,7 @@ import { PROVIDERS, providerById } from '../core/providers'
 import { useSettingsStore } from '../stores/settings'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
+import { t } from '../core/i18n'
 
 const settings = useSettingsStore()
 const store = usePapersStore()
@@ -24,11 +25,11 @@ function selectProvider(id: string) {
 
 function save() {
   if (!form.baseUrl.trim() || !form.model.trim()) {
-    store.notify('Base URL 和模型名不能为空')
+    store.notify(t('Base URL 和模型名不能为空'))
     return
   }
   settings.save({ ...form, baseUrl: form.baseUrl.trim(), model: form.model.trim() })
-  store.notify('模型设置已保存到本地')
+  store.notify(t('模型设置已保存到本地'))
   ui.closeSettings()
 }
 
@@ -52,16 +53,16 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="overlay" @click.self="close">
-    <section class="sheet" role="dialog" aria-modal="true" aria-label="模型设置">
+    <section class="sheet" role="dialog" aria-modal="true" :aria-label="t('模型设置')">
       <header class="head">
-        <h2>模型设置</h2>
-        <button class="close" type="button" aria-label="关闭" @click="close">×</button>
+        <h2>{{ t('模型设置') }}</h2>
+        <button class="close" type="button" :aria-label="t('关闭')" @click="close">×</button>
       </header>
 
       <div class="body">
         <p class="lead">
-          解读用 OpenAI 兼容接口。选一个厂商，填自己的 API Key。
-          <b>Key 只存在这台浏览器</b>，请求经本地服务转发，不会上传到别处。
+          {{ t('解读用 OpenAI 兼容接口。选一个厂商，填自己的 API Key。') }}
+          <b>{{ t('Key 只存在这台浏览器') }}</b>{{ t('，请求经本地服务转发，不会上传到别处。') }}
         </p>
 
         <div class="providers">
@@ -73,8 +74,8 @@ onBeforeUnmount(() => {
             :class="{ on: form.providerId === item.id }"
             @click="selectProvider(item.id)"
           >
-            <b>{{ item.name }}</b>
-            <small>{{ item.note }}</small>
+            <b>{{ t(item.name) }}</b>
+            <small>{{ t(item.note) }}</small>
           </button>
         </div>
 
@@ -84,7 +85,7 @@ onBeforeUnmount(() => {
         </label>
 
         <label class="field">
-          <span>模型</span>
+          <span>{{ t('模型') }}</span>
           <input
             v-model="form.model"
             class="input mono"
@@ -107,23 +108,23 @@ onBeforeUnmount(() => {
               autocomplete="off"
             />
             <button type="button" class="btn ghost sm" @click="showKey = !showKey">
-              {{ showKey ? '隐藏' : '显示' }}
+              {{ showKey ? t('隐藏') : t('显示') }}
             </button>
           </div>
         </label>
 
         <p v-if="provider.keyUrl" class="hint">
-          没有 Key？
-          <a :href="provider.keyUrl" target="_blank" rel="noreferrer">去 {{ provider.name }} 申请 →</a>
+          {{ t('没有 Key？') }}
+          <a :href="provider.keyUrl" target="_blank" rel="noreferrer">{{ t('去 {name} 申请 →', { name: t(provider.name) }) }}</a>
         </p>
 
         <div class="actions">
-          <button v-if="settings.config.apiKey" type="button" class="btn ghost sm" @click="settings.clearKey(), store.notify('已清除本地 Key')">
-            清除 Key
+          <button v-if="settings.config.apiKey" type="button" class="btn ghost sm" @click="settings.clearKey(), store.notify(t('已清除本地 Key'))">
+            {{ t('清除 Key') }}
           </button>
           <span class="spacer" />
-          <button type="button" class="btn ghost" @click="close">取消</button>
-          <button type="button" class="btn" @click="save">保存</button>
+          <button type="button" class="btn ghost" @click="close">{{ t('取消') }}</button>
+          <button type="button" class="btn" @click="save">{{ t('保存') }}</button>
         </div>
       </div>
     </section>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
+import { t } from '../core/i18n'
 import SpriteSvg from './SpriteSvg.vue'
 
 const props = defineProps<{ paper: Paper }>()
@@ -14,14 +15,14 @@ const catColor = computed(() => categoryChipColor(props.paper.primaryCategory))
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const lv = computed(() => paperLevel(props.paper))
 const statusText = computed(() => {
-  if (props.paper.status === 'read') return '已点亮'
-  if (props.paper.status === 'reading') return '在读'
-  return '未点亮'
+  if (props.paper.status === 'read') return t('已点亮')
+  if (props.paper.status === 'reading') return t('在读')
+  return t('未点亮')
 })
 const levelTitle = computed(() =>
   props.paper.codeUrl
-    ? `${lv.value.tier} · 开源 · ${props.paper.stars.toLocaleString()} star`
-    : '常见 · 未开源',
+    ? `${t(lv.value.tier)} · ${t('开源')} · ${props.paper.stars.toLocaleString()} star`
+    : `${t(lv.value.tier)} · ${t('未开源')}`,
 )
 
 function openDetail() {
@@ -62,14 +63,14 @@ function readFull() {
 
     <div class="card-foot">
       <span class="type-chip" :style="{ background: catColor }">
-        {{ paper.primaryCategory || '未分类' }}
+        {{ paper.primaryCategory || t('未分类') }}
       </span>
       <span class="venue mono" :title="`${paper.venue || ''} ${paper.year || ''}`">
         {{ paper.venue || '—' }}{{ paper.year ? ` · ${paper.year}` : '' }}
       </span>
     </div>
 
-    <button class="read-btn" type="button" @click.stop="readFull">阅读全文</button>
+    <button class="read-btn" type="button" @click.stop="readFull">{{ t('阅读全文') }}</button>
   </article>
 </template>
 

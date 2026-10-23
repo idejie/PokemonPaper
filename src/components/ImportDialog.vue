@@ -6,6 +6,7 @@ import { bibEntryToPaper, parseBibtex } from '../core/bibtex'
 import type { Paper } from '../core/types'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
+import { t } from '../core/i18n'
 
 interface Draft {
   picked: boolean
@@ -32,11 +33,11 @@ const importing = ref(false)
 const error = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
-const tabs: Array<{ key: Tab; label: string }> = [
-  { key: 'arxiv', label: 'arXiv 批量' },
+const tabs = computed<Array<{ key: Tab; label: string }>>(() => [
+  { key: 'arxiv', label: t('arXiv 批量') },
   { key: 'bibtex', label: 'BibTeX' },
-  { key: 'json', label: 'JSON 备份' },
-]
+  { key: 'json', label: t('JSON 备份') },
+])
 
 const pickedCount = computed(() => items.value.filter((item) => item.picked).length)
 const allPicked = computed(
@@ -77,7 +78,7 @@ async function loadArxiv() {
     ...new Set([...raw.value.matchAll(/(\d{4}\.\d{4,5})(?:v\d+)?/g)].map((m) => m[1])),
   ]
   if (!ids.length) {
-    error.value = '没识别到 arXiv 编号，检查一下粘贴内容'
+    error.value = t('没识别到 arXiv 编号，检查一下粘贴内容')
     return
   }
   loading.value = true
@@ -97,10 +98,13 @@ async function loadArxiv() {
       })
     })
     if (found.length < ids.length) {
-      error.value = `${ids.length} 个编号里只找到 ${found.length} 篇，其余可能编号有误`
+      error.value = t('{total} 个编号里只找到 {found} 篇，其余可能编号有误', {
+        total: ids.length,
+        found: found.length,
+      })
     }
   } catch (err) {
-    error.value = err instanceof Error ? err.message : '抓取失败'
+    error.value = err instanceof Error ? err.message : t('抓取失败')
   } finally {
     loading.value = false
   }
@@ -110,7 +114,7 @@ function loadBibtex() {
   error.value = ''
   const entries = parseBibtex(raw.value)
   if (!entries.length) {
-    error.value = '没解析到条目，确认是 BibTeX 格式'
+    error.value = t('没解析到条目，确认是 BibTeX 格式')
     return
   }
   items.value = entries.map((entry) => {
@@ -151,7 +155,7 @@ async function onJsonFile(event: Event) {
         }),
       )
   } catch {
-    error.value = 'JSON 解析失败'
+    error.value = t('JSON 解析失败')
   } finally {
     input.value = ''
   }
@@ -187,10 +191,10 @@ async function confirmImport() {
     })
     const count = await api.importAll({ papers: payload as never[] })
     await store.load()
-    store.notify(`导入 ${count} 篇`)
+    store.notify(t('导入 {n} 篇', { n: count }))
     ui.closeImport()
   } catch (err) {
-    store.notify(err instanceof Error ? err.message : '导入失败')
+    store.notify(err instanceof Error ? err.message : t('导入失败'))
   } finally {
     importing.value = false
   }
@@ -216,10 +220,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="overlay" @click.self="close">
-    <section class="sheet" role="dialog" aria-modal="true" aria-label="导入论文">
+    <section class="sheet" role="dialog" aria-modal="true" :aria-label="t('导入论文')">
       <header class="head">
-        <h2>导入论文</h2>
-        <button class="close" type="button" aria-label="关闭" @click="close">×</button>
+        <h2>{{ t('导入论文') }}</h2>
+        <button class="close" type="button" :aria-label="t('关闭')" @click="close">×</button>
       </header>
 
       <div class="body">
@@ -240,12 +244,12 @@ onBeforeUnmount(() => {
           <textarea
             v-model="raw"
             class="textarea mono"
-            placeholder="每行一个，链接或编号都行：&#10;2610.28480&#10;https://arxiv.org/pdf/2303.04137&#10;2406.09246"
+            :placeholder="t('每行一个，链接或编号都行：\n2610.28480\nhttps://arxiv.org/pdf/2303.04137\n2406.09246')"
           />
           <div class="row">
-            <span class="hint">最多 50 个，重复的会自动合并</span>
+            <span class="hint">{{ t('最多 50 个，重复的会自动合并') }}</span>
             <button class="btn" type="button" :disabled="loading || !raw.trim()" @click="loadArxiv">
-              {{ loading ? '抓取中…' : '解析预览' }}
+              {{ loading ? t('抓取中…') : t('解析预览') }}
             </button>
           </div>
         </template>
@@ -257,19 +261,19 @@ onBeforeUnmount(() => {
             placeholder="@article{chi2023diffusion,&#10;  title={Diffusion Policy},&#10;  author={Chi, Cheng and others},&#10;  eprint={2303.04137}&#10;}"
           />
           <div class="row">
-            <button class="btn ghost" type="button" @click="fileInput?.click()">选 .bib 文件</button>
-            <span class="hint">从 Zotero / Google Scholar 导出后整包粘贴</span>
+            <button class="btn ghost" type="button" @click="fileInput?.click()">{{ t('选 .bib 文件') }}</button>
+            <span class="hint">{{ t('从 Zotero / Google Scholar 导出后整包粘贴') }}</span>
             <button class="btn" type="button" :disabled="!raw.trim()" @click="loadBibtex">
-              解析预览
+              {{ t('解析预览') }}
             </button>
           </div>
         </template>
 
         <template v-else>
           <div class="dropzone">
-            <p>选择之前从「导出」得到的 JSON 备份。</p>
-            <button class="btn" type="button" @click="fileInput?.click()">选择 JSON 文件</button>
-            <p class="hint">按 arXiv 号合并：已存在的只更新元数据，不覆盖笔记和阅读状态。</p>
+            <p>{{ t('选择之前从「导出」得到的 JSON 备份。') }}</p>
+            <button class="btn" type="button" @click="fileInput?.click()">{{ t('选择 JSON 文件') }}</button>
+            <p class="hint">{{ t('按 arXiv 号合并：已存在的只更新元数据，不覆盖笔记和阅读状态。') }}</p>
           </div>
         </template>
 
@@ -277,9 +281,9 @@ onBeforeUnmount(() => {
 
         <div v-if="items.length" class="preview">
           <div class="preview-head">
-            <span class="mono">{{ items.length }} 条</span>
+            <span class="mono">{{ t('{n} 条', { n: items.length }) }}</span>
             <button type="button" class="link" @click="toggleAll">
-              {{ allPicked ? '取消全选' : '全选' }}
+              {{ allPicked ? t('取消全选') : t('全选') }}
             </button>
           </div>
           <label v-for="(item, index) in items" :key="`${item.arxiv}-${index}`" class="item">
@@ -292,23 +296,23 @@ onBeforeUnmount(() => {
               </span>
             </span>
             <span v-if="item.primaryCategory" class="cat mono">{{ item.primaryCategory }}</span>
-            <span v-if="exists(item)" class="badge">已存在</span>
-            <span v-else-if="!item.arxiv" class="badge warn">无编号</span>
+            <span v-if="exists(item)" class="badge">{{ t('已存在') }}</span>
+            <span v-else-if="!item.arxiv" class="badge warn">{{ t('无编号') }}</span>
           </label>
         </div>
       </div>
 
       <footer class="foot">
-        <span class="hint">已选 {{ pickedCount }} 篇</span>
+        <span class="hint">{{ t('已选 {n} 篇', { n: pickedCount }) }}</span>
         <span class="spacer" />
-        <button class="btn ghost" type="button" @click="close">取消</button>
+        <button class="btn ghost" type="button" @click="close">{{ t('取消') }}</button>
         <button
           class="btn"
           type="button"
           :disabled="!pickedCount || importing"
           @click="confirmImport"
         >
-          {{ importing ? '导入中…' : `导入 ${pickedCount} 篇` }}
+          {{ importing ? t('导入中…') : t('导入 {n} 篇', { n: pickedCount }) }}
         </button>
       </footer>
 

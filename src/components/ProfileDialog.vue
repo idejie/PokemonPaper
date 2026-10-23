@@ -4,6 +4,7 @@ import AvatarSvg from './AvatarSvg.vue'
 import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
+import { t } from '../core/i18n'
 
 const auth = useAuthStore()
 const store = usePapersStore()
@@ -37,11 +38,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="overlay" @click.self="close">
-    <section class="sheet" role="dialog" aria-modal="true" aria-label="训练家档案">
+    <section class="sheet" role="dialog" aria-modal="true" :aria-label="t('训练家档案')">
       <header class="head">
-        <h2>训练家档案</h2>
-        <button class="link" type="button" @click="openAccount">账号设置</button>
-        <button class="close" type="button" aria-label="关闭" @click="close">×</button>
+        <h2>{{ t('训练家档案') }}</h2>
+        <button class="link" type="button" @click="openAccount">{{ t('账号设置') }}</button>
+        <button class="close" type="button" :aria-label="t('关闭')" @click="close">×</button>
       </header>
 
       <div class="body">
@@ -49,7 +50,7 @@ onBeforeUnmount(() => {
           <div class="pic"><AvatarSvg :id="auth.user?.avatarId || 'red-cap'" /></div>
           <div class="who">
             <div class="name">{{ auth.user?.name }}</div>
-            <div class="title">{{ progress.title }}</div>
+            <div class="title">{{ t(progress.title) }}</div>
             <div class="lv mono">Lv.{{ progress.level }}</div>
           </div>
         </div>
@@ -57,7 +58,7 @@ onBeforeUnmount(() => {
         <div class="xp">
           <div class="xp-top">
             <span class="mono">{{ progress.xp }} XP</span>
-            <span class="hint">距离 Lv.{{ nextLevel }} 还差 {{ progress.needed }} XP</span>
+            <span class="hint">{{ t('距离 Lv.{level} 还差 {n} XP', { level: nextLevel, n: progress.needed }) }}</span>
           </div>
           <div class="bar">
             <div class="fill" :style="{ width: progress.percent + '%' }" />
@@ -66,12 +67,12 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="stats">
-          <div class="stat"><b class="mono">{{ progress.stats.total }}</b><span>收录</span></div>
-          <div class="stat"><b class="mono lit">{{ progress.stats.read }}</b><span>已点亮</span></div>
-          <div class="stat"><b class="mono">{{ progress.stats.notes }}</b><span>有笔记</span></div>
-          <div class="stat"><b class="mono">{{ progress.stats.openSource }}</b><span>开源</span></div>
-          <div class="stat"><b class="mono">{{ progress.stats.explained }}</b><span>AI 解读</span></div>
-          <div class="stat"><b class="mono">{{ progress.stats.withPdf }}</b><span>本地 PDF</span></div>
+          <div class="stat"><b class="mono">{{ progress.stats.total }}</b><span>{{ t('收录') }}</span></div>
+          <div class="stat"><b class="mono lit">{{ progress.stats.read }}</b><span>{{ t('已点亮') }}</span></div>
+          <div class="stat"><b class="mono">{{ progress.stats.notes }}</b><span>{{ t('有笔记') }}</span></div>
+          <div class="stat"><b class="mono">{{ progress.stats.openSource }}</b><span>{{ t('开源') }}</span></div>
+          <div class="stat"><b class="mono">{{ progress.stats.explained }}</b><span>{{ t('AI 解读') }}</span></div>
+          <div class="stat"><b class="mono">{{ progress.stats.withPdf }}</b><span>{{ t('本地 PDF') }}</span></div>
         </div>
 
         <div class="badges">
@@ -80,19 +81,19 @@ onBeforeUnmount(() => {
             :key="badge.id"
             class="badge"
             :class="{ on: badge.unlocked }"
-            :title="badge.desc"
+            :title="t(badge.desc)"
           >
             <span class="dot" />
             <div>
-              <b>{{ badge.name }}</b>
-              <small>{{ badge.desc }}</small>
+              <b>{{ t(badge.name) }}</b>
+              <small>{{ t(badge.desc) }}</small>
             </div>
           </div>
         </div>
 
         <p class="rule">
-          每篇论文：收录 +10 · 读完 +50 · 笔记 +5 · 解读 +8 · 评分 +2 · 开源 +15 · PDF +3。
-          升级所需经验按 50·(L−1)·L 递增。
+          {{ t('每篇论文：收录 +10 · 读完 +50 · 笔记 +5 · 解读 +8 · 评分 +2 · 开源 +15 · PDF +3。') }}
+          {{ t('升级所需经验按 50·(L−1)·L 递增。') }}
         </p>
       </div>
     </section>

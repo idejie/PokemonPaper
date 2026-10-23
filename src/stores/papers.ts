@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { t } from '../core/i18n'
 import { api } from '../core/api'
 import type { Paper, PaperInput } from '../core/types'
 import { computeProgress } from '../core/progress'
@@ -46,8 +47,8 @@ export const usePapersStore = defineStore('papers', () => {
       error.value =
         err instanceof Error && err.message
           ? err.message
-          : '连不上本地服务'
-      error.value += '（确认 pnpm dev 已启动，API 在 8787）'
+          : t('连不上本地服务')
+      error.value += t('（确认 pnpm dev 已启动，API 在 8787）')
     } finally {
       loading.value = false
     }
@@ -60,7 +61,7 @@ export const usePapersStore = defineStore('papers', () => {
         .then(async (result) => {
           if (!result.updated) return
           items.value = await api.list()
-          notify(`已从 arXiv 补全 ${result.updated} 篇分类`)
+          notify(t('已从 arXiv 补全 {n} 篇分类', { n: result.updated }))
         })
         .catch(() => {})
     }
@@ -70,10 +71,10 @@ export const usePapersStore = defineStore('papers', () => {
     try {
       const paper = await api.create(input)
       items.value = [paper, ...items.value]
-      notify(`No.${paper.arxiv || '—'} 已登记`)
+      notify(t('No.{id} 已登记', { id: paper.arxiv || '—' }))
       return paper
     } catch (err) {
-      notify(err instanceof Error ? err.message : '保存失败')
+      notify(err instanceof Error ? err.message : t('保存失败'))
       return null
     }
   }
@@ -84,7 +85,7 @@ export const usePapersStore = defineStore('papers', () => {
       items.value = items.value.map((p) => (p.id === id ? paper : p))
       return paper
     } catch (err) {
-      notify(err instanceof Error ? err.message : '保存失败')
+      notify(err instanceof Error ? err.message : t('保存失败'))
       return null
     }
   }
@@ -95,7 +96,7 @@ export const usePapersStore = defineStore('papers', () => {
       items.value = items.value.map((p) => (p.id === id ? paper : p))
       return paper
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'PDF 下载失败')
+      notify(err instanceof Error ? err.message : t('PDF 下载失败'))
       return null
     }
   }
@@ -106,7 +107,7 @@ export const usePapersStore = defineStore('papers', () => {
       items.value = items.value.map((p) => (p.id === id ? result.paper : p))
       return result
     } catch (err) {
-      notify(err instanceof Error ? err.message : '同步失败')
+      notify(err instanceof Error ? err.message : t('同步失败'))
       return null
     }
   }
@@ -115,10 +116,10 @@ export const usePapersStore = defineStore('papers', () => {
     try {
       await api.remove(id)
       items.value = items.value.filter((p) => p.id !== id)
-      notify('已从图鉴移除')
+      notify(t('已从图鉴移除'))
       return true
     } catch (err) {
-      notify(err instanceof Error ? err.message : '删除失败')
+      notify(err instanceof Error ? err.message : t('删除失败'))
       return false
     }
   }
@@ -128,7 +129,7 @@ export const usePapersStore = defineStore('papers', () => {
       status: 'read',
       readAt: new Date().toISOString(),
     })
-    if (next) notify(`No.${next.arxiv || '—'} 已点亮！`)
+    if (next) notify(t('No.{id} 已点亮！', { id: next.arxiv || '—' }))
     return next
   }
 

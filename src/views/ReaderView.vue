@@ -6,6 +6,7 @@ const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue
 import { api } from '../core/api'
 import { paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
+import { t } from '../core/i18n'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
@@ -43,9 +44,9 @@ async function generateSummary() {
     }
     const result = await api.paperSummary(props.id, settings.config)
     await store.update(props.id, { summary: result })
-    store.notify('总结已生成')
+    store.notify(t('总结已生成'))
   } catch (err) {
-    store.notify(err instanceof Error ? err.message : '生成失败')
+    store.notify(err instanceof Error ? err.message : t('生成失败'))
   } finally {
     summarizing.value = false
   }
@@ -74,7 +75,7 @@ onMounted(async () => {
   <div class="page">
     <div class="wrap">
       <div class="topbar">
-        <RouterLink to="/" class="back">← 图鉴</RouterLink>
+        <RouterLink to="/" class="back">← {{ t('图鉴') }}</RouterLink>
         <span class="no mono">No.{{ paper?.arxiv || '—' }}</span>
         <span
           v-if="lv"
@@ -84,7 +85,7 @@ onMounted(async () => {
           Lv.{{ lv.level }}
         </span>
         <span class="spacer" />
-        <RouterLink v-if="paper" :to="`/p/${paper.id}`" class="link">详情</RouterLink>
+        <RouterLink v-if="paper" :to="`/p/${paper.id}`" class="link">{{ t('详情') }}</RouterLink>
         <a
           v-if="paper"
           :href="`/api/papers/${paper.id}/pdf`"
@@ -92,13 +93,13 @@ onMounted(async () => {
           rel="noreferrer"
           class="link"
         >
-          下载 PDF ↗
+          {{ t('下载 PDF ↗') }}
         </a>
       </div>
 
       <div v-if="!paper" class="missing">
-        <h1>找不到这篇论文</h1>
-        <RouterLink to="/" class="btn">返回图鉴</RouterLink>
+        <h1>{{ t('找不到这篇论文') }}</h1>
+        <RouterLink to="/" class="btn">{{ t('返回图鉴') }}</RouterLink>
       </div>
 
       <template v-else>
@@ -108,22 +109,24 @@ onMounted(async () => {
           <span v-if="paper.venue" class="venue">{{ paper.venue }}</span>
           <span v-if="paper.year" class="mono">{{ paper.year }}</span>
           <span class="chip mono" :style="{ background: typeColor }">
-            {{ paper.primaryCategory || '未分类' }}
+            {{ paper.primaryCategory || t('未分类') }}
           </span>
         </p>
 
         <nav class="tabs">
-          <button :class="{ on: tab === 'abstract' }" @click="tab = 'abstract'">摘要</button>
-          <button :class="{ on: tab === 'pdf' }" @click="tab = 'pdf'">原文 PDF</button>
-          <button :class="{ on: tab === 'summary' }" @click="tab = 'summary'">总结</button>
+          <button :class="{ on: tab === 'abstract' }" @click="tab = 'abstract'">
+            {{ t('摘要') }}
+          </button>
+          <button :class="{ on: tab === 'pdf' }" @click="tab = 'pdf'">{{ t('原文 PDF') }}</button>
+          <button :class="{ on: tab === 'summary' }" @click="tab = 'summary'">
+            {{ t('总结') }}
+          </button>
         </nav>
 
         <section v-if="tab === 'abstract'" class="panel">
           <p v-if="paper.abstract" class="abstract">{{ paper.abstract }}</p>
           <p v-else class="empty">
-            还没有摘要。回
-            <RouterLink :to="`/p/${paper.id}`" class="link">详情页</RouterLink>
-            点「抓取」补上。
+            {{ t('还没有摘要。回') }}<RouterLink :to="`/p/${paper.id}`" class="link">{{ t('详情页') }}</RouterLink>{{ t('点「抓取」补上。') }}
           </p>
         </section>
 
@@ -136,15 +139,15 @@ onMounted(async () => {
             <span class="hint">
               {{
                 summary
-                  ? `生成于 ${summaryDate}`
+                  ? t('生成于 {date}', { date: summaryDate })
                   : settings.ready
                     ? settings.config.model
-                    : '还没配置模型'
+                    : t('还没配置模型')
               }}
             </span>
             <span class="spacer" />
             <button v-if="!settings.ready" type="button" class="btn sm" @click="ui.openSettings()">
-              去配置
+              {{ t('去配置') }}
             </button>
             <button
               v-else
@@ -153,12 +156,12 @@ onMounted(async () => {
               :disabled="summarizing"
               @click="generateSummary"
             >
-              {{ summarizing ? '生成中…' : summary ? '重新生成' : '生成总结' }}
+              {{ summarizing ? t('生成中…') : summary ? t('重新生成') : t('生成总结') }}
             </button>
           </div>
           <MarkdownLite v-if="summary" :source="summary" />
           <p v-else class="empty">
-            基于摘要和全文生成一份 600–900 字的中文总结：问题、方法、结果、局限、适合谁读。
+            {{ t('基于摘要和全文生成一份 600–900 字的中文总结：问题、方法、结果、局限、适合谁读。') }}
           </p>
         </section>
       </template>

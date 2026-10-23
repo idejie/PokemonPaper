@@ -8,6 +8,7 @@ import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
 import type { Invite } from '../core/types'
+import { t } from '../core/i18n'
 
 const auth = useAuthStore()
 const store = usePapersStore()
@@ -35,17 +36,17 @@ async function saveProfile() {
   savingProfile.value = true
   const ok = await auth.updateProfile({ avatarId: selected.value, name: name.value.trim() })
   savingProfile.value = false
-  store.notify(ok ? '训练家资料已更新' : auth.error || '保存失败')
+  store.notify(ok ? t('训练家资料已更新') : auth.error || t('保存失败'))
 }
 
 async function savePassword() {
   pwMsg.value = ''
   if (pwNew.value.length < 8) {
-    pwMsg.value = '新密码至少 8 位'
+    pwMsg.value = t('新密码至少 8 位')
     return
   }
   if (pwNew.value !== pwConfirm.value) {
-    pwMsg.value = '两次输入的新密码不一致'
+    pwMsg.value = t('两次输入的新密码不一致')
     return
   }
   pwBusy.value = true
@@ -58,7 +59,7 @@ async function savePassword() {
   pwCurrent.value = ''
   pwNew.value = ''
   pwConfirm.value = ''
-  store.notify('密码已更新，其它设备已退出登录')
+  store.notify(t('密码已更新，其它设备已退出登录'))
 }
 
 async function loadInvites() {
@@ -72,10 +73,10 @@ async function setMode(mode: 'open' | 'invite') {
   try {
     await api.adminSetConfig(mode)
     await auth.fetchConfig()
-    store.notify(mode === 'invite' ? '已切换为邀请制' : '已开放注册')
+    store.notify(mode === 'invite' ? t('已切换为邀请制') : t('已开放注册'))
   } catch {
     adminMode.value = previous
-    store.notify('切换失败')
+    store.notify(t('切换失败'))
   }
 }
 
@@ -86,7 +87,7 @@ async function createInvite() {
     invites.value = [{ code, createdAt: new Date().toISOString(), used: false, usedAt: null }, ...invites.value]
     await copy(code)
   } catch {
-    store.notify('生成失败')
+    store.notify(t('生成失败'))
   } finally {
     inviteBusy.value = false
   }
@@ -95,9 +96,9 @@ async function createInvite() {
 async function copy(code: string) {
   try {
     await navigator.clipboard.writeText(code)
-    store.notify(`邀请码 ${code} 已复制`)
+    store.notify(t('邀请码 {code} 已复制', { code }))
   } catch {
-    store.notify(`邀请码：${code}`)
+    store.notify(t('邀请码：{code}', { code }))
   }
 }
 
@@ -105,9 +106,9 @@ async function revoke(code: string) {
   try {
     await api.adminRevokeInvite(code)
     invites.value = invites.value.filter((item) => item.code !== code)
-    store.notify('已撤销')
+    store.notify(t('已撤销'))
   } catch (err) {
-    store.notify(err instanceof Error ? err.message : '撤销失败')
+    store.notify(err instanceof Error ? err.message : t('撤销失败'))
   }
 }
 
@@ -120,16 +121,16 @@ async function exportData() {
   link.download = `pokemonpaper-${new Date().toISOString().slice(0, 10)}.json`
   link.click()
   URL.revokeObjectURL(url)
-  store.notify('已导出我的数据')
+  store.notify(t('已导出我的数据'))
 }
 
 async function deleteAccount() {
   if (!deletePassword.value) {
-    store.notify('输入密码才能注销')
+    store.notify(t('输入密码才能注销'))
     return
   }
   const ok = window.confirm(
-    '注销会删掉这个账号的所有论文、笔记和解读，且无法恢复。确定吗？',
+    t('注销会删掉这个账号的所有论文、笔记和解读，且无法恢复。确定吗？'),
   )
   if (!ok) return
   deleteBusy.value = true
@@ -165,16 +166,16 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="overlay" @click.self="close">
-    <section class="sheet" role="dialog" aria-modal="true" aria-label="账号设置">
+    <section class="sheet" role="dialog" aria-modal="true" :aria-label="t('账号设置')">
       <header class="head">
-        <h2>账号设置</h2>
+        <h2>{{ t('账号设置') }}</h2>
         <span class="who mono">{{ auth.user?.email }}</span>
-        <button class="close" type="button" aria-label="关闭" @click="close">×</button>
+        <button class="close" type="button" :aria-label="t('关闭')" @click="close">×</button>
       </header>
 
       <div class="body">
         <section class="block">
-          <h3>训练家资料</h3>
+          <h3>{{ t('训练家资料') }}</h3>
           <div class="grid">
             <button
               v-for="item in AVATARS"
@@ -185,33 +186,33 @@ onBeforeUnmount(() => {
               @click="selected = item.id"
             >
               <span class="pic"><AvatarSvg :id="item.id" /></span>
-              <span class="name">{{ item.name }}</span>
+              <span class="name">{{ t(item.name) }}</span>
             </button>
           </div>
           <div class="row">
             <label class="field grow">
-              <span>昵称</span>
+              <span>{{ t('昵称') }}</span>
               <input v-model="name" class="input" maxlength="40" />
             </label>
             <button type="button" class="btn" :disabled="savingProfile" @click="saveProfile">
-              {{ savingProfile ? '保存中…' : '保存资料' }}
+              {{ savingProfile ? t('保存中…') : t('保存资料') }}
             </button>
           </div>
         </section>
 
         <section class="block">
-          <h3>修改密码</h3>
+          <h3>{{ t('修改密码') }}</h3>
           <div class="row three">
             <label class="field">
-              <span>当前密码</span>
+              <span>{{ t('当前密码') }}</span>
               <input v-model="pwCurrent" class="input" type="password" autocomplete="current-password" />
             </label>
             <label class="field">
-              <span>新密码</span>
+              <span>{{ t('新密码') }}</span>
               <input v-model="pwNew" class="input" type="password" autocomplete="new-password" />
             </label>
             <label class="field">
-              <span>确认新密码</span>
+              <span>{{ t('确认新密码') }}</span>
               <input v-model="pwConfirm" class="input" type="password" autocomplete="new-password" />
             </label>
           </div>
@@ -219,68 +220,68 @@ onBeforeUnmount(() => {
             <p v-if="pwMsg" class="error">{{ pwMsg }}</p>
             <span class="spacer" />
             <button type="button" class="btn" :disabled="pwBusy" @click="savePassword">
-              {{ pwBusy ? '提交中…' : '更新密码' }}
+              {{ pwBusy ? t('提交中…') : t('更新密码') }}
             </button>
           </div>
         </section>
 
         <section v-if="auth.isAdmin" class="block">
-          <h3>管理员</h3>
+          <h3>{{ t('管理员') }}</h3>
           <div class="row">
             <label class="field grow">
-              <span>注册方式</span>
+              <span>{{ t('注册方式') }}</span>
               <select
                 :value="adminMode"
                 class="select"
                 @change="setMode(($event.target as HTMLSelectElement).value as 'open' | 'invite')"
               >
-                <option value="open">开放注册</option>
-                <option value="invite">邀请制</option>
+                <option value="open">{{ t('开放注册') }}</option>
+                <option value="invite">{{ t('邀请制') }}</option>
               </select>
             </label>
             <button type="button" class="btn" :disabled="inviteBusy" @click="createInvite">
-              {{ inviteBusy ? '生成中…' : '生成邀请码' }}
+              {{ inviteBusy ? t('生成中…') : t('生成邀请码') }}
             </button>
           </div>
 
           <ul v-if="invites.length" class="invites">
             <li v-for="item in invites" :key="item.code" :class="{ used: item.used }">
               <span class="code mono">{{ item.code }}</span>
-              <span class="state">{{ item.used ? '已使用' : '未使用' }}</span>
+              <span class="state">{{ item.used ? t('已使用') : t('未使用') }}</span>
               <button v-if="!item.used" type="button" class="mini" @click="copy(item.code)">
-                复制
+                {{ t('复制') }}
               </button>
               <button v-if="!item.used" type="button" class="mini danger" @click="revoke(item.code)">
-                撤销
+                {{ t('撤销') }}
               </button>
             </li>
           </ul>
-          <p v-else class="hint">还没有邀请码。切成邀请制后，生成一个发给同事。</p>
+          <p v-else class="hint">{{ t('还没有邀请码。切成邀请制后，生成一个发给同事。') }}</p>
         </section>
 
         <section class="block danger">
-          <h3>数据与账号</h3>
+          <h3>{{ t('数据与账号') }}</h3>
           <div class="row">
             <div class="grow">
-              <b class="label">导出我的数据</b>
-              <p class="hint">当前账号的全部论文、笔记、解读，JSON 格式。</p>
+              <b class="label">{{ t('导出我的数据') }}</b>
+              <p class="hint">{{ t('当前账号的全部论文、笔记、解读，JSON 格式。') }}</p>
             </div>
-            <button type="button" class="btn ghost" @click="exportData">导出</button>
+            <button type="button" class="btn ghost" @click="exportData">{{ t('导出') }}</button>
           </div>
 
           <div class="row">
             <label class="field grow">
-              <span>注销账号（不可恢复）</span>
+              <span>{{ t('注销账号（不可恢复）') }}</span>
               <input
                 v-model="deletePassword"
                 class="input"
                 type="password"
-                placeholder="输入密码确认"
+                :placeholder="t('输入密码确认')"
                 autocomplete="current-password"
               />
             </label>
             <button type="button" class="btn danger" :disabled="deleteBusy" @click="deleteAccount">
-              {{ deleteBusy ? '注销中…' : '注销账号' }}
+              {{ deleteBusy ? t('注销中…') : t('注销账号') }}
             </button>
           </div>
         </section>

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
 import { useAuthStore } from '../stores/auth'
+import { t } from '../core/i18n'
 
 const auth = useAuthStore()
 const mode = ref<'login' | 'register'>('login')
@@ -10,8 +11,10 @@ const password = ref('')
 const name = ref('')
 const invite = ref('')
 
-const title = computed(() => (mode.value === 'login' ? '欢迎回来，训练家' : '登记一位新训练家'))
-const action = computed(() => (mode.value === 'login' ? '登录' : '注册并开始'))
+const title = computed(() =>
+  mode.value === 'login' ? t('欢迎回来，训练家') : t('登记一位新训练家'),
+)
+const action = computed(() => (mode.value === 'login' ? t('登录') : t('注册并开始')))
 
 function switchMode(next: 'login' | 'register') {
   mode.value = next
@@ -24,7 +27,7 @@ onMounted(() => {
 
 async function submit() {
   if (!email.value.trim() || !password.value) {
-    auth.error = '邮箱和密码都要填'
+    auth.error = t('邮箱和密码都要填')
     return
   }
   if (mode.value === 'login') {
@@ -43,21 +46,21 @@ async function submit() {
           <AvatarSvg id="red-cap" />
         </div>
         <h1>PokemonPaper</h1>
-        <p class="tagline">每篇论文一只精灵，读完点亮。</p>
+        <p class="tagline">{{ t('每篇论文一只精灵，读完点亮。') }}</p>
         <ul class="points">
-          <li>arXiv 批量导入，自动抓标题作者摘要</li>
-          <li>PDF 存本地，点开即读</li>
-          <li>开源程度决定精灵等级</li>
+          <li>{{ t('arXiv 批量导入，自动抓标题作者摘要') }}</li>
+          <li>{{ t('PDF 存本地，点开即读') }}</li>
+          <li>{{ t('开源程度决定精灵等级') }}</li>
         </ul>
       </aside>
 
       <div class="panel">
         <div class="tabs">
           <button type="button" :class="{ on: mode === 'login' }" @click="switchMode('login')">
-            登录
+            {{ t('登录') }}
           </button>
           <button type="button" :class="{ on: mode === 'register' }" @click="switchMode('register')">
-            注册
+            {{ t('注册') }}
           </button>
         </div>
 
@@ -65,12 +68,17 @@ async function submit() {
 
         <form class="form" @submit.prevent="submit">
           <label v-if="mode === 'register'" class="field">
-            <span>昵称</span>
-            <input v-model="name" class="input" placeholder="怎么称呼你" autocomplete="nickname" />
+            <span>{{ t('昵称') }}</span>
+            <input
+              v-model="name"
+              class="input"
+              :placeholder="t('怎么称呼你')"
+              autocomplete="nickname"
+            />
           </label>
 
           <label class="field">
-            <span>邮箱</span>
+            <span>{{ t('邮箱') }}</span>
             <input
               v-model="email"
               class="input"
@@ -82,22 +90,22 @@ async function submit() {
           </label>
 
           <label v-if="mode === 'register' && auth.config.registration === 'invite'" class="field">
-            <span>邀请码</span>
+            <span>{{ t('邀请码') }}</span>
             <input
               v-model="invite"
               class="input mono"
-              placeholder="向管理员要一个"
+              :placeholder="t('向管理员要一个')"
               autocomplete="off"
             />
           </label>
 
           <label class="field">
-            <span>密码</span>
+            <span>{{ t('密码') }}</span>
             <input
               v-model="password"
               class="input"
               type="password"
-              :placeholder="mode === 'register' ? '至少 8 位' : '输入密码'"
+              :placeholder="mode === 'register' ? t('至少 8 位') : t('输入密码')"
               :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
               required
             />
@@ -106,21 +114,21 @@ async function submit() {
           <p v-if="auth.error" class="error">{{ auth.error }}</p>
 
           <button class="btn submit" type="submit" :disabled="auth.busy">
-            {{ auth.busy ? '处理中…' : action }}
+            {{ auth.busy ? t('处理中…') : action }}
           </button>
         </form>
 
         <p class="hint">
-          {{ mode === 'login' ? '还没有账号？' : '已经有账号了？' }}
+          {{ mode === 'login' ? t('还没有账号？') : t('已经有账号了？') }}
           <button type="button" class="link" @click="switchMode(mode === 'login' ? 'register' : 'login')">
-            {{ mode === 'login' ? '注册一个' : '去登录' }}
+            {{ mode === 'login' ? t('注册一个') : t('去登录') }}
           </button>
         </p>
 
         <p v-if="auth.config.registration === 'invite'" class="foot">
-          本站目前是邀请制，注册需要管理员发的邀请码。
+          {{ t('本站目前是邀请制，注册需要管理员发的邀请码。') }}
         </p>
-        <p class="foot">数据存在这台机器的 SQLite，不会上传到任何地方。</p>
+        <p class="foot">{{ t('数据存在这台机器的 SQLite，不会上传到任何地方。') }}</p>
       </div>
     </div>
   </div>

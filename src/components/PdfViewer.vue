@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import * as pdfjs from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { api } from '../core/api'
+import { t } from '../core/i18n'
 import { usePapersStore } from '../stores/papers'
 import type { Annotation } from '../core/types'
 
@@ -108,7 +109,7 @@ async function boot() {
       method: 'POST',
       credentials: 'same-origin',
     }).then((res) => {
-      if (!res.ok) throw new Error(res.status === 401 ? '请先登录' : 'PDF 下载失败')
+      if (!res.ok) throw new Error(res.status === 401 ? t('请先登录') : t('PDF 下载失败'))
     })
 
     task = pdfjs.getDocument({
@@ -131,7 +132,7 @@ async function boot() {
     }
     await loadAnnotations()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'PDF 加载失败'
+    error.value = err instanceof Error ? err.message : t('PDF 加载失败')
   } finally {
     loading.value = false
   }
@@ -159,7 +160,7 @@ function onMouseUp(event: MouseEvent) {
   const range = sel.getRangeAt(0)
   const pageEl = samePage(range)
   if (!pageEl) {
-    if (sel.toString().trim()) store.notify('一次标注请在同一页内选择')
+    if (sel.toString().trim()) store.notify(t('一次标注请在同一页内选择'))
     return
   }
   const pageNumber = Number(pageEl.dataset.page)
@@ -216,7 +217,7 @@ async function createAnnotation(color: string) {
     },
   ]
   cancelSelection()
-  store.notify('已高亮')
+  store.notify(t('已高亮'))
 }
 
 function openEdit(ann: Annotation) {
@@ -235,7 +236,7 @@ async function saveAnnotation() {
   )
   editing.value = null
   draft.value = ''
-  store.notify('批注已保存')
+  store.notify(t('批注已保存'))
 }
 
 async function removeAnnotation() {
@@ -245,7 +246,7 @@ async function removeAnnotation() {
   annotations.value = annotations.value.filter((item) => item.id !== id)
   editing.value = null
   draft.value = ''
-  store.notify('已删除标注')
+  store.notify(t('已删除标注'))
 }
 
 onMounted(boot)
@@ -260,17 +261,21 @@ onBeforeUnmount(() => {
 <template>
   <div class="viewer">
     <div class="toolbar">
-      <span class="mono">{{ pages.length }} 页</span>
-      <span class="hint">在页面上选文字即可高亮 / 写批注</span>
+      <span class="mono">{{ t('{n} 页', { n: pages.length }) }}</span>
+      <span class="hint">{{ t('在页面上选文字即可高亮 / 写批注') }}</span>
       <span class="spacer" />
-      <span class="count mono">{{ count }} 条标注</span>
+      <span class="count mono">{{ t('{n} 条标注', { n: count }) }}</span>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="loading" class="loading">
       <span class="spin" />
-      {{ progress ? `渲染 ${progress}/${pages.length} 页…` : '正在打开 PDF…' }}
+      {{
+        progress
+          ? t('渲染 {current}/{total} 页…', { current: progress, total: pages.length })
+          : t('正在打开 PDF…')
+      }}
     </div>
 
     <div ref="pagesEl" class="pages" :class="{ hidden: loading }" @mouseup="onMouseUp">
@@ -312,11 +317,13 @@ onBeforeUnmount(() => {
         <input
           v-model="draft"
           class="input comment-input"
-          placeholder="写点批注（可选）"
+          :placeholder="t('写点批注（可选）')"
           @keydown.enter="createAnnotation('yellow')"
         />
-        <button type="button" class="btn sm" @click="createAnnotation('yellow')">保存</button>
-        <button type="button" class="btn sm ghost" @click="cancelSelection">取消</button>
+        <button type="button" class="btn sm" @click="createAnnotation('yellow')">
+          {{ t('保存') }}
+        </button>
+        <button type="button" class="btn sm ghost" @click="cancelSelection">{{ t('取消') }}</button>
       </template>
 
       <template v-else-if="editing">
@@ -324,12 +331,14 @@ onBeforeUnmount(() => {
         <input
           v-model="draft"
           class="input comment-input"
-          placeholder="批注"
+          :placeholder="t('批注')"
           @keydown.enter="saveAnnotation"
         />
-        <button type="button" class="btn sm" @click="saveAnnotation">保存</button>
-        <button type="button" class="btn sm danger" @click="removeAnnotation">删除</button>
-        <button type="button" class="btn sm ghost" @click="editing = null">关闭</button>
+        <button type="button" class="btn sm" @click="saveAnnotation">{{ t('保存') }}</button>
+        <button type="button" class="btn sm danger" @click="removeAnnotation">
+          {{ t('删除') }}
+        </button>
+        <button type="button" class="btn sm ghost" @click="editing = null">{{ t('关闭') }}</button>
       </template>
     </div>
   </div>

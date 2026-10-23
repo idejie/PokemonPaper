@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AvatarSvg from './AvatarSvg.vue'
+import LocaleToggle from './LocaleToggle.vue'
 import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
 import { api } from '../core/api'
+import { t } from '../core/i18n'
 
 const store = usePapersStore()
 const ui = useUiStore()
@@ -26,9 +28,9 @@ async function exportJson() {
     link.download = `pokemonpaper-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     URL.revokeObjectURL(url)
-    store.notify('已导出 JSON 备份')
+    store.notify(t('已导出 JSON 备份'))
   } catch {
-    store.notify('导出失败')
+    store.notify(t('导出失败'))
   } finally {
     busy.value = false
   }
@@ -42,38 +44,49 @@ async function exportJson() {
         <span class="ball" />
         <span class="brand-text">
           <strong>PokemonPaper</strong>
-          <small>论文图鉴</small>
+          <small>{{ t('论文图鉴') }}</small>
         </span>
       </RouterLink>
 
       <div class="stats">
         <div class="stat">
           <b class="mono">{{ store.total }}</b>
-          <span>收录</span>
+          <span>{{ t('收录') }}</span>
         </div>
         <div class="stat">
           <b class="mono lit">{{ store.readCount }}</b>
-          <span>已点亮</span>
+          <span>{{ t('已点亮') }}</span>
         </div>
-        <button class="trainer-chip" type="button" title="训练家档案" @click="ui.openProfile()">
+        <button
+          class="trainer-chip"
+          type="button"
+          :title="t('训练家档案')"
+          @click="ui.openProfile()"
+        >
           <span class="avatar"><AvatarSvg :id="auth.user?.avatarId || 'red-cap'" /></span>
           <span class="meta">
             <b class="mono">Lv.{{ store.level }}</b>
             <small>{{ auth.user?.name }}</small>
           </span>
         </button>
-        <div class="progress" :title="`完成度 ${store.progress}%`">
+        <div class="progress" :title="t('完成度 {n}%', { n: store.progress })">
           <div class="progress-fill" :style="{ width: store.progress + '%' }" />
           <span class="progress-label mono">{{ store.progress }}%</span>
         </div>
       </div>
 
       <div class="actions">
-        <RouterLink to="/new" class="btn">＋ 登记论文</RouterLink>
-        <button class="btn ghost import-btn" @click="ui.openImport()">导入</button>
-        <button class="btn ghost" :disabled="busy" @click="exportJson">导出</button>
-        <button class="btn ghost" title="退出登录" @click="logout">退出</button>
-        <button class="btn icon" title="模型设置" aria-label="模型设置" @click="ui.openSettings()">
+        <RouterLink to="/new" class="btn">＋ {{ t('登记论文') }}</RouterLink>
+        <button class="btn ghost import-btn" @click="ui.openImport()">{{ t('导入') }}</button>
+        <button class="btn ghost" :disabled="busy" @click="exportJson">{{ t('导出') }}</button>
+        <button class="btn ghost" :title="t('退出登录')" @click="logout">{{ t('退出') }}</button>
+        <LocaleToggle />
+        <button
+          class="btn icon"
+          :title="t('模型设置')"
+          :aria-label="t('模型设置')"
+          @click="ui.openSettings()"
+        >
           ⚙
         </button>
       </div>

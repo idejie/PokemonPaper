@@ -10,6 +10,7 @@ import { categoryChipColor } from '../core/palette'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { ARXIV_CATEGORIES } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
+import { t } from '../core/i18n'
 import type { Explain, Paper, PaperStatus } from '../core/types'
 
 const props = defineProps<{ id?: string }>()
@@ -120,14 +121,14 @@ function payload() {
 async function fetchMeta() {
   const id = parseArxivId(form.arxiv)
   if (!id) {
-    store.notify('先填一个 arXiv 编号或链接')
+    store.notify(t('先填一个 arXiv 编号或链接'))
     return
   }
   fetching.value = true
   try {
     const [item] = await api.previewArxiv([id])
     if (!item) {
-      store.notify('arXiv 上没找到这篇')
+      store.notify(t('arXiv 上没找到这篇'))
       return
     }
     form.arxiv = item.arxiv
@@ -137,9 +138,9 @@ async function fetchMeta() {
     form.year = item.year ?? form.year
     form.abstract = item.abstract || form.abstract
     form.primaryCategory = item.primaryCategory || item.category || form.primaryCategory
-    store.notify('已抓取元数据')
+    store.notify(t('已抓取元数据'))
   } catch (err) {
-    store.notify(err instanceof Error ? err.message : '抓取失败')
+    store.notify(err instanceof Error ? err.message : t('抓取失败'))
   } finally {
     fetching.value = false
   }
@@ -147,7 +148,7 @@ async function fetchMeta() {
 
 async function save() {
   if (!form.title.trim()) {
-    store.notify('标题不能为空')
+    store.notify(t('标题不能为空'))
     return
   }
   saving.value = true
@@ -158,7 +159,7 @@ async function save() {
     } else if (props.id) {
       const updated = await store.update(props.id, payload())
       if (updated) {
-        store.notify('已保存')
+        store.notify(t('已保存'))
         close()
       }
     }
@@ -180,7 +181,7 @@ async function markLit() {
     readAt: new Date().toISOString(),
   })
   if (updated) {
-    store.notify(`No.${updated.arxiv || '—'} 已点亮！`)
+    store.notify(t('No.{id} 已点亮！', { id: updated.arxiv || '—' }))
     close()
   }
 }
@@ -195,7 +196,7 @@ async function openPdf() {
 
 async function syncMetrics() {
   if (!props.id) {
-    store.notify('先保存这篇论文，再同步指标')
+    store.notify(t('先保存这篇论文，再同步指标'))
     return
   }
   syncing.value = true
@@ -207,7 +208,7 @@ async function syncMetrics() {
       form.stars = result.paper.stars
       const failed = result.notes.find((note) => note.includes('失败'))
       store.notify(
-        failed ? failed : `已同步 ${result.paper.stars.toLocaleString()} star`,
+        failed ? failed : t('已同步 {n} star', { n: result.paper.stars.toLocaleString() }),
       )
     }
   } finally {
@@ -221,16 +222,16 @@ async function generateExplain() {
     return
   }
   if (!props.id) {
-    store.notify('先保存这篇论文，再生成解读')
+    store.notify(t('先保存这篇论文，再生成解读'))
     return
   }
   explaining.value = true
   try {
     const result = await api.explain(payload(), settings.config)
     const updated = await store.update(props.id, { explain: JSON.stringify(result) })
-    if (updated) store.notify('解读已生成')
+    if (updated) store.notify(t('解读已生成'))
   } catch (err) {
-    store.notify(err instanceof Error ? err.message : '生成失败')
+    store.notify(err instanceof Error ? err.message : t('生成失败'))
   } finally {
     explaining.value = false
   }
@@ -238,7 +239,7 @@ async function generateExplain() {
 
 async function remove() {
   if (!props.id) return
-  const ok = window.confirm('从图鉴中移除这篇论文？笔记和解读也会一起删除。')
+  const ok = window.confirm(t('从图鉴中移除这篇论文？笔记和解读也会一起删除。'))
   if (!ok) return
   const done = await store.remove(props.id)
   if (done) close()
@@ -268,14 +269,14 @@ onBeforeUnmount(() => {
     <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
       <header class="sheet-head">
         <span class="no mono">No.{{ form.arxiv || 'NEW' }}</span>
-        <h2 id="sheet-title">{{ creating ? '登记新论文' : '论文详情' }}</h2>
-        <button class="close" type="button" aria-label="关闭" @click="close">×</button>
+        <h2 id="sheet-title">{{ creating ? t('登记新论文') : t('论文详情') }}</h2>
+        <button class="close" type="button" :aria-label="t('关闭')" @click="close">×</button>
       </header>
 
       <div v-if="missing" class="missing">
-        <h3>图鉴里没有这只精灵</h3>
-        <p>它可能已经被移除了。</p>
-        <button class="btn" type="button" @click="close">返回图鉴</button>
+        <h3>{{ t('图鉴里没有这只精灵') }}</h3>
+        <p>{{ t('它可能已经被移除了。') }}</p>
+        <button class="btn" type="button" @click="close">{{ t('返回图鉴') }}</button>
       </div>
 
       <div v-else class="sheet-body">
@@ -287,60 +288,60 @@ onBeforeUnmount(() => {
 
             <div class="preview-meta">
               <span class="type-chip" :style="{ background: catColor }">
-                {{ form.primaryCategory || '未分类' }}
+                {{ form.primaryCategory || t('未分类') }}
               </span>
-              <span class="mono dim">{{ form.arxiv || '待登记' }}</span>
+              <span class="mono dim">{{ form.arxiv || t('待登记') }}</span>
             </div>
 
-            <div class="stars" role="group" aria-label="评分">
+            <div class="stars" role="group" :aria-label="t('评分')">
               <button
                 v-for="star in 5"
                 :key="star"
                 type="button"
                 class="star"
                 :class="{ on: star <= form.rating }"
-                :aria-label="`${star} 星`"
+                :aria-label="t('{n} 星', { n: star })"
                 @click="setRating(star)"
               >
                 ★
               </button>
             </div>
 
-            <div class="seg" role="group" aria-label="阅读状态">
+            <div class="seg" role="group" :aria-label="t('阅读状态')">
               <button type="button" :class="{ on: form.status === 'unread' }" @click="setStatus('unread')">
-                未读
+                {{ t('未读') }}
               </button>
               <button type="button" :class="{ on: form.status === 'reading' }" @click="setStatus('reading')">
-                在读
+                {{ t('在读') }}
               </button>
               <button type="button" :class="{ on: form.status === 'read' }" @click="setStatus('read')">
-                已读
+                {{ t('已读') }}
               </button>
             </div>
 
-            <p class="preview-hint">精灵由 arXiv 编号生成，编号不变，精灵不变。</p>
+            <p class="preview-hint">{{ t('精灵由 arXiv 编号生成，编号不变，精灵不变。') }}</p>
           </aside>
 
           <form class="form" @submit.prevent="save">
             <div class="pdfbar">
               <span class="pdf-tag">PDF</span>
               <span class="pdf-state">
-                {{ paper?.pdfPath ? `已存本地 · ${paper.pdfPath}` : '未下载，点右侧从 arXiv 拉取' }}
+                {{ paper?.pdfPath ? t('已存本地 · {path}', { path: paper.pdfPath }) : t('未下载，点右侧从 arXiv 拉取') }}
               </span>
-              <RouterLink v-if="id" class="btn sm ghost" :to="`/p/${id}/read`">在线阅读</RouterLink>
+              <RouterLink v-if="id" class="btn sm ghost" :to="`/p/${id}/read`">{{ t('在线阅读') }}</RouterLink>
               <button
                 type="button"
                 class="btn sm"
                 :disabled="pdfBusy || !props.id || !form.arxiv"
                 @click="openPdf"
               >
-                {{ pdfBusy ? '处理中…' : paper?.pdfPath ? '打开 PDF' : '下载 PDF' }}
+                {{ pdfBusy ? t('处理中…') : paper?.pdfPath ? t('打开 PDF') : t('下载 PDF') }}
               </button>
             </div>
 
             <div class="row2">
               <label class="field">
-                <span>arXiv 编号 / 链接</span>
+                <span>{{ t('arXiv 编号 / 链接') }}</span>
                 <div class="input-row">
                   <input
                     v-model="form.arxiv"
@@ -354,35 +355,35 @@ onBeforeUnmount(() => {
                     :disabled="fetching || !form.arxiv"
                     @click="fetchMeta"
                   >
-                    {{ fetching ? '…' : '抓取' }}
+                    {{ fetching ? '…' : t('抓取') }}
                   </button>
                 </div>
               </label>
               <label class="field">
-                <span>年份</span>
+                <span>{{ t('年份') }}</span>
                 <input v-model.number="form.year" class="input mono" type="number" min="1950" max="2100" />
               </label>
             </div>
 
             <label class="field">
-              <span>标题 *</span>
+              <span>{{ t('标题 *') }}</span>
               <input v-model="form.title" class="input" required />
             </label>
 
             <label class="field">
-              <span>作者</span>
-              <input v-model="form.authors" class="input" placeholder="用逗号分隔" />
+              <span>{{ t('作者') }}</span>
+              <input v-model="form.authors" class="input" :placeholder="t('用逗号分隔')" />
             </label>
 
             <label class="field">
-              <span>会议 / 期刊</span>
+              <span>{{ t('会议 / 期刊') }}</span>
               <input v-model="form.venue" class="input" placeholder="CoRL / arXiv / Science Robotics" />
             </label>
 
             <label class="field">
-              <span>arXiv 分类</span>
+              <span>{{ t('arXiv 分类') }}</span>
               <select v-model="form.primaryCategory" class="select">
-                <option value="">未设置</option>
+                <option value="">{{ t('未设置') }}</option>
                 <option v-for="item in ARXIV_CATEGORIES" :key="item.code" :value="item.code">
                   {{ item.code }} · {{ item.name }}
                 </option>
@@ -390,7 +391,7 @@ onBeforeUnmount(() => {
             </label>
 
             <label class="field">
-              <span>标签</span>
+              <span>{{ t('标签') }}</span>
               <input v-model="form.tags" class="input" placeholder="world model, humanoid" />
             </label>
 
@@ -399,9 +400,9 @@ onBeforeUnmount(() => {
                 Lv.{{ level.level }}
               </div>
               <div class="lv-info">
-                <b>{{ level.tier }}</b>
+                <b>{{ t(level.tier) }}</b>
                 <span class="mono">
-                  {{ form.codeUrl ? `开源 · ${Number(form.stars) || 0} star` : '未开源，按普通计' }}
+                  {{ form.codeUrl ? t('开源 · {n} star', { n: Number(form.stars) || 0 }) : t('未开源，按普通计') }}
                 </span>
               </div>
               <button
@@ -410,16 +411,16 @@ onBeforeUnmount(() => {
                 :disabled="syncing || creating"
                 @click="syncMetrics"
               >
-                {{ syncing ? '同步中…' : '同步指标' }}
+                {{ syncing ? t('同步中…') : t('同步指标') }}
               </button>
             </div>
 
             <label class="field">
-              <span>开源仓库</span>
+              <span>{{ t('开源仓库') }}</span>
               <input
                 v-model="form.codeUrl"
                 class="input mono"
-                placeholder="https://github.com/owner/repo（留空表示未开源）"
+                :placeholder="t('https://github.com/owner/repo（留空表示未开源）')"
               />
             </label>
 
@@ -429,32 +430,32 @@ onBeforeUnmount(() => {
             </label>
 
             <label class="field">
-              <span>摘要</span>
+              <span>{{ t('摘要') }}</span>
               <textarea
                 v-model="form.abstract"
                 class="textarea abstract"
-                placeholder="点「抓取」自动填；也可以手贴"
+                :placeholder="t('点「抓取」自动填；也可以手贴')"
               />
             </label>
 
             <label class="field">
-              <span>我的笔记</span>
+              <span>{{ t('我的笔记') }}</span>
               <textarea
                 v-model="form.notes"
                 class="textarea"
-                placeholder="一句话结论、方法要点、要复现的东西…"
+                :placeholder="t('一句话结论、方法要点、要复现的东西…')"
               />
             </label>
 
             <div class="actions">
-              <button v-if="!creating" type="button" class="btn danger" @click="remove">删除</button>
+              <button v-if="!creating" type="button" class="btn danger" @click="remove">{{ t('删除') }}</button>
               <span class="spacer" />
-              <button type="button" class="btn ghost" @click="close">取消</button>
+              <button type="button" class="btn ghost" @click="close">{{ t('取消') }}</button>
               <button type="submit" class="btn" :disabled="saving">
-                {{ saving ? '保存中…' : '保存' }}
+                {{ saving ? t('保存中…') : t('保存') }}
               </button>
               <button v-if="form.status !== 'read'" type="button" class="btn lit" @click="markLit">
-                ✦ 点亮
+                ✦ {{ t('点亮') }}
               </button>
             </div>
           </form>
@@ -462,12 +463,12 @@ onBeforeUnmount(() => {
 
         <section class="explain">
           <header class="explain-head">
-            <h3>AI 解读</h3>
+            <h3>{{ t('AI 解读') }}</h3>
             <span class="hint">
-              {{ settings.ready ? settings.config.model : '还没配置模型' }}
+              {{ settings.ready ? settings.config.model : t('还没配置模型') }}
             </span>
             <button v-if="!settings.ready" type="button" class="btn sm" @click="ui.openSettings()">
-              去配置
+              {{ t('去配置') }}
             </button>
             <button
               v-else
@@ -476,41 +477,41 @@ onBeforeUnmount(() => {
               :disabled="explaining || !paper"
               @click="generateExplain"
             >
-              {{ explaining ? '生成中…' : explainData ? '重新生成' : '生成解读' }}
+              {{ explaining ? t('生成中…') : explainData ? t('重新生成') : t('生成解读') }}
             </button>
           </header>
 
           <div v-if="!explainData" class="explain-empty">
-            用摘要生成一张速读卡：一句话、问题、方法、关键数字、局限、下一步。
-            <span v-if="!form.abstract" class="warn">还没有摘要，建议先点「抓取」。</span>
+            {{ t('用摘要生成一张速读卡：一句话、问题、方法、关键数字、局限、下一步。') }}
+            <span v-if="!form.abstract" class="warn">{{ t('还没有摘要，建议先点「抓取」。') }}</span>
           </div>
 
           <div v-else class="explain-grid">
             <p class="one-liner">{{ explainData.oneLiner }}</p>
             <div class="block">
-              <h4>问题</h4>
+              <h4>{{ t('问题') }}</h4>
               <p>{{ explainData.problem || '—' }}</p>
             </div>
             <div class="block">
-              <h4>方法</h4>
+              <h4>{{ t('方法') }}</h4>
               <p>{{ explainData.method || '—' }}</p>
             </div>
             <div class="block">
-              <h4>关键数字</h4>
+              <h4>{{ t('关键数字') }}</h4>
               <ul v-if="explainData.numbers.length">
                 <li v-for="(item, i) in explainData.numbers" :key="i">{{ item }}</li>
               </ul>
-              <p v-else class="muted">摘要里没有定量结果</p>
+              <p v-else class="muted">{{ t('摘要里没有定量结果') }}</p>
             </div>
             <div class="block">
-              <h4>局限</h4>
+              <h4>{{ t('局限') }}</h4>
               <ul v-if="explainData.limitations.length">
                 <li v-for="(item, i) in explainData.limitations" :key="i">{{ item }}</li>
               </ul>
               <p v-else class="muted">—</p>
             </div>
             <div class="block">
-              <h4>下一步</h4>
+              <h4>{{ t('下一步') }}</h4>
               <ul v-if="explainData.actions.length">
                 <li v-for="(item, i) in explainData.actions" :key="i">{{ item }}</li>
               </ul>

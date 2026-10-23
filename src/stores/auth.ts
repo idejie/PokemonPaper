@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import { t } from '../core/i18n'
 import { api } from '../core/api'
 import type { AuthUser } from '../core/types'
 
@@ -30,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await api.register({ email, password, name, invite })
       return true
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '注册失败'
+      error.value = err instanceof Error ? err.message : t('注册失败')
       return false
     } finally {
       busy.value = false
@@ -44,7 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await api.login({ email, password })
       return true
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '登录失败'
+      error.value = err instanceof Error ? err.message : t('登录失败')
       return false
     } finally {
       busy.value = false
@@ -61,7 +62,7 @@ export const useAuthStore = defineStore('auth', () => {
       await api.changePassword(currentPassword, newPassword)
       return ''
     } catch (err) {
-      return err instanceof Error ? err.message : '修改失败'
+      return err instanceof Error ? err.message : t('修改失败')
     }
   }
 
@@ -71,7 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       return ''
     } catch (err) {
-      return err instanceof Error ? err.message : '注销失败'
+      return err instanceof Error ? err.message : t('注销失败')
     }
   }
 
@@ -80,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = await api.updateMe(patch)
       return true
     } catch (err) {
-      error.value = err instanceof Error ? err.message : '保存失败'
+      error.value = err instanceof Error ? err.message : t('保存失败')
       return false
     }
   }

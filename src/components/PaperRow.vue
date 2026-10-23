@@ -5,6 +5,7 @@ import SpriteSvg from './SpriteSvg.vue'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
+import { t } from '../core/i18n'
 
 const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
@@ -22,9 +23,9 @@ function readFull() {
 }
 
 const statusText = computed(() => {
-  if (props.paper.status === 'read') return '已点亮'
-  if (props.paper.status === 'reading') return '在读'
-  return '未点亮'
+  if (props.paper.status === 'read') return t('已点亮')
+  if (props.paper.status === 'reading') return t('在读')
+  return t('未点亮')
 })
 </script>
 
@@ -54,15 +55,19 @@ const statusText = computed(() => {
 
     <div class="side">
       <span class="type-chip" :style="{ background: catColor }">
-        {{ paper.primaryCategory || '未分类' }}
+        {{ paper.primaryCategory || t('未分类') }}
       </span>
-      <span class="lv mono" :style="{ background: TIER_COLORS[lv.tier] }" :title="`${lv.tier} · ${paper.stars} star`">
+      <span
+        class="lv mono"
+        :style="{ background: TIER_COLORS[lv.tier] }"
+        :title="`${t(lv.tier)} · ${paper.stars} star`"
+      >
         Lv.{{ lv.level }}
       </span>
       <span class="state" :class="paper.status">{{ statusText }}</span>
     </div>
 
-    <button class="read-btn" type="button" @click.stop="readFull">阅读</button>
+    <button class="read-btn" type="button" @click.stop="readFull">{{ t('阅读') }}</button>
   </article>
 </template>
 

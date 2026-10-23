@@ -5,6 +5,7 @@ import PaperCard from '../components/PaperCard.vue'
 import PaperRow from '../components/PaperRow.vue'
 import { usePrefsStore } from '../stores/prefs'
 import { paperLevel } from '../core/level'
+import { t } from '../core/i18n'
 
 const store = usePapersStore()
 const prefs = usePrefsStore()
@@ -39,12 +40,12 @@ const filtered = computed(() => {
   })
 })
 
-const filters: Array<{ key: typeof filter.value; label: string }> = [
-  { key: 'all', label: '全部' },
-  { key: 'read', label: '已点亮' },
-  { key: 'reading', label: '在读' },
-  { key: 'unread', label: '未点亮' },
-]
+const filters = computed<Array<{ key: typeof filter.value; label: string }>>(() => [
+  { key: 'all', label: t('全部') },
+  { key: 'read', label: t('已点亮') },
+  { key: 'reading', label: t('在读') },
+  { key: 'unread', label: t('未点亮') },
+])
 
 function onKeydown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
@@ -69,7 +70,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           v-model="query"
           class="input"
           type="search"
-          placeholder="搜索标题 / 作者 / 编号 / 标签"
+          :placeholder="t('搜索标题 / 作者 / 编号 / 标签')"
         />
       </div>
 
@@ -86,11 +87,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         </button>
       </div>
 
-      <div class="layout-switch" role="group" aria-label="布局">
+      <div class="layout-switch" role="group" :aria-label="t('布局')">
         <button
           type="button"
           :class="{ on: prefs.layout === 'grid' }"
-          title="卡片布局"
+          :title="t('卡片布局')"
           @click="prefs.setLayout('grid')"
         >
           ▦
@@ -98,23 +99,23 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         <button
           type="button"
           :class="{ on: prefs.layout === 'list' }"
-          title="列表布局"
+          :title="t('列表布局')"
           @click="prefs.setLayout('list')"
         >
           ☰
         </button>
       </div>
 
-      <select v-model="sort" class="select sort" aria-label="排序">
-        <option value="arxiv">按编号</option>
-        <option value="added">按收录时间</option>
-        <option value="rating">按评分</option>
-        <option value="level">按等级</option>
+      <select v-model="sort" class="select sort" :aria-label="t('排序')">
+        <option value="arxiv">{{ t('按编号') }}</option>
+        <option value="added">{{ t('按收录时间') }}</option>
+        <option value="rating">{{ t('按评分') }}</option>
+        <option value="level">{{ t('按等级') }}</option>
       </select>
     </div>
 
     <div v-if="store.error" class="banner">
-      <b>连不上后端。</b>{{ store.error }}
+      <b>{{ t('连不上后端。') }}</b>{{ store.error }}
     </div>
 
     <div v-if="store.loading" class="grid">
@@ -123,15 +124,17 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
     <div v-else-if="store.total === 0" class="empty">
       <div class="empty-ball" aria-hidden="true" />
-      <h2>图鉴还是空的</h2>
-      <p>登记第一篇论文，它会变成一只属于你的精灵。读完点亮它。</p>
-      <RouterLink to="/new" class="btn">＋ 登记第一篇</RouterLink>
+      <h2>{{ t('图鉴还是空的') }}</h2>
+      <p>{{ t('登记第一篇论文，它会变成一只属于你的精灵。读完点亮它。') }}</p>
+      <RouterLink to="/new" class="btn">＋ {{ t('登记第一篇') }}</RouterLink>
     </div>
 
     <div v-else-if="filtered.length === 0" class="empty">
       <h2 class="mono">NO MATCH</h2>
-      <p>没有符合条件的精灵。换个关键词或筛选试试。</p>
-      <button class="btn ghost" @click="(query = ''), (filter = 'all')">清空筛选</button>
+      <p>{{ t('没有符合条件的精灵。换个关键词或筛选试试。') }}</p>
+      <button class="btn ghost" @click="(query = ''), (filter = 'all')">
+        {{ t('清空筛选') }}
+      </button>
     </div>
 
     <div v-else-if="prefs.layout === 'grid'" class="grid">
@@ -143,7 +146,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
     </div>
 
     <p class="hint">
-      编号即 arXiv 号 · 读完点亮 · 数据存在本地 SQLite（<code>data/pokemonpaper.db</code>）
+      {{ t('编号即 arXiv 号 · 读完点亮 · 数据存在本地 SQLite（') }}<code>data/pokemonpaper.db</code>{{ t('）') }}
     </p>
   </div>
 

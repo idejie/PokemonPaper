@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import AuthView from './views/AuthView.vue'
 import TrainerBar from './components/TrainerBar.vue'
+import LocaleToggle from './components/LocaleToggle.vue'
 import ToastHost from './components/ToastHost.vue'
 import ImportDialog from './components/ImportDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
@@ -10,6 +11,7 @@ import ProfileDialog from './components/ProfileDialog.vue'
 import { useAuthStore } from './stores/auth'
 import { usePapersStore } from './stores/papers'
 import { useUiStore } from './stores/ui'
+import { t } from './core/i18n'
 
 const auth = useAuthStore()
 const store = usePapersStore()
@@ -39,7 +41,7 @@ watch(
       return
     }
     if (level > lastLevel) {
-      store.notify(`升到 Lv.${level} · ${store.xp.title}`)
+      store.notify(t('升到 Lv.{level} · {title}', { level, title: t(store.xp.title) }))
     }
     lastLevel = level
   },
@@ -70,10 +72,13 @@ watch(
 <template>
   <div v-if="auth.loading" class="boot">
     <span class="spin" />
-    正在打开图鉴…
+    {{ t('正在打开图鉴…') }}
   </div>
 
-  <AuthView v-else-if="!auth.user" />
+  <template v-else-if="!auth.user">
+    <div class="locale-fixed"><LocaleToggle /></div>
+    <AuthView />
+  </template>
 
   <template v-else>
     <TrainerBar />
@@ -87,6 +92,13 @@ watch(
 </template>
 
 <style scoped>
+.locale-fixed {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 50;
+}
+
 .boot {
   min-height: 100vh;
   display: flex;

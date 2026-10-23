@@ -9,6 +9,8 @@
 [![SQLite](https://img.shields.io/badge/SQLite-node%3Asqlite-003b57?style=flat-square)](https://nodejs.org/api/sqlite.html)
 [![License](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE)
 
+[**中文**](README.md) · [English](README.en.md)
+
 [快速开始](#快速开始) · [设计](#三个设计决定) · [目录](#目录结构) · [路线图](#路线图)
 
 </div>
@@ -26,7 +28,9 @@
 - 编号就是 arXiv 号——`No.2610.28480` 永远是同一只
 - 收集进度、训练家等级、按 arXiv 分类配色
 
-数据全部留在本地 SQLite，不上云。
+数据全部留在本地 SQLite，不上云。界面支持中英文切换。
+
+<p align="center"><img src="docs/en.png" width="720" alt="English UI"></p>
 
 ## 特性
 
@@ -46,17 +50,18 @@
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
 | 💾 **可迁移** | 一键导出 JSON，按 arXiv 号合并导入 |
+| 🌐 **中英双语** | 界面中英文切换，选择记在本地 |
 
 ## 三个设计决定
 
 ### 1. 编号即身份
 
-arXiv 号自带时间信息（`2610` = 2026 年 10 月），既是业务主键，也是排序依据，也是精灵种子。数据库里 `arxiv` 是 `UNIQUE`，重复登记返回 `409`。
+arXiv 号自带时间信息（`2610` = 2026 年 10 月），既是业务主键，也是排序依据，也是精灵种子。数据库里 `(user_id, arxiv)` 是唯一索引，同一用户重复登记返回 `409`。
 
 ### 2. 精灵必须可复现
 
 ```ts
-buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
+buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]
 ```
 
 输入一个字符串，输出 32×32 的矩形数组。只用 FNV-1a hash + mulberry32，**没有 `Math.random()`**。所以 `2610.28480` 在任何机器上都是同一只。
@@ -335,6 +340,7 @@ src/
 | `GET` `POST` | `/api/papers/:id/summary` | 读取 / 生成总结 |
 | `GET` | `/api/export` | 全量导出 JSON |
 | `POST` | `/api/import` | 按 arXiv 合并导入 |
+| `POST` | `/api/papers/backfill` | 为缺分类的老论文补 arXiv 元数据 |
 | `GET` | `/api/health` | 健康检查 |
 
 ## 数据模型
@@ -363,7 +369,8 @@ interface Paper {
   authors: string
   venue: string
   year: number | null
-  type: TypeKey          // normal/fire/water/grass/electric/psychic/ghost/steel/dark/dragon
+  primaryCategory: string // 例如 cs.RO
+  categories: string[]    // arXiv 可能给多个类目
   status: 'unread' | 'reading' | 'read'
   rating: number         // 0–5
   tags: string           // 逗号分隔
