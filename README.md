@@ -39,17 +39,17 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
 | 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
-| 👤 **Multi-user** | Register / log in, one dex per user, 16 pixel avatars; scrypt password hashing, HttpOnly session cookie |
+| 👤 **Multi-user** | Register / log in, one dex per user; 16 pixel avatars plus a random combo builder (92k combinations); scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
 | 💬 **Shared notes** | Public by default; other readers can see them. Public notes and summaries can be liked; the author gains +1 XP per like |
 | 📊 **Statistics** | Distribution by category, year and venue, plus read rate and level mix |
-| 🏆 **Leaderboard** | Rank everyone by level, XP, papers read and summaries; your row is highlighted |
+| 🏆 **Leaderboard** | Rank everyone by level, XP, papers read, summaries and likes; your row is highlighted |
 | 🔦 **In-PDF search** | Search across pages, highlight matches, jump prev / next |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
-| 🎖️ **Trainer levels** | XP from paper level, reading, and notes; 6 titles, 8 badges |
+| 🎖️ **Trainer levels** | XP from paper level, reading, notes and likes received; 6 titles, 8 badges |
 | 🗂️ **Two layouts** | Cards for sprites, list for information; choice persisted locally |
 | 🏷️ **arXiv categories** | Full official taxonomy (155 categories); cards and rows show `cs.RO`, sprite colors follow the field |
 | ⚔️ **Paper level** | Lv.1–100 from open-source availability and GitHub stars; tiers: common / rare / epic / legendary |
@@ -72,7 +72,7 @@ An arXiv ID carries time (`2610` = October 2026). It is the business key, the so
 buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 10 archetypes + accessories
 ```
 
-An FNV-1a hash plus mulberry32 produces a deterministic rect list. No images, no asset pipeline — the sprite is computed from the ID. Locked sprites reuse the same geometry with a grey palette.
+An FNV-1a hash plus mulberry32 produces a deterministic rect list. No images, no asset pipeline — the sprite is computed from the ID. Locked sprites reuse the same geometry with a grey palette. AI artwork is an optional, cached override; this procedural sprite remains the fallback.
 
 ### 3. Categories are the taxonomy
 
@@ -135,7 +135,7 @@ papers.example.com {
 2. **Import a batch** — `Import → arXiv`, up to 50 IDs; BibTeX and JSON are also supported
 3. **Read it** — open the detail sheet, go to *Original PDF*, select text to highlight or comment
 4. **Finish it** — mark as read; the sprite lights up and grants XP
-5. **Summarize it** — configure an OpenAI-compatible endpoint in settings, then generate an AI summary from the full text
+5. **Summarize it** — generate with an OpenAI-compatible model, or write / edit your own Markdown summary; summaries can be made public
 
 ## Trainer levels
 
@@ -155,13 +155,13 @@ Open source and stars already determine the paper level, so they are not counted
 
 ```
 paperdex/
-├── server/index.mjs        # HTTP API + SQLite + PDF extraction
+├── server/index.mjs        # HTTP API + SQLite + PDF extraction + likes/artwork
 ├── src/
-│   ├── core/               # sprite, palette, arXiv taxonomy, level, progress
+│   ├── core/               # sprites, palette, arXiv taxonomy, level, progress
 │   ├── stores/             # papers, auth, settings, ui, prefs
-│   ├── views/              # Dex, Reader, Auth
-│   └── components/         # cards, rows, dialogs, PDF viewer
-├── data/                   # SQLite + PDFs (gitignored)
+│   ├── views/              # Dex, Reader, Stats, Leaderboard, Guide, Auth, Reset
+│   └── components/         # cards, rows, dialogs, sprite, PDF viewer
+├── data/                   # SQLite + PDFs + AI artwork (gitignored)
 └── dist/                   # build output
 ```
 
@@ -173,27 +173,44 @@ All endpoints except `/api/health` and auth require a session cookie.
 |---|---|---|
 | `GET` | `/api/health` | Health check |
 | `POST` | `/api/auth/register` `login` `logout` | Auth |
-| `GET` | `/api/auth/me` `config` | Current user / registration mode |
+| `POST` | `/api/auth/forgot` `reset` | Password reset (email or admin link) |
+| `GET` `PATCH` `DELETE` | `/api/auth/me` | Current user / profile / delete account |
+| `POST` | `/api/auth/password` | Change password |
+| `GET` | `/api/auth/config` | Registration mode |
+| `GET` `PATCH` | `/api/admin/config` | Admin: read / switch registration mode |
+| `GET` `POST` | `/api/admin/invites` | List / create invite codes |
+| `DELETE` | `/api/admin/invites/:code` | Revoke an unused invite |
+| `POST` | `/api/admin/reset-link` | Admin-generated reset link |
 | `GET` `POST` | `/api/papers` | List / create |
 | `PATCH` `DELETE` | `/api/papers/:id` | Update / delete |
-| `POST` | `/api/papers/:id/pdf` | Download PDF on demand |
+| `GET` | `/api/leaderboard` | XP leaderboard |
+| `POST` | `/api/papers/:id/pdf` | Ensure PDF is local (download if needed) |
+| `GET` | `/api/papers/:id/pdf` | Stream PDF (Range) |
 | `POST` | `/api/papers/:id/metrics` | Sync GitHub stars |
 | `GET` `POST` | `/api/papers/:id/text` | Read / extract full text |
 | `GET` `POST` | `/api/papers/:id/summary` | Read / generate summary |
-| `GET` `POST` | `/api/papers/:id/annotations` | List / create annotations |
-| `PATCH` `DELETE` | `/api/annotations/:id` | Edit / delete annotation |
+| `GET` | `/api/papers/:id/summaries` | Public summaries of the same paper |
+| `GET` `POST` | `/api/papers/:id/annotations` | List / create notes |
+| `PATCH` `DELETE` | `/api/annotations/:id` | Edit / delete note |
+| `POST` | `/api/likes` | Toggle like on a public note or summary |
+| `GET` | `/api/likes/received` | Likes received by me |
+| `POST` | `/api/papers/:id/sprite` | Generate AI artwork |
+| `GET` | `/api/sprites/:arxiv.png` | Serve cached artwork |
+| `POST` | `/api/sprites/generate` | Batch generate artwork (max 60) |
+| `POST` `GET` | `/api/papers/download-missing` | Queue / poll missing PDFs |
 | `POST` | `/api/papers/backfill` | Fill missing categories from arXiv |
-| `POST` | `/api/arxiv/preview` | Fetch arXiv metadata |
-| `POST` | `/api/arxiv/search` | Search arXiv by keywords |
+| `POST` | `/api/arxiv/preview` `search` | Fetch metadata / search arXiv |
 | `POST` | `/api/explain` | Generate an AI paper card |
+| `GET` `POST` | `/api/export` `import` | Full backup / merge import |
 
 ## Limits
 
 - Scanned PDFs have no text layer: no text selection, and summaries fall back to the abstract
 - In-PDF search matches per text-layer span; phrases split across spans may be missed
-
 - Token usage and model costs are yours; keys never leave the browser except to the endpoint you configure
+- AI artwork is billed per image and needs an image API key; without one the procedural sprite is used
 - GitHub star counts come from the GitHub API / HTML and may lag by minutes
+- No email verification or OAuth; password reset requires Resend email or an admin-generated link
 
 ## Roadmap
 
@@ -213,26 +230,13 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Export AI summaries to Markdown
 - [x] Password reset (email via Resend, or admin-generated link)
 - [x] Level-up animation (card bounce, XP bar, sound)
-
-## Limits
-
-- Scanned PDFs have no text layer: no text selection, and summaries fall back to the abstract
-- In-PDF search matches per text-layer span; phrases split across spans may be missed
-
-- Token usage and model costs are yours; keys never leave the browser except to the endpoint you configure
-- GitHub star counts come from the GitHub API / HTML and may lag by minutes
-
-## Roadmap
-
-- [x] Deterministic sprites, three states
-- [x] Multi-user accounts, invites, admin
-- [x] arXiv import + BibTeX + AI paper cards
-- [x] PDF reader with highlights and comments
-- [x] Trainer levels, titles, badges
-- [x] Bilingual UI (zh / en)
-- [x] Statistics page: categories, years, venues
-- [x] Cross-page annotations
-- [x] Full-text search inside PDFs
+- [x] AI artwork (image model, cached PNG, procedural fallback)
+- [x] Manual summaries with a public toggle
+- [x] Likes on public notes and summaries (+1 XP each)
+- [x] 10 sprite archetypes, accessories, patterns and palette shifts
+- [x] 16 avatars plus 92k random combinations
+- [x] Leaderboard (level / XP / reads / summaries / likes)
+- [x] Extruded 3D sprite rendering and lit-sprite idle animation
 
 ## License
 
@@ -264,17 +268,17 @@ MIT © idejie
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
 | 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
-| 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个像素头像可选；密码 scrypt 哈希，会话存 HttpOnly Cookie |
+| 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个预设头像 + 随机组合（9 万多种）；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
 | 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到；公开批注和公开总结都可点赞，作者每赞 +1 XP |
 | 📊 **统计页** | 分类、年份、会议分布，阅读率与等级构成 |
-| 🏆 **天梯** | 所有人的等级、XP、已读、总结数排行，当前用户高亮 |
+| 🏆 **天梯** | 所有人的等级、XP、已读、总结、获赞排行，当前用户高亮 |
 | 🔦 **PDF 内搜索** | 跨页搜索，命中高亮，支持上一处 / 下一处 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
-| 🎖️ **训练家等级** | 论文等级 + 阅读 + 笔记决定 XP；6 个称号、8 枚徽章 |
+| 🎖️ **训练家等级** | 论文等级 + 阅读 + 笔记 + 获赞决定 XP；6 个称号、8 枚徽章 |
 | 🗂️ **两种布局** | 卡片看精灵，列表看信息；选择记在本地 |
 | 🏷️ **arXiv 分类** | 内置官方 155 个类目，卡片/列表直接显示 `cs.RO`，精灵按领域配色 |
 | ⚔️ **论文等级** | Lv.1–100，由开源代码与 GitHub star 决定，分常见/稀有/史诗/传说 |
@@ -299,7 +303,7 @@ buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 1
 
 输入一个字符串，输出 32×32 的矩形数组。只用 FNV-1a hash + mulberry32，**没有 `Math.random()`**。所以 `2610.28480` 在任何机器上都是同一只。
 
-生成器不碰 DOM，换框架只换渲染层。
+生成器不碰 DOM，换框架只换渲染层。AI 插画只是可选缓存覆盖，没有生成时仍回退到这只程序精灵。
 
 ### 3. 游戏状态是阅读状态
 
@@ -313,6 +317,7 @@ buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 1
 - 同一邮箱连续输错 5 次，锁 60 秒
 - 顶栏右侧是训练家头像，点开「账号设置」可以换头像、改昵称
 - 已登录状态下可以**改密码**，改完其它设备的会话立即失效
+- 忘记密码：登录页「忘记密码」发送重置邮件（需配置 Resend）；没配邮件时管理员可在账号面板生成一次性链接
 - **邀请制**：第一个注册的账号自动成为管理员，可以把注册方式切成「邀请制」并生成一次性邀请码
 - 危险区支持**导出我的数据**和**注销账号**（连同论文、笔记、解读一起删除）
 
@@ -320,7 +325,7 @@ buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 1
 
 ![登录](docs/login.png)
 
-> 这是单机自托管服务：没有邮箱验证、没有找回密码、没有 OAuth。放在公网请套 HTTPS 反代。
+> 这是单机自托管服务：没有邮箱验证、没有 OAuth。忘记密码可走 Resend 邮件或管理员生成的重置链接。放在公网请套 HTTPS 反代。
 
 ## 导入论文
 
@@ -582,6 +587,8 @@ src/
 | `POST` | `/api/auth/register` | 注册（邮箱 + 密码 ≥ 8 位） |
 | `POST` | `/api/auth/login` | 登录 |
 | `POST` | `/api/auth/logout` | 登出 |
+| `POST` | `/api/auth/forgot` | 发送重置邮件（需配置 Resend） |
+| `POST` | `/api/auth/reset` | 用一次性 token 重置密码 |
 | `GET` | `/api/auth/me` | 当前用户 |
 | `PATCH` | `/api/auth/me` | 改昵称 / 头像 |
 | `DELETE` | `/api/auth/me` | 注销账号（需密码） |
@@ -590,10 +597,12 @@ src/
 | `GET` `PATCH` | `/api/admin/config` | 管理员查看 / 切换注册方式 |
 | `GET` `POST` | `/api/admin/invites` | 邀请码列表 / 生成 |
 | `DELETE` | `/api/admin/invites/:code` | 撤销未使用的邀请码 |
+| `POST` | `/api/admin/reset-link` | 管理员为指定邮箱生成重置链接 |
 | `GET` | `/api/papers` | 当前用户的列表 |
 | `POST` | `/api/papers` | 新建（`title` 必填，`arxiv` 唯一） |
 | `PATCH` | `/api/papers/:id` | 局部更新（状态、笔记、评分…） |
 | `DELETE` | `/api/papers/:id` | 删除 |
+| `GET` | `/api/leaderboard` | XP 天梯 |
 | `POST` | `/api/arxiv/preview` | 按编号批量抓 arXiv 元数据（含分类） |
 | `POST` | `/api/arxiv/search` | 按关键词搜索 arXiv（标题/摘要） |
 | `POST` | `/api/papers/:id/pdf` | 确保 PDF 在本地（没有就下载） |
@@ -604,9 +613,16 @@ src/
 | `GET` `POST` | `/api/papers/:id/annotations` | 标注列表 / 新建 |
 | `PATCH` `DELETE` | `/api/annotations/:id` | 改批注 / 删除 |
 | `GET` `POST` | `/api/papers/:id/summary` | 读取 / 生成总结 |
+| `GET` | `/api/papers/:id/summaries` | 同一篇论文的公开总结 |
+| `POST` | `/api/likes` | 给公开批注 / 总结点赞或取消 |
+| `GET` | `/api/likes/received` | 我获得的赞数（用于 XP） |
+| `POST` | `/api/papers/:id/sprite` | 生成 AI 插画 |
+| `GET` | `/api/sprites/:arxiv.png` | 返回缓存的插画 |
+| `POST` | `/api/sprites/generate` | 批量生成插画（最多 60 篇） |
 | `GET` | `/api/export` | 全量导出 JSON |
 | `POST` | `/api/import` | 按 arXiv 合并导入 |
 | `POST` | `/api/papers/backfill` | 为缺分类的老论文补 arXiv 元数据 |
+| `POST` `GET` | `/api/papers/download-missing` | 批量下载缺失 PDF / 查询进度 |
 | `GET` | `/api/health` | 健康检查 |
 
 ## 数据模型
@@ -616,7 +632,7 @@ interface User {
   id: string
   email: string
   name: string
-  avatarId: string      // 8 个预设头像之一
+  avatarId: string      // 16 个预设之一，或 c1.xxxxxxx 的随机组合
   isAdmin: boolean      // 第一个注册的账号自动成为管理员
   passwordHash: string  // scrypt$salt$hash
   createdAt: string
@@ -643,6 +659,10 @@ interface Paper {
   notes: string
   abstract: string       // arXiv 摘要
   explain: string        // AI 速读卡的 JSON 字符串
+  summary: string        // AI 或手写总结（Markdown）
+  summaryAt: string | null
+  summaryPublic: boolean // 公开后其他读者可见、可点赞
+  spriteUrl: string | null // 已生成 AI 插画时有值，否则用程序精灵
   pdfPath: string        // 相对 data/pdfs/ 的文件名，空表示未下载
   codeUrl: string        // 开源仓库，空表示未开源
   stars: number          // GitHub stars
@@ -652,7 +672,30 @@ interface Paper {
   readAt: string | null
   userId: string        // 归属账号，所有查询按它隔离
 }
+
+interface Annotation {
+  id: string
+  paperId: string
+  page: number
+  quote: string
+  comment: string
+  color: 'yellow' | 'green' | 'blue' | 'pink'
+  isPublic: boolean     // 默认公开，同 arXiv 的读者可见
+  likes: number         // 公开批注被点赞数，作者每赞 +1 XP
+  mine: boolean
+  createdAt: string
+}
+
+interface Like {
+  userId: string        // 点赞者
+  kind: 'annotation' | 'summary'
+  targetId: string      // 批注 id 或论文 id
+  ownerId: string       // 获赞作者
+  createdAt: string
+}
 ```
+
+点赞表以 `(user_id, kind, target_id)` 为主键，所以同一个人对同一内容只能赞一次；取消赞会删除该行。
 
 ## 路线图
 
@@ -678,12 +721,20 @@ interface Paper {
 - [x] 解读导出为 Markdown
 - [x] 密码重置（Resend 邮件或管理员生成链接）
 - [x] 点亮动效：卡片弹跳 + 经验条增长 + 音效
+- [x] AI 插画（图像模型、按 arXiv 缓存、程序精灵兜底）
+- [x] 手写总结 + 公开开关
+- [x] 公开批注 / 总结点赞，作者每赞 +1 XP
+- [x] 10 种精灵体型、道具、花纹与色相偏移
+- [x] 16 个头像 + 9 万种随机组合
+- [x] 天梯：等级 / XP / 已读 / 总结 / 获赞
+- [x] 精灵挤出立体渲染与点亮待机动画
 
 ## 已知限制
 
-- 没有邮箱验证、找回密码和 OAuth（改密码已有，但忘了就进不去）
+- 没有邮箱验证和 OAuth；忘记密码需要 Resend 邮件，或让管理员生成一次性重置链接
 - 会话存在 SQLite，多实例部署需要共享数据库
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
+- AI 插画按张计费，需要自备图像 API Key；未配置时继续用程序精灵兜底
 - star 来自 GitHub，有分钟级延迟
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 扫描版 PDF 没有文字层，无法选中标注，总结也只能靠摘要
