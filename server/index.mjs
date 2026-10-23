@@ -2388,6 +2388,8 @@ async function serveStatic(res, pathname) {
   let rel = decodeURIComponent(pathname)
   if (rel === '/' || rel === '') rel = '/index.html'
   const file = resolve(join(DIST, rel))
+  const ext = extname(file).toLowerCase()
+  const isAsset = pathname.startsWith('/assets/')
 
   if (!file.startsWith(DIST + sep) && file !== DIST) {
     res.writeHead(403).end('forbidden')
@@ -2399,15 +2401,34 @@ async function serveStatic(res, pathname) {
     if (info.isDirectory()) throw new Error('is directory')
     const data = await readFile(file)
     res.writeHead(200, {
-      'content-type': MIME[extname(file).toLowerCase()] || 'application/octet-stream',
-      'cache-control': extname(file) === '.html' ? 'no-cache' : 'public, max-age=3600',
+      'content-type': MIME[ext] || 'application/octet-stream',
+      'cache-control':
+        ext === '.html'
+          ? 'no-cache, no-store, must-revalidate'
+          : isAsset
+            ? 'public, max-age=31536000, immutable'
+            : 'public, max-age=3600',
     })
     res.end(data)
   } catch {
-    // SPA fallback
+    // Missing hashed assets must 404, never fall back to index.html:
+    // returning HTML for a module script breaks the browser with a MIME error.
+    if (isAsset || ext) {
+      res.writeHead(404, {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+      })
+      res.end('Not found')
+      return
+    }
+
+    // SPA fallback for client-side routes only.
     try {
       const html = await readFile(join(DIST, 'index.html'))
-      res.writeHead(200, { 'content-type': MIME['.html'], 'cache-control': 'no-cache' })
+      res.writeHead(200, {
+        'content-type': MIME['.html'],
+        'cache-control': 'no-cache, no-store, must-revalidate',
+      })
       res.end(html)
     } catch {
       res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' })
