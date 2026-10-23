@@ -81,7 +81,7 @@ function stopWait() {
 const error = ref('')
 
 const annotations = ref<Annotation[]>([])
-const selection = ref<{ page: number; rects: Rect[]; quote: string } | null>(null)
+const selection = ref<{ areas: Array<{ page: number; rects: Rect[] }>; quote: string } | null>(null)
 const editing = ref<Annotation | null>(null)
 const draft = ref('')
 const publicFlag = ref(true)
@@ -196,49 +196,43 @@ async function boot() {
   }
 }
 
-function samePage(range: Range): HTMLElement | null {
-  const startEl =
-    range.startContainer.nodeType === 1
-      ? (range.startContainer as Element)
-      : range.startContainer.parentElement
-  const endEl =
-    range.endContainer.nodeType === 1
-      ? (range.endContainer as Element)
-      : range.endContainer.parentElement
-  const startPage = startEl?.closest('.pdf-page') as HTMLElement | null
-  const endPage = endEl?.closest('.pdf-page') as HTMLElement | null
-  if (!startPage || !endPage || startPage !== endPage) return null
-  return startPage
-}
-
 function onMouseUp(event: MouseEvent) {
   if (editing.value) return
   const sel = window.getSelection()
   if (!sel || sel.isCollapsed || sel.rangeCount === 0) return
   const range = sel.getRangeAt(0)
-  const pageEl = samePage(range)
-  if (!pageEl) {
-    if (sel.toString().trim()) store.notify(t('一次标注请在同一页内选择'))
-    return
-  }
-  const pageNumber = Number(pageEl.dataset.page)
-  const box = pageEl.getBoundingClientRect()
-  const rects: Rect[] = []
+  const pageEls = [...(pagesEl.value?.querySelectorAll<HTMLElement>('.pdf-page') ?? [])]
+  if (!pageEls.length) return
+
+  const buckets = new Map<number, Rect[]>()
   for (const rect of Array.from(range.getClientRects())) {
     if (rect.width < 2 || rect.height < 2) continue
-    rects.push({
+    const centerY = rect.top + rect.height / 2
+    const pageEl = pageEls.find((el) => {
+      const box = el.getBoundingClientRect()
+      return centerY >= box.top && centerY <= box.bottom
+    })
+    if (!pageEl) continue
+    const page = Number(pageEl.dataset.page)
+    if (!page) continue
+    const box = pageEl.getBoundingClientRect()
+    const list = buckets.get(page) ?? []
+    list.push({
       x: (rect.left - box.left) / box.width,
       y: (rect.top - box.top) / box.height,
       w: rect.width / box.width,
       h: rect.height / box.height,
     })
+    buckets.set(page, list)
   }
-  if (!rects.length) return
+
+  const areas = [...buckets.entries()].map(([page, rects]) => ({ page, rects }))
+  if (!areas.length) return
   const quote = sel.toString().replace(/\s+/g, ' ').trim().slice(0, 2000)
   if (!quote) return
   editing.value = null
   draft.value = ''
-  selection.value = { page: pageNumber, rects, quote }
+  selection.value = { areas, quote }
   event.stopPropagation()
 }
 
@@ -251,36 +245,48 @@ function cancelSelection() {
 
 async function createAnnotation(color: string) {
   if (!selection.value) return
-  const { page, rects, quote } = selection.value
+  const { areas, quote } = selection.value
   const comment = draft.value.trim()
-  const id = await api.createAnnotation(props.paperId, {
-    page,
-    rects,
-    quote,
-    color,
-    comment,
-    isPublic: publicFlag.value,
-  } as never)
-  annotations.value = [
-    ...annotations.value,
-    {
+  const groupId = areas.length > 1 ? newGroupId() : null
+  const created: Annotation[] = []
+
+  for (const area of areas) {
+    const id = await api.createAnnotation(props.paperId, {
+      page: area.page,
+      rects: area.rects,
+      quote,
+      color,
+      comment,
+      isPublic: publicFlag.value,
+      groupId,
+    } as never)
+    created.push({
       id,
       start: 0,
       end: 0,
-      page,
-      rects,
+      page: area.page,
+      rects: area.rects,
       quote,
       color: color as Annotation['color'],
       comment,
       isPublic: publicFlag.value,
+      groupId,
       mine: true,
       author: null,
       createdAt: new Date().toISOString(),
       updatedAt: null,
-    },
-  ]
+    })
+  }
+
+  annotations.value = [...annotations.value, ...created]
   cancelSelection()
   store.notify(t('已高亮'))
+}
+
+function newGroupId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `g-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
 function openEdit(ann: Annotation) {
@@ -300,9 +306,15 @@ async function saveAnnotation() {
   if (!editing.value) return
   const ann = editing.value
   const comment = draft.value
-  await api.updateAnnotation(ann.id, { comment, isPublic: publicFlag.value })
+  const rows = ann.groupId
+    ? annotations.value.filter((item) => item.groupId === ann.groupId)
+    : [ann]
+  for (const row of rows) {
+    await api.updateAnnotation(row.id, { comment, isPublic: publicFlag.value })
+  }
+  const ids = new Set(rows.map((row) => row.id))
   annotations.value = annotations.value.map((item) =>
-    item.id === ann.id ? { ...item, comment, isPublic: publicFlag.value } : item,
+    ids.has(item.id) ? { ...item, comment, isPublic: publicFlag.value } : item,
   )
   editing.value = null
   draft.value = ''
@@ -312,9 +324,13 @@ async function saveAnnotation() {
 
 async function removeAnnotation() {
   if (!editing.value) return
-  const id = editing.value.id
-  await api.deleteAnnotation(id)
-  annotations.value = annotations.value.filter((item) => item.id !== id)
+  const ann = editing.value
+  const rows = ann.groupId
+    ? annotations.value.filter((item) => item.groupId === ann.groupId)
+    : [ann]
+  for (const row of rows) await api.deleteAnnotation(row.id)
+  const ids = new Set(rows.map((row) => row.id))
+  annotations.value = annotations.value.filter((item) => !ids.has(item.id))
   editing.value = null
   draft.value = ''
   publicFlag.value = true

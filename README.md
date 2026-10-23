@@ -51,7 +51,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🏷️ **arXiv categories** | Full official taxonomy (155 categories); cards and rows show `cs.RO`, sprite colors follow the field |
 | ⚔️ **Paper level** | Lv.1–100 from open-source availability and GitHub stars; tiers: common / rare / epic / legendary |
 | 🤖 **AI paper cards** | One-liner / problem / method / key numbers / limits / next step via any OpenAI-compatible endpoint; key stays local |
-| 📖 **PDF reader** | Original PDFs rendered page by page; select text to highlight and comment; annotations persist per user |
+| 📖 **PDF reader** | Original PDFs rendered page by page; select text to highlight and comment; cross-page selections are split and edited as one |
 | 📄 **Local PDFs** | Files live in `data/pdfs/`; the DB stores URL + relative path, downloads on demand |
 | 🔍 **Search** | Title / author / ID / tags / venue, `/` to focus |
 | 💾 **Portable** | One-click JSON export, merge-import by arXiv ID |
@@ -156,7 +156,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 
 - Scanned PDFs have no text layer: no text selection, and summaries fall back to the abstract
 - In-PDF search matches per text-layer span; phrases split across spans may be missed
-- Annotations are single-page; cross-page selections are rejected
+
 - Token usage and model costs are yours; keys never leave the browser except to the endpoint you configure
 - GitHub star counts come from the GitHub API / HTML and may lag by minutes
 
@@ -169,7 +169,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Trainer levels, titles, badges
 - [x] Bilingual UI (zh / en)
 - [x] Statistics page: categories, years, venues
-- [ ] Cross-page annotations
+- [x] Cross-page annotations
 - [x] Full-text search inside PDFs
 
 ## License
@@ -214,7 +214,7 @@ MIT © idejie
 | 🏷️ **arXiv 分类** | 内置官方 155 个类目，卡片/列表直接显示 `cs.RO`，精灵按领域配色 |
 | ⚔️ **论文等级** | Lv.1–100，由开源代码与 GitHub star 决定，分常见/稀有/史诗/传说 |
 | 🤖 **AI 速读卡** | 一句话 / 问题 / 方法 / 关键数字 / 局限 / 下一步，OpenAI 兼容接口，Key 存本地 |
-| 📖 **PDF 阅读器** | 原版 PDF 逐页渲染，选中文字可高亮、写批注，按用户持久化 |
+| 📖 **PDF 阅读器** | 原版 PDF 逐页渲染，选中文字可高亮、写批注；跨页选择自动拆段并同步编辑 |
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
 | 💾 **可迁移** | 一键导出 JSON，按 arXiv 号合并导入 |

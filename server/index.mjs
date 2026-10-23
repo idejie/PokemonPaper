@@ -98,6 +98,7 @@ for (const [name, ddl] of [
   ['page', 'INTEGER NOT NULL DEFAULT 0'],
   ['rects', "TEXT NOT NULL DEFAULT '[]'"],
   ['is_public', 'INTEGER NOT NULL DEFAULT 1'],
+  ['group_id', 'TEXT'],
 ]) {
   if (!annotationColumns.includes(name)) {
     db.exec(`ALTER TABLE annotations ADD COLUMN ${name} ${ddl}`)
@@ -1233,6 +1234,7 @@ async function api(req, res, url) {
         quote: row.quote,
         color: row.color,
         comment: row.comment,
+        groupId: row.group_id ?? null,
         isPublic: Boolean(row.is_public),
         mine,
         author: row.author ?? null,
@@ -1259,7 +1261,7 @@ async function api(req, res, url) {
       if (!rects.length) return sendJSON(res, 400, { error: '没有选区' })
       const id = randomUUID()
       db.prepare(
-        'INSERT INTO annotations (id, paper_id, user_id, start, end, page, rects, quote, color, comment, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO annotations (id, paper_id, user_id, start, end, page, rects, quote, color, comment, is_public, group_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       ).run(
         id,
         paperId,
@@ -1272,6 +1274,7 @@ async function api(req, res, url) {
         color,
         String(body.comment || '').slice(0, 4000),
         body.isPublic === false ? 0 : 1,
+        typeof body.groupId === 'string' && body.groupId ? body.groupId : null,
         new Date().toISOString(),
       )
       return sendJSON(res, 201, { id })

@@ -169,6 +169,7 @@ export const api = {
       color: string
       comment: string
       isPublic: boolean
+      groupId?: string | null
     },
   ): Promise<string> {
     const data = await request<{ id: string }>(`/api/papers/${paperId}/annotations`, {

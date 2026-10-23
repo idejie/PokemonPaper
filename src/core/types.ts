@@ -81,6 +81,7 @@ export interface Annotation {
   color: 'yellow' | 'green' | 'blue' | 'pink'
   comment: string
   isPublic: boolean
+  groupId: string | null
   mine: boolean
   author: string | null
   createdAt: string
