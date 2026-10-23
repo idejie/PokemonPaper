@@ -222,6 +222,8 @@ for (const [name, ddl] of [
   ['summary_at', "TEXT"],
   ['summary_public', 'INTEGER NOT NULL DEFAULT 0'],
   ['dex_entry', 'TEXT'],
+  ['egg_at', 'TEXT'],
+  ['incubated_at', 'TEXT'],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -242,6 +244,8 @@ const FIELDS = {
   explain: 'explain',
   summary: 'summary_text',
   summaryPublic: 'summary_public',
+  eggAt: 'egg_at',
+  incubatedAt: 'incubated_at',
   codeUrl: 'code_url',
   stars: 'stars',
   metricsAt: 'metrics_at',
@@ -273,6 +277,8 @@ function rowToPaper(row) {
     summaryAt: row.summary_at ?? null,
     summaryPublic: Boolean(row.summary_public),
     dexEntry: row.dex_entry ?? '',
+    eggAt: row.egg_at ?? null,
+    incubatedAt: row.incubated_at ?? null,
     hasFullText: Boolean(row.full_text),
     fullTextChars: row.full_text ? row.full_text.length : 0,
     url: row.url ?? '',

@@ -21,6 +21,8 @@ export interface Paper {
   summaryAt: string | null
   summaryPublic: boolean
   dexEntry: string
+  eggAt: string | null
+  incubatedAt: string | null
   spriteUrl: string | null
   hasFullText: boolean
   fullTextChars: number

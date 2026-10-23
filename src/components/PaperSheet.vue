@@ -56,6 +56,7 @@ const tradeOpen = ref(false)
 const tradeEmail = ref('')
 const tradeBusy = ref(false)
 const inParty = computed(() => store.party.some((member) => member.id === props.id))
+const inEgg = computed(() => Boolean(paper.value?.eggAt))
 const moves = computed(() => movesFor({ arxiv: form.arxiv, title: form.title, abstract: form.abstract, tags: form.tags }))
 const shinyInfo = computed(() =>
   shinyOf({ arxiv: form.arxiv, venue: form.venue, stars: form.stars, year: form.year }),
@@ -184,12 +185,18 @@ async function save() {
       if (created) close()
     } else if (props.id) {
       const before = paper.value?.status
-      const updated = await store.update(props.id, payload())
+      const wasEgg = Boolean(paper.value?.eggAt)
+      const hatching = before !== 'read' && form.status === 'read' && wasEgg
+      const updated = await store.update(props.id, {
+        ...payload(),
+        ...(hatching ? { eggAt: null, incubatedAt: null } : {}),
+      })
       if (updated) {
         if (before !== 'read' && updated.status === 'read') {
           playCry(updated.arxiv || updated.id, prefs.cryEnabled)
         }
-        store.notify(t('已保存'))
+        if (hatching) store.notify(t('🥚 破壳！No.{id}', { id: updated.arxiv || '—' }))
+        else store.notify(t('已保存'))
         close()
       }
     }
@@ -206,14 +213,20 @@ async function markLit() {
   }
   if (!props.id) return
   const wasRead = paper.value?.status === 'read'
+  const wasEgg = Boolean(paper.value?.eggAt)
   const updated = await store.update(props.id, {
     ...payload(),
     status: 'read',
     readAt: new Date().toISOString(),
+    ...(wasEgg ? { eggAt: null, incubatedAt: null } : {}),
   })
   if (updated) {
     if (!wasRead) playCry(updated.arxiv || updated.id, prefs.cryEnabled)
-    store.notify(t('No.{id} 已点亮！', { id: updated.arxiv || '—' }))
+    store.notify(
+      wasEgg
+        ? t('🥚 破壳！No.{id}', { id: updated.arxiv || '—' })
+        : t('No.{id} 已点亮！', { id: updated.arxiv || '—' }),
+    )
     close()
   }
 }
@@ -255,6 +268,19 @@ function loadBond() {
   }
   recordVisit(props.id)
   bond.value = bondOf(paper.value, bondStats(props.id))
+  if (paper.value.eggAt && !paper.value.incubatedAt) {
+    void store.update(props.id, { incubatedAt: new Date().toISOString() } as never)
+  }
+}
+
+async function toggleEgg() {
+  if (!paper.value) return
+  const next = paper.value.eggAt ? null : new Date().toISOString()
+  await store.update(paper.value.id, {
+    eggAt: next,
+    incubatedAt: null,
+  } as never)
+  store.notify(next ? t('已放入蛋队列') : t('已移出蛋队列'))
 }
 
 async function toggleParty() {
@@ -445,6 +471,15 @@ onBeforeUnmount(() => {
             >
               {{ inParty ? t('移出队伍') : t('加入队伍') }}
             </button>
+            <button
+              v-if="paper && paper.status !== 'read'"
+              type="button"
+              class="btn sm ghost art-btn"
+              :disabled="!props.id"
+              @click="toggleEgg"
+            >
+              {{ inEgg ? t('移出蛋队列') : t('放入蛋队列') }}
+            </button>
             <div v-if="tradeOpen" class="trade-row">
               <input v-model="tradeEmail" class="input" type="email" :placeholder="t('对方邮箱')" />
               <button
@@ -488,6 +523,8 @@ onBeforeUnmount(() => {
               >
                 ✦ {{ t('异色') }}
               </span>
+              <span v-if="inEgg" class="egg-tag" :title="t('蛋')">🥚</span>
+              <span v-if="inEgg" class="egg-state">{{ paper?.incubatedAt ? t('孵化中') : t('待孵化') }}</span>
             </p>
             <div v-if="bond" class="bond">
               <div class="bond-top">
@@ -984,6 +1021,12 @@ onBeforeUnmount(() => {
   height: 100%;
   background: #e0586f;
   transition: width 0.3s ease;
+}
+
+.egg-state {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--muted);
 }
 
 .stage-name {

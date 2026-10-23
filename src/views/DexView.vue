@@ -15,7 +15,7 @@ const store = usePapersStore()
 const router = useRouter()
 const prefs = usePrefsStore()
 const query = ref('')
-const filter = ref<'all' | 'read' | 'reading' | 'unread'>('all')
+const filter = ref<'all' | 'read' | 'reading' | 'unread' | 'egg'>('all')
 const sort = ref<'arxiv' | 'added' | 'rating' | 'level'>('arxiv')
 const searchInput = ref<HTMLInputElement | null>(null)
 const daily = ref<DailyPick | null>(null)
@@ -26,12 +26,14 @@ const counts = computed(() => ({
   read: store.readCount,
   reading: store.readingCount,
   unread: store.items.length - store.readCount - store.readingCount,
+  egg: store.items.filter((paper) => paper.eggAt).length,
 }))
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const list = store.items.filter((paper) => {
-    if (filter.value !== 'all' && paper.status !== filter.value) return false
+    if (filter.value === 'egg' && !paper.eggAt) return false
+    if (filter.value !== 'all' && filter.value !== 'egg' && paper.status !== filter.value) return false
     if (!q) return true
     return [paper.title, paper.authors, paper.arxiv, paper.tags, paper.venue]
       .join(' ')
@@ -52,6 +54,7 @@ const filters = computed<Array<{ key: typeof filter.value; label: string }>>(() 
   { key: 'read', label: t('已点亮') },
   { key: 'reading', label: t('在读') },
   { key: 'unread', label: t('未点亮') },
+  { key: 'egg', label: t('蛋') },
 ])
 
 const unlit = computed(() => store.items.filter((paper) => paper.status !== 'read'))

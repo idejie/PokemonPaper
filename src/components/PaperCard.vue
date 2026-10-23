@@ -66,6 +66,7 @@ function readFull() {
         <i class="dot" :class="paper.status" :title="statusText" />
         {{ paper.arxiv || '—' }}
       </span>
+      <span v-if="paper.eggAt" class="egg-tag" :title="paper.incubatedAt ? t('孵化中') : t('蛋')">🥚</span>
       <span v-if="shiny.shiny" class="shiny-tag" :title="t('异色精灵')">✦</span>
       <span class="lv mono" :style="{ background: TIER_COLORS[lv.tier] }" :title="levelTitle">
         Lv.{{ lv.level }}

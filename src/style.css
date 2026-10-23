@@ -348,3 +348,18 @@ a {
   font-weight: 900;
   line-height: 1.7;
 }
+
+
+.egg-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: #fff4cf;
+  font-size: 9px;
+  line-height: 1;
+}

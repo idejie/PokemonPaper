@@ -300,4 +300,12 @@ export const pagesDict: Record<string, string> = {
   '选两篇不同的论文': 'Pick two different papers',
   '培育失败': 'Breeding failed',
   '选两篇论文培育一个交叉想法': 'Pick two papers to breed a cross-field idea',
+  '蛋': 'Egg',
+  '放入蛋队列': 'Put in egg queue',
+  '移出蛋队列': 'Remove from egg queue',
+  '待孵化': 'Waiting to incubate',
+  '孵化中': 'Incubating',
+  '已放入蛋队列': 'Added to egg queue',
+  '已移出蛋队列': 'Removed from egg queue',
+  '🥚 破壳！No.{id}': '🥚 Hatched! No.{id}',
 }

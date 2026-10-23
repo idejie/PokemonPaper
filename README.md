@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🥚 **Paper eggs** | Put unread papers in an egg queue; opening the detail starts incubation and finishing hatches it |
 | 🧬 **Breeding** | Pick two papers and the model proposes a concrete cross-field experiment, paired with a hybrid sprite |
 | 👑 **Gym leaders** | Monthly crown for the top reader of each gym, based on this month's finished papers |
 | 🧑‍🤝‍🧑 **Party of six** | Pin up to six papers; they show as sprites on your profile and your leaderboard row |
@@ -264,6 +265,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Party of six
 - [x] Monthly gym leaders
 - [x] Cross-paper breeding
+- [x] Paper egg queue
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -294,6 +296,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🥚 **论文蛋** | 未读论文可放进蛋队列，打开详情开始孵化，读完破壳 |
 | 🧬 **论文培育** | 选两篇论文，模型给出可执行的交叉实验方案，并生成一只混合精灵 |
 | 👑 **道馆馆主** | 每个道馆按本月已读篇数评选馆主，展示在 Guide 页 |
 | 🧑‍🤝‍🧑 **六人队伍** | 选最多 6 篇论文组队，展示在训练家档案和天梯行 |
@@ -784,6 +787,7 @@ interface Like {
 - [x] 六人队伍
 - [x] 每月道馆馆主
 - [x] 论文培育 / 交叉想法
+- [x] 论文蛋队列
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 
