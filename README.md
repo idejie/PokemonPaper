@@ -36,7 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
-| 🧬 **Deterministic sprites** | Vector cartoon rendering: thick outlines, radial gradients, expressive eyes, random headwear/glasses/scarves, lightning accents; 10 body types, and the same arXiv ID always yields the same sprite |
+| 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user, 16 pixel avatars; scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
@@ -248,7 +248,7 @@ MIT © idejie
 
 | | |
 |---|---|
-| 🧬 **确定性精灵** | 矢量卡通渲染：粗描边、径向渐变、大眼睛与表情、随机头饰/眼镜/围巾、闪电装饰；10 种体型，同一 arXiv 号永远生成同一只 |
+| 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个像素头像可选；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
