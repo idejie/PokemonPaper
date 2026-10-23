@@ -75,6 +75,14 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 💾 **Portable** | One-click JSON export, merge-import by arXiv ID |
 | 🌐 **Bilingual UI** | Chinese and English, switchable in the header |
 
+## Demo
+
+<p align="center">
+  <a href="docs/demo.mp4"><img src="docs/preview.png" width="760" alt="Watch the 40-second demo"></a>
+</p>
+
+[▶ Watch the 40-second demo](docs/demo.mp4) — 1080p, with sound.
+
 ## Screenshots
 
 <p align="center">
@@ -520,6 +528,14 @@ MIT © idejie
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
 | 💾 **可迁移** | 一键导出 JSON，按 arXiv 号合并导入 |
 | 🌐 **中英双语** | 界面中英文切换，选择记在本地 |
+
+## 演示视频
+
+<p align="center">
+  <a href="docs/demo.mp4"><img src="docs/preview.png" width="760" alt="观看 40 秒演示视频"></a>
+</p>
+
+[▶ 观看 40 秒演示视频](docs/demo.mp4) — 1080p，带配乐。
 
 ## 界面截图
 
