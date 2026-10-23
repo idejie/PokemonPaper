@@ -14,6 +14,53 @@ const settings = useSettingsStore()
 const store = usePapersStore()
 const ui = useUiStore()
 const prefs = usePrefsStore()
+const spriteJob = ref<{
+  running: boolean
+  total: number
+  done: number
+  failed: number
+  current: string
+  finishedAt: string | null
+} | null>(null)
+const artPending = computed(
+  () => store.items.filter((paper) => paper.arxiv && !paper.spriteUrl).length,
+)
+const spritePct = computed(() =>
+  spriteJob.value?.total
+    ? Math.round(((spriteJob.value.done + spriteJob.value.failed) / spriteJob.value.total) * 100)
+    : 0,
+)
+let spriteTimer: ReturnType<typeof setInterval> | null = null
+
+async function refreshSpriteJob() {
+  spriteJob.value = await api.spriteBatchStatus().catch(() => null)
+}
+
+function startSpritePolling() {
+  if (spriteTimer) clearInterval(spriteTimer)
+  spriteTimer = setInterval(async () => {
+    await refreshSpriteJob()
+    if (!spriteJob.value?.running) {
+      if (spriteTimer) clearInterval(spriteTimer)
+      spriteTimer = null
+      await store.load()
+    }
+  }, 2000)
+}
+
+async function startSpriteBatch() {
+  if (!settings.imageReady) {
+    store.notify(t('先在设置里配置图像模型'))
+    return
+  }
+  try {
+    spriteJob.value = await api.startSpriteBatch(settings.image)
+    store.notify(t('批量任务已开始'))
+    startSpritePolling()
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('启动失败'))
+  }
+}
 function toggleCry(event: Event) {
   prefs.setCry((event.target as HTMLInputElement).checked)
 }
@@ -102,6 +149,14 @@ onBeforeUnmount(() => {
   window.clearInterval(pdfTimer)
   document.removeEventListener('keydown', onKeydown)
   document.body.style.overflow = ''
+})
+onMounted(async () => {
+  await refreshSpriteJob()
+  if (spriteJob.value?.running) startSpritePolling()
+})
+
+onBeforeUnmount(() => {
+  if (spriteTimer) clearInterval(spriteTimer)
 })
 </script>
 
@@ -196,6 +251,27 @@ onBeforeUnmount(() => {
             autocomplete="off"
           />
         </label>
+
+        <div class="maint art-batch">
+          <span class="hint">{{ t('{n} 篇还没有插画', { n: artPending }) }}</span>
+          <button
+            type="button"
+            class="btn sm"
+            :disabled="spriteJob?.running || !artPending || !settings.imageReady"
+            @click="startSpriteBatch"
+          >
+            {{ spriteJob?.running ? t('生成中…') : t('批量生成') }}
+          </button>
+        </div>
+        <div v-if="spriteJob?.total" class="art-progress">
+          <div class="art-bar">
+            <div class="art-fill" :style="{ width: spritePct + '%' }" />
+          </div>
+          <span class="mono">
+            {{ spriteJob.done }}/{{ spriteJob.total }}
+            <template v-if="spriteJob.failed"> · {{ t('失败 {n}', { n: spriteJob.failed }) }}</template>
+          </span>
+        </div>
 
         <div class="divider" />
 
@@ -393,6 +469,32 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.02em;
+}
+
+.art-batch {
+  margin-top: 6px;
+}
+
+.art-progress {
+  display: grid;
+  gap: 3px;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.art-bar {
+  height: 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.art-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.3s ease;
 }
 
 .maint {

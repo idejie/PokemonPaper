@@ -53,7 +53,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
 
 - [ ] **New screenshots** — AI artwork, leaderboard likes column, stats page and
       guide page; current `docs/*.png` predate these features. `S`
-- [ ] **Batch artwork UI** — `POST /api/sprites/generate` exists, but the UI only
+- [x] **Batch artwork UI** — `POST /api/sprites/generate` exists, but the UI only
       has the per-paper button; add a batch action with progress. `S`
 - [x] **Likes in profile** — show "likes received" in the trainer profile, not
       just on the leaderboard. `S`

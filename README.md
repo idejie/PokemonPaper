@@ -51,7 +51,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
 | 🖼️ **Share card** | Export a paper as a 640×900 PNG card with its sprite, level, category and trainer |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
-| 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
+| 🎨 **AI artwork** | Generate per-paper artwork, or batch up to 60 with a progress bar; cached in `data/sprites/`, falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user; 16 pixel avatars plus a random combo builder (92k combinations); scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
@@ -266,6 +266,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Monthly gym leaders
 - [x] Cross-paper breeding
 - [x] Paper egg queue
+- [x] Batch artwork with progress
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -311,7 +312,7 @@ MIT © idejie
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
 | 🖼️ **分享卡** | 一键导出论文卡 PNG（精灵、等级、分类、训练家），适合发推 / 朋友圈 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
-| 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
+| 🎨 **AI 插画** | 单篇生成，或批量生成最多 60 篇（带进度条）；缓存到 `data/sprites/`，未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个预设头像 + 随机组合（9 万多种）；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
@@ -788,6 +789,7 @@ interface Like {
 - [x] 每月道馆馆主
 - [x] 论文培育 / 交叉想法
 - [x] 论文蛋队列
+- [x] 批量插画（进度条）
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

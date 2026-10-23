@@ -150,6 +150,37 @@ export const api = {
     })
   },
 
+  async startSpriteBatch(config: {
+    baseUrl: string
+    apiKey: string
+    model: string
+  }): Promise<{
+    running: boolean
+    total: number
+    done: number
+    failed: number
+    current: string
+    finishedAt: string | null
+  }> {
+    const data = await request<{ job: never }>('/api/sprites/generate', {
+      method: 'POST',
+      body: JSON.stringify({ config }),
+    })
+    return data.job
+  },
+
+  async spriteBatchStatus(): Promise<{
+    running: boolean
+    total: number
+    done: number
+    failed: number
+    current: string
+    finishedAt: string | null
+  }> {
+    const data = await request<{ job: never }>('/api/sprites/generate')
+    return data.job
+  },
+
   async breed(
     a: string,
     b: string,

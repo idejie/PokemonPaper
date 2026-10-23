@@ -743,6 +743,7 @@ function extractJson(text) {
 }
 
 const downloadJobs = new Map()
+const spriteJobs = new Map()
 
 async function runDownloadJob(userId) {
   const job = downloadJobs.get(userId)
@@ -2028,29 +2029,65 @@ async function api(req, res, url) {
     })
   }
 
-  if (pathname === '/api/sprites/generate' && method === 'POST') {
-    const body = await readBody(req)
-    const config = body.config || {}
-    const rows = db
-      .prepare(
-        "SELECT * FROM papers WHERE user_id = ? AND arxiv != '' ORDER BY added_at DESC LIMIT 60",
-      )
-      .all(user.id)
-    let generated = 0
-    let failed = 0
-    for (const row of rows) {
-      const file = join(SPRITE_DIR, `${row.arxiv}.png`)
-      if (existsSync(file)) continue
-      try {
-        const buffer = await generateSpriteArtwork(config, spritePrompt(row))
-        writeFileSync(file, buffer)
-        generated += 1
-      } catch {
-        failed += 1
-      }
-      await new Promise((resolve) => setTimeout(resolve, 600))
+  if (pathname === '/api/sprites/generate') {
+    if (method === 'GET') {
+      const job = spriteJobs.get(user.id)
+      return sendJSON(res, 200, {
+        job: job ?? {
+          running: false,
+          total: 0,
+          done: 0,
+          failed: 0,
+          current: '',
+          finishedAt: null,
+        },
+      })
     }
-    return sendJSON(res, 200, { generated, failed })
+    if (method === 'POST') {
+      const body = await readBody(req)
+      const config = body.config || {}
+      if (!config.baseUrl || !config.apiKey) {
+        return sendJSON(res, 400, { error: '先配置图像接口和 Key' })
+      }
+      if (spriteJobs.get(user.id)?.running) {
+        return sendJSON(res, 409, { error: '批量任务已经在跑' })
+      }
+      const rows = db
+        .prepare(
+          "SELECT * FROM papers WHERE user_id = ? AND arxiv != '' ORDER BY added_at DESC LIMIT 60",
+        )
+        .all(user.id)
+        .filter((row) => !existsSync(join(SPRITE_DIR, `${row.arxiv}.png`)))
+      const job = {
+        running: rows.length > 0,
+        total: rows.length,
+        done: 0,
+        failed: 0,
+        current: '',
+        startedAt: new Date().toISOString(),
+        finishedAt: rows.length ? null : new Date().toISOString(),
+      }
+      spriteJobs.set(user.id, job)
+      if (rows.length) {
+        void (async () => {
+          for (const row of rows) {
+            job.current = row.arxiv
+            try {
+              const buffer = await generateSpriteArtwork(config, spritePrompt(row))
+              writeFileSync(join(SPRITE_DIR, `${row.arxiv}.png`), buffer)
+              job.done += 1
+            } catch {
+              job.failed += 1
+            }
+            await new Promise((resolve) => setTimeout(resolve, 400))
+          }
+          job.running = false
+          job.current = ''
+          job.finishedAt = new Date().toISOString()
+        })()
+      }
+      return sendJSON(res, 202, { job })
+    }
   }
 
   const spriteMatch = pathname.match(/^\/api\/sprites\/([\d.]+)\.png$/)
