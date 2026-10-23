@@ -238,6 +238,8 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Leaderboard (level / XP / reads / summaries / likes)
 - [x] Extruded 3D sprite rendering and lit-sprite idle animation
 
+Planned ideas and the backlog live in [TODO.md](TODO.md).
+
 ## License
 
 MIT © idejie
@@ -728,6 +730,8 @@ interface Like {
 - [x] 16 个头像 + 9 万种随机组合
 - [x] 天梯：等级 / XP / 已读 / 总结 / 获赞
 - [x] 精灵挤出立体渲染与点亮待机动画
+
+还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 
 ## 已知限制
 
