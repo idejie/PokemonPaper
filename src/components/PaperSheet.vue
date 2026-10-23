@@ -7,13 +7,12 @@ import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 import { usePrefsStore } from '../stores/prefs'
-import { useAuthStore } from '../stores/auth'
 import { categoryChipColor } from '../core/palette'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { ARXIV_CATEGORIES } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import { t, locale } from '../core/i18n'
-import { downloadShareCard } from '../core/shareCard'
+import ShareCardDialog from './ShareCardDialog.vue'
 import { playCry } from '../core/cry'
 import { SHINY_LABEL, shinyOf } from '../core/shiny'
 import { MOVE_ICON, movesFor } from '../core/moves'
@@ -25,7 +24,6 @@ const router = useRouter()
 const store = usePapersStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
-const auth = useAuthStore()
 const prefs = usePrefsStore()
 
 const currentYear = new Date().getFullYear()
@@ -49,7 +47,7 @@ const saving = ref(false)
 const fetching = ref(false)
 const pdfBusy = ref(false)
 const spriteBusy = ref(false)
-const cardBusy = ref(false)
+const shareOpen = ref(false)
 const bond = ref<BondInfo | null>(null)
 const dexBusy = ref(false)
 const tradeOpen = ref(false)
@@ -321,27 +319,6 @@ async function generateDexEntry() {
   }
 }
 
-async function shareCard() {
-  if (!paper.value) {
-    store.notify(t('先保存这篇论文'))
-    return
-  }
-  cardBusy.value = true
-  try {
-    await downloadShareCard({
-      paper: paper.value,
-      trainer: auth.user?.name || 'Trainer',
-      avatarId: auth.user?.avatarId || 'red-cap',
-      locale: locale.value,
-    })
-    store.notify(t('卡片已下载'))
-  } catch {
-    store.notify(t('生成卡片失败'))
-  } finally {
-    cardBusy.value = false
-  }
-}
-
 async function generateArtwork() {
   if (!props.id) {
     store.notify(t('先保存这篇论文'))
@@ -450,10 +427,10 @@ onBeforeUnmount(() => {
             <button
               type="button"
               class="btn sm ghost art-btn"
-              :disabled="cardBusy || !props.id"
-              @click="shareCard"
+              :disabled="!props.id"
+              @click="shareOpen = true"
             >
-              {{ cardBusy ? t('生成中…') : t('分享卡片') }}
+              {{ t('分享卡片') }}
             </button>
             <button
               type="button"
@@ -774,6 +751,8 @@ onBeforeUnmount(() => {
         </section>
       </div>
     </section>
+
+    <ShareCardDialog v-if="shareOpen && paper" :paper="paper" @close="shareOpen = false" />
   </div>
 </template>
 

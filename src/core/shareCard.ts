@@ -4,6 +4,7 @@ import { AVATARS, AVATAR_SIZE, buildAvatar, decodeAvatar } from './avatar'
 import { paperLevel, TIER_COLORS, type Tier } from './level'
 import { categoryChipColor } from './palette'
 import { movesFor } from './moves'
+import QRCode from 'qrcode'
 
 export interface ShareCardInput {
   paper: Paper
@@ -365,18 +366,37 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
 
   ctx.fillStyle = DIM
   ctx.font = `600 11px ${FONT}`
-  ctx.textAlign = 'right'
   ctx.fillText(
     zh ? 'arXiv 编号 = 图鉴编号 · 读完点亮' : 'arXiv ID = dex number · read to light up',
-    W - 64,
-    814,
+    64,
+    840,
   )
-  ctx.textAlign = 'left'
+
+  // QR code for scanning back into the app
+  if (paper.arxiv) {
+    try {
+      const qr = document.createElement('canvas')
+      await QRCode.toCanvas(qr, `PP1:${paper.arxiv}:${paper.primaryCategory || ''}`, {
+        width: 168,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+        color: { dark: '#2b2420', light: '#f7f1df' },
+      })
+      ctx.drawImage(qr, W - 64 - 84, 754, 84, 84)
+      ctx.fillStyle = DIM
+      ctx.font = `700 8px ${MONO}`
+      ctx.textAlign = 'right'
+      ctx.fillText(zh ? '扫码导入' : 'SCAN TO IMPORT', W - 64, 852)
+      ctx.textAlign = 'left'
+    } catch {
+      /* QR is optional */
+    }
+  }
 
   // footer
   ctx.fillStyle = DIM
   ctx.font = `600 10px ${MONO}`
-  ctx.fillText('PokemonPaper · paper dex', 64, 862)
+  ctx.fillText('PokemonPaper · paper dex', 64, 870)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {

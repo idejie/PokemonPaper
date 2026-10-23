@@ -283,4 +283,11 @@ export const dialogsDict: Record<string, string> = {
   '对方邮箱': 'Recipient email',
   '已交换给 {name}': 'Traded to {name}',
   '交换失败': 'Trade failed',
+  '扫描卡片': 'Scan card',
+  '识别中…': 'Scanning…',
+  '上传分享卡 PNG，自动识别 arXiv 编号': 'Upload a share-card PNG to extract its arXiv ID',
+  '没识别到二维码': 'No QR code found',
+  '二维码里没有 arXiv 编号': 'The QR code has no arXiv ID',
+  '识别到 No.{id}': 'Found No.{id}',
+  '图片读取失败': 'Could not read the image',
 }

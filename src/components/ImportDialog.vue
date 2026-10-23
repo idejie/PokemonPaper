@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../core/api'
-import { arxivAbsUrl } from '../core/arxiv'
+import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import { bibEntryToPaper, parseBibtex } from '../core/bibtex'
 import type { Paper } from '../core/types'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
 import { t } from '../core/i18n'
+import jsQR from 'jsqr'
 
 interface Draft {
   picked: boolean
@@ -37,6 +38,8 @@ const allOwned = ref(false)
 const importing = ref(false)
 const error = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
+const cardInput = ref<HTMLInputElement | null>(null)
+const scanning = ref(false)
 
 const tabs = computed<Array<{ key: Tab; label: string }>>(() => [
   { key: 'arxiv', label: t('arXiv 批量') },
@@ -179,6 +182,53 @@ async function onBibFile(event: Event) {
   input.value = ''
 }
 
+async function onCardFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  scanning.value = true
+  try {
+    const url = URL.createObjectURL(file)
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = url
+    })
+    URL.revokeObjectURL(url)
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) throw new Error('canvas unavailable')
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const code = jsQR(pixels.data, pixels.width, pixels.height, {
+      inversionAttempts: 'dontInvert',
+    })
+    if (!code?.data) {
+      store.notify(t('没识别到二维码'))
+      return
+    }
+    const arxiv = code.data.startsWith('PP1:')
+      ? parseArxivId(code.data.split(':')[1] || '')
+      : parseArxivId(code.data)
+    if (!arxiv) {
+      store.notify(t('二维码里没有 arXiv 编号'))
+      return
+    }
+    raw.value = raw.value.trim() ? `${raw.value.trim()}\n${arxiv}` : arxiv
+    store.notify(t('识别到 No.{id}', { id: arxiv }))
+    await loadArxiv()
+  } catch {
+    store.notify(t('图片读取失败'))
+  } finally {
+    scanning.value = false
+    input.value = ''
+  }
+}
+
 async function onJsonFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -288,6 +338,18 @@ onBeforeUnmount(() => {
         </div>
 
         <template v-if="tab === 'arxiv'">
+          <div class="scan-row">
+            <button
+              type="button"
+              class="btn sm ghost"
+              :disabled="scanning"
+              @click="cardInput?.click()"
+            >
+              📷 {{ scanning ? t('识别中…') : t('扫描卡片') }}
+            </button>
+            <span class="hint">{{ t('上传分享卡 PNG，自动识别 arXiv 编号') }}</span>
+          </div>
+          <input ref="cardInput" class="card-input" type="file" accept="image/*" hidden @change="onCardFile" />
           <textarea
             v-model="raw"
             class="textarea mono"
@@ -482,6 +544,17 @@ onBeforeUnmount(() => {
 .tab.on {
   background: var(--ink);
   color: var(--paper);
+}
+
+.scan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.scan-row .hint {
+  font-size: 10px;
 }
 
 .textarea {

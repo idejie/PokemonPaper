@@ -49,12 +49,12 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | ❤️ **Bond** | Notes, revisits and reading time build a 0–100 bond (stored locally); tiers light up hearts on the detail sheet |
 | 🏅 **Gyms** | 12 gyms by arXiv field; read 3 papers and write a note on one to earn the badge. A strip on the dex shows progress and filters by field |
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
-| 🖼️ **Share card** | Export a paper as a 640×900 PNG card with its sprite, level, category and trainer |
+| 🖼️ **Share card** | Render a 640×900 PNG card (sprite, level, moves, QR); preview it, then download or copy. Scan the QR under Import to add the paper |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
 | 🎨 **AI artwork** | Generate per-paper artwork, or batch up to 60 with a progress bar; cached in `data/sprites/`, falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user; 16 pixel avatars plus a random combo builder (92k combinations); scrypt password hashing, HttpOnly session cookie |
-| 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
+| 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX, JSON backups and share-card QR scanning |
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
 | 💬 **Shared notes** | Public by default; other readers can see them. Public notes and summaries can be liked; the author gains +1 XP per like |
@@ -447,6 +447,7 @@ piece of content once; unliking removes the row.
 - [x] Cross-paper breeding
 - [x] Paper egg queue
 - [x] Batch artwork with progress
+- [x] Share-card preview and QR scan import
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -490,12 +491,12 @@ MIT © idejie
 | ❤️ **羁绊** | 笔记、复访和阅读时长累积 0–100 羁绊（本地记录），等级点亮详情页爱心 |
 | 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，读满 3 篇 + 1 篇笔记得徽章；主页有道馆进度条，点击可按领域筛选 |
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
-| 🖼️ **分享卡** | 一键导出论文卡 PNG（精灵、等级、分类、训练家），适合发推 / 朋友圈 |
+| 🖼️ **分享卡** | 生成 640×900 论文卡（精灵、等级、招式、二维码）；先预览，再下载或复制。二维码可在导入里扫描 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
 | 🎨 **AI 插画** | 单篇生成，或批量生成最多 60 篇（带进度条）；缓存到 `data/sprites/`，未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个预设头像 + 随机组合（9 万多种）；密码 scrypt 哈希，会话存 HttpOnly Cookie |
-| 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
+| 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX、JSON 备份和分享卡扫码 |
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
 | 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到；公开批注和公开总结都可点赞，作者每赞 +1 XP |
@@ -981,6 +982,7 @@ interface Like {
 - [x] 论文培育 / 交叉想法
 - [x] 论文蛋队列
 - [x] 批量插画（进度条）
+- [x] 分享卡预览与扫码导入
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 
