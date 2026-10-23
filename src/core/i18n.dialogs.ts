@@ -183,7 +183,10 @@ export const dialogsDict: Record<string, string> = {
   '有笔记': 'With notes',
   '开源': 'Open source',
   '本地 PDF': 'Local PDFs',
-  '每篇论文：收录 +10 · 读完 +50 · 笔记 +5 · 解读 +8 · 评分 +2 · 开源 +15 · PDF +3。': 'Per paper: collected +10 · finished +50 · notes +5 · summary +8 · rating +2 · open source +15 · PDF +3.',
+  '每篇论文：等级 XP + 读完 40 + 笔记 20；在读减半。':
+    'Per paper: level XP + 40 for finishing + 20 for notes; half while reading.',
+  '开源与 star 已计入论文等级，不再重复加。升级所需经验按 50·(L−1)·L 递增。':
+    'Open source and stars already count toward the paper level, so they are not added again. Level curve: 50·(L−1)·L.',
   '升级所需经验按 50·(L−1)·L 递增。': 'XP required per level grows as 50·(L−1)·L.',
   '文献大师': 'Literature master',
   '知识训练家': 'Knowledge trainer',
@@ -215,4 +218,21 @@ export const dialogsDict: Record<string, string> = {
   '传说': 'Legendary',
   '智谱 GLM': 'Zhipu GLM',
   '自定义': 'Custom',
+  '等级怎么算？': 'How levels work',
+  '论文等级': 'Paper level',
+  '只看开源与 GitHub star：没开源 = Lv.1；开源后按 star 从 Lv.15 涨到 Lv.100。分为常见 / 稀有 / 史诗 / 传说四档。':
+    'Based on open source and GitHub stars: no code = Lv.1; with code it scales from Lv.15 to Lv.100 by stars. Tiers: common / rare / epic / legendary.',
+  '训练家经验': 'Trainer XP',
+  '读完一篇：论文等级 + 40 XP': 'Finish a paper: paper level + 40 XP',
+  '在读：论文等级的一半 + 10 XP': 'Reading: half the paper level + 10 XP',
+  '写了笔记：+20 XP（在读 +10）': 'Notes: +20 XP (+10 while reading)',
+  '只收录没读：0 XP': 'Collected but unread: 0 XP',
+  '开源和 star 已经决定论文等级，不再单独加 XP，避免同一件事算两次。':
+    'Open source and stars already set the paper level, so they add no separate XP — no double counting.',
+  '升级曲线': 'Level curve',
+  '升到 L 级需要 50·(L−1)·L 经验：Lv.2 = 100，Lv.5 = 1000，Lv.10 = 4500。':
+    'Reaching level L takes 50·(L−1)·L XP: Lv.2 = 100, Lv.5 = 1000, Lv.10 = 4500.',
+  '称号': 'Titles',
+  '新手训练家 → 见习研究员（5）→ 图鉴收集者（10）→ 论文猎人（20）→ 知识训练家（35）→ 文献大师（50）。':
+    'Rookie Trainer → Apprentice Researcher (5) → Dex Collector (10) → Paper Hunter (20) → Knowledge Trainer (35) → Literature Master (50).',
 }

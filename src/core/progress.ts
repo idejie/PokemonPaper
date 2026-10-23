@@ -1,3 +1,4 @@
+import { paperLevel } from './level'
 import type { Paper } from './types'
 
 export interface Badge {
@@ -30,15 +31,14 @@ export interface Progress {
   badges: Badge[]
 }
 
-/** 每篇论文贡献的经验，按完成度叠加 */
+/**
+ * 每篇论文的 XP：论文等级 + 阅读状态 + 笔记。
+ * 等级本身已经由「开源 + star」决定，这里不再为开源重复加分。
+ */
 const XP = {
-  added: 10,
-  read: 50,
-  notes: 5,
-  explain: 8,
-  rated: 2,
-  openSource: 15,
-  pdf: 3,
+  read: 40,
+  notes: 20,
+  reading: 10,
 }
 
 const TITLES: Array<[number, string]> = [
@@ -69,14 +69,16 @@ export function titleForLevel(level: number): string {
 }
 
 function paperXp(paper: Paper): number {
-  let xp = XP.added
-  if (paper.status === 'read') xp += XP.read
-  if (paper.notes.trim()) xp += XP.notes
-  if (paper.explain) xp += XP.explain
-  if (paper.rating > 0) xp += XP.rated
-  if (paper.codeUrl) xp += XP.openSource
-  if (paper.pdfPath) xp += XP.pdf
-  return xp
+  const lv = paperLevel(paper).level
+  const hasNotes = Boolean(paper.notes.trim())
+
+  if (paper.status === 'read') {
+    return lv + XP.read + (hasNotes ? XP.notes : 0)
+  }
+  if (paper.status === 'reading') {
+    return Math.round(lv / 2) + XP.reading + (hasNotes ? Math.round(XP.notes / 2) : 0)
+  }
+  return 0
 }
 
 export function computeProgress(papers: Paper[]): Progress {

@@ -41,7 +41,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
-| 🎖️ **Trainer levels** | XP, level curve, 6 titles, 8 badges; completion becomes XP |
+| 🎖️ **Trainer levels** | XP from paper level, reading, and notes; 6 titles, 8 badges |
 | 🗂️ **Two layouts** | Cards for sprites, list for information; choice persisted locally |
 | 🏷️ **arXiv categories** | Full official taxonomy (155 categories); cards and rows show `cs.RO`, sprite colors follow the field |
 | ⚔️ **Paper level** | Lv.1–100 from open-source availability and GitHub stars; tiers: common / rare / epic / legendary |
@@ -97,6 +97,19 @@ Requirements: Node 22.5+ (for `node:sqlite`), pnpm.
 3. **Read it** — open the detail sheet, go to *Original PDF*, select text to highlight or comment
 4. **Finish it** — mark as read; the sprite lights up and grants XP
 5. **Summarize it** — configure an OpenAI-compatible endpoint in settings, then generate an AI summary from the full text
+
+## Trainer levels
+
+XP counts three things: **the paper's level, whether you finished it, and whether you wrote notes**.
+
+| Action | XP |
+|---|---|
+| Finish a paper | paper level + 40 |
+| Reading | half the level + 10 |
+| Notes | +20 (+10 while reading) |
+| Collected but unread | 0 |
+
+Open source and stars already determine the paper level, so they are not counted again. The level curve is `50·(L−1)·L`.
 
 ## Project structure
 
