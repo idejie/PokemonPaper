@@ -1,16 +1,44 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
 import SpriteSvg from '../components/SpriteSvg.vue'
 import { api } from '../core/api'
 import { t } from '../core/i18n'
 import { titleForLevel } from '../core/progress'
-import type { LeaderboardEntry } from '../core/types'
+import type { GymRankEntry, LeaderboardEntry } from '../core/types'
+import { GYMS, GYM_LEVELS, gymLevelFor } from '../core/gyms'
 
 const entries = ref<LeaderboardEntry[]>([])
 const me = ref('')
 const loading = ref(true)
 const error = ref('')
+const mode = ref<'xp' | 'gym'>('xp')
+const gymId = ref('cs')
+const gymData = ref<Record<string, GymRankEntry[]>>({})
+const gymLoading = ref(false)
+
+const gymEntries = computed(() => gymData.value[gymId.value] ?? [])
+
+function levelLabel(entry: GymRankEntry): string {
+  const level = gymLevelFor(entry.read, entry.notes)
+  if (!level) return t('未入门')
+  return `Lv.${level} ${t(GYM_LEVELS.find((tier) => tier.level === level)?.name ?? '')}`
+}
+
+async function loadGymData() {
+  gymLoading.value = true
+  try {
+    gymData.value = (await api.gymLeaderboard()).gyms
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : t('加载失败')
+  } finally {
+    gymLoading.value = false
+  }
+}
+
+watch(mode, (next) => {
+  if (next === 'gym' && !Object.keys(gymData.value).length) void loadGymData()
+})
 
 const mine = computed(() => entries.value.find((entry) => entry.userId === me.value) ?? null)
 
@@ -39,10 +67,20 @@ onMounted(async () => {
         <p class="count mono">{{ t('共 {n} 位训练家', { n: entries.length }) }}</p>
       </header>
 
+      <div class="mode-tabs">
+        <button type="button" :class="{ on: mode === 'xp' }" @click="mode = 'xp'">
+          {{ t('总榜') }}
+        </button>
+        <button type="button" :class="{ on: mode === 'gym' }" @click="mode = 'gym'">
+          {{ t('道馆榜') }}
+        </button>
+      </div>
+
       <p v-if="error" class="error">{{ error }}</p>
       <p v-if="loading" class="empty">{{ t('加载中…') }}</p>
 
       <template v-else>
+        <template v-if="mode === 'xp'">
         <div v-if="mine" class="me">
           <span class="me-rank mono">{{ t('你排第 {rank}', { rank: mine.rank }) }}</span>
           <span class="mono">Lv.{{ mine.level }}</span>
@@ -96,6 +134,54 @@ onMounted(async () => {
         </div>
 
         <p v-if="!entries.length" class="empty">{{ t('还没有其他训练家，先去读一篇。') }}</p>
+        </template>
+
+        <template v-else>
+          <div class="gym-picker">
+            <button
+              v-for="gym in GYMS"
+              :key="gym.id"
+              type="button"
+              class="gym-tab"
+              :class="{ on: gymId === gym.id }"
+              @click="gymId = gym.id"
+            >
+              {{ gym.icon }} {{ t(gym.name) }}
+            </button>
+          </div>
+
+          <p v-if="gymLoading" class="empty">{{ t('加载中…') }}</p>
+          <template v-else>
+            <div class="gym-table">
+              <div class="gym-head">
+                <span>{{ t('排名') }}</span>
+                <span>{{ t('训练家') }}</span>
+                <span>{{ t('已读') }}</span>
+                <span>{{ t('笔记') }}</span>
+                <span>{{ t('等级') }}</span>
+              </div>
+              <div
+                v-for="(entry, index) in gymEntries"
+                :key="entry.userId"
+                class="gym-row"
+                :class="{ self: entry.userId === me }"
+              >
+                <span class="rank mono">{{ medals[index + 1] || `#${index + 1}` }}</span>
+                <span class="who">
+                  <span class="pic"><AvatarSvg :id="entry.avatarId || 'red-cap'" /></span>
+                  <span class="name">
+                    {{ entry.name }}
+                    <b v-if="entry.userId === me" class="you">{{ t('你') }}</b>
+                  </span>
+                </span>
+                <span class="mono">{{ entry.read }}</span>
+                <span class="mono">{{ entry.notes }}</span>
+                <span class="mono">{{ levelLabel(entry) }}</span>
+              </div>
+            </div>
+            <p v-if="!gymEntries.length" class="empty">{{ t('这个道馆还没有人读完论文。') }}</p>
+          </template>
+        </template>
       </template>
 
       <RouterLink to="/" class="back">← {{ t('返回图鉴') }}</RouterLink>
@@ -106,6 +192,81 @@ onMounted(async () => {
 <style scoped>
 .ladder-page {
   padding: 34px 0 90px;
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.mode-tabs button {
+  padding: 3px 12px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mode-tabs button.on {
+  background: #f2c14e;
+}
+
+.gym-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.gym-tab {
+  padding: 2px 8px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.gym-tab.on {
+  opacity: 1;
+  border-color: var(--ink);
+  background: #fff4cf;
+}
+
+.gym-table {
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.gym-head,
+.gym-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 64px 64px 120px;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.gym-head {
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.gym-row {
+  border-top: 1.5px dashed var(--line);
+  font-size: 11px;
+}
+
+.gym-row.self {
+  background: #fff4cf;
 }
 
 .hero {

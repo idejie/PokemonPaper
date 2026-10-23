@@ -181,6 +181,14 @@ export const api = {
     return data.job
   },
 
+  async syncAffiliations(id: string): Promise<string[]> {
+    const data = await request<{ affiliations: string[] }>(`/api/papers/${id}/affiliations`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+    return data.affiliations
+  },
+
   async breed(
     a: string,
     b: string,
@@ -197,6 +205,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ a, b, config, locale }),
     })
+  },
+
+  async gymLeaderboard(): Promise<{ gyms: Record<string, import('./types').GymRankEntry[]> }> {
+    return request('/api/gym-leaderboard')
   },
 
   async gymLeaders(): Promise<{

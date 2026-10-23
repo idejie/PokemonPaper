@@ -5,6 +5,7 @@ import { TIER_COLORS, paperLevel, type Tier } from '../core/level'
 import { t } from '../core/i18n'
 import { usePapersStore } from '../stores/papers'
 import type { Paper } from '../core/types'
+import { authorStats, unitStats } from '../core/authors'
 
 const store = usePapersStore()
 
@@ -68,6 +69,11 @@ const regions = computed<Region[]>(() => {
 })
 
 const regionsDone = computed(() => regions.value.filter((region) => region.done).length)
+
+const authors = computed(() => authorStats(papers.value).slice(0, 12))
+const units = computed(() => unitStats(papers.value).slice(0, 12))
+const maxAuthorRead = computed(() => Math.max(1, ...authors.value.map((author) => author.read)))
+const maxUnitRead = computed(() => Math.max(1, ...units.value.map((unit) => unit.read)))
 
 const categories = computed<Row[]>(() =>
   countBy(papers.value, (paper) => paper.primaryCategory || null).map((row) => ({
@@ -201,7 +207,46 @@ onMounted(async () => {
       </section>
 
       <section class="block">
-        <h2><span class="num mono">05</span>{{ t('地区图鉴') }}</h2>
+        <h2><span class="num mono">05</span>{{ t('常读作者') }}</h2>
+        <p>{{ t('按已读论文数排序，统计你读得最多的作者。') }}</p>
+        <div v-if="authors.length" class="entity-list">
+          <div v-for="(author, index) in authors" :key="author.name" class="entity-row">
+            <span class="rank mono">#{{ index + 1 }}</span>
+            <span class="entity-name">
+              <b>{{ author.name }}</b>
+              <small>{{ author.categories.join(' · ') }}</small>
+            </span>
+            <span class="entity-count mono">
+              {{ t('已读 {read} / 收录 {total}', { read: author.read, total: author.papers }) }}
+            </span>
+            <div class="entity-bar">
+              <div :style="{ width: (author.read / maxAuthorRead) * 100 + '%' }" />
+            </div>
+          </div>
+        </div>
+        <p v-else class="empty">{{ t('还没有作者数据，先补全论文作者。') }}</p>
+      </section>
+
+      <section class="block">
+        <h2><span class="num mono">06</span>{{ t('常读单位') }}</h2>
+        <p>{{ t('按论文里的作者单位统计；可在详情页手动填写或从 PDF 提取。') }}</p>
+        <div v-if="units.length" class="entity-list">
+          <div v-for="(unit, index) in units" :key="unit.name" class="entity-row">
+            <span class="rank mono">#{{ index + 1 }}</span>
+            <span class="entity-name"><b>{{ unit.name }}</b></span>
+            <span class="entity-count mono">
+              {{ t('已读 {read} / 收录 {total}', { read: unit.read, total: unit.papers }) }}
+            </span>
+            <div class="entity-bar">
+              <div :style="{ width: (unit.read / maxUnitRead) * 100 + '%' }" />
+            </div>
+          </div>
+        </div>
+        <p v-else class="empty">{{ t('还没有单位数据，可以在论文详情里补。') }}</p>
+      </section>
+
+      <section class="block">
+        <h2><span class="num mono">07</span>{{ t('地区图鉴') }}</h2>
         <p>
           {{ t('按发表年份划分地区，一个年份的论文全部读完后，地区完成度变成 100%。') }}
           <b class="mono">{{ t('{done} / {total} 个地区完成', { done: regionsDone, total: regions.length }) }}</b>
@@ -294,6 +339,63 @@ onMounted(async () => {
   border-top: 2px dashed var(--line);
   padding: 26px 0 8px;
   max-width: 860px;
+}
+
+.entity-list {
+  display: grid;
+  gap: 5px;
+}
+
+.entity-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 9px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+
+.entity-row .rank {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.entity-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.entity-name b {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.entity-name small {
+  font-size: 8.5px;
+  color: var(--muted);
+}
+
+.entity-count {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.entity-bar {
+  grid-column: 2 / -1;
+  height: 5px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.entity-bar div {
+  height: 100%;
+  background: var(--ink);
 }
 
 .regions {

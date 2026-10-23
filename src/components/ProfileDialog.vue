@@ -91,11 +91,13 @@ onBeforeUnmount(() => {
               :key="gym.id"
               class="gym"
               :class="{ on: gym.earned }"
-              :title="`${t(gym.name)} · ${gym.readCount}/${gym.read} · ${gym.noteCount}/${gym.notes}`"
+              :title="`${t(gym.name)} · ${t(gym.tier)} · ${gym.readCount}/${gym.next?.read ?? gym.read} · ${gym.noteCount}/${gym.next?.notes ?? gym.notes}`"
             >
               <span class="gym-icon">{{ gym.icon }}</span>
               <b>{{ t(gym.name) }}</b>
-              <small class="mono">{{ gym.readCount }}/{{ gym.read }} · {{ gym.noteCount }}/{{ gym.notes }}</small>
+              <small class="mono">
+                {{ gym.level ? `Lv.${gym.level} ${t(gym.tier)}` : `${gym.readCount}/${gym.read}` }}
+              </small>
             </div>
           </div>
         </section>

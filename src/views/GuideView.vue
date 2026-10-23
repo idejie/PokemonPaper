@@ -164,7 +164,7 @@ onMounted(async () => {
 
       <section class="block">
         <h2><span class="num mono">06</span>{{ t('道馆') }}</h2>
-        <p>{{ t('每个 arXiv 大类是一座道馆：读满 3 篇、其中 1 篇有笔记，就能拿到徽章。') }}</p>
+        <p>{{ t('每个 arXiv 大类是一座道馆，分 4 级：青铜 3 篇 + 1 笔记，白银 6 + 2，黄金 12 + 4，铂金 24 + 8。') }}</p>
         <p class="dim mono">
           {{ t('已获得 {n} / {m}', { n: gymEarned, m: gyms.length }) }}
           <template v-if="leaderMonth"> · {{ t('本月馆主') }} {{ leaderMonth }}</template>
@@ -179,8 +179,12 @@ onMounted(async () => {
               </small>
               <small v-else class="gym-lead empty">{{ t('暂无馆主') }}</small>
             </span>
-            <span class="gym-progress mono">{{ gym.readCount }}/{{ gym.read }} · {{ gym.noteCount }}/{{ gym.notes }}</span>
-            <span class="gym-state">{{ gym.earned ? t('已获得') : t('未获得') }}</span>
+            <span class="gym-progress mono">
+              {{ gym.readCount }}/{{ gym.next?.read ?? gym.read }} · {{ gym.noteCount }}/{{ gym.next?.notes ?? gym.notes }}
+            </span>
+            <span class="gym-state">
+              {{ gym.level ? `Lv.${gym.level} ${t(gym.tier)}` : t('未入门') }}
+            </span>
           </div>
         </div>
       </section>

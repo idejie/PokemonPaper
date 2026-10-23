@@ -134,11 +134,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         type="button"
         class="gym-pill"
         :class="{ on: gym.earned, active: gymFilter === gym.id }"
-        :title="`${t(gym.name)} · ${gym.readCount}/${gym.read} · ${gym.noteCount}/${gym.notes}`"
+        :title="`${t(gym.name)} · ${t(gym.tier)} · ${gym.readCount}/${gym.next?.read ?? gym.read} · ${gym.noteCount}/${gym.next?.notes ?? gym.notes}`"
         @click="toggleGymFilter(gym.id)"
       >
         <span class="gym-strip-icon">{{ gym.icon }}</span>
-        <small class="mono">{{ gym.readCount }}/{{ gym.read }}</small>
+        <small class="mono">{{ gym.level ? `Lv.${gym.level}` : `${gym.readCount}/${gym.read}` }}</small>
       </button>
       <button
         v-if="gymFilter"

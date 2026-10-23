@@ -47,7 +47,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | ✨ **Shiny variants** | High stars, top venues, decade-old classics and 1/64 hashes get a gold palette, sparkles and a shiny tag |
 | 🔊 **8-bit cries** | Every arXiv ID has a deterministic 3–5 note WebAudio cry, played when it lights up; can be muted in settings |
 | ❤️ **Bond** | Notes, revisits and reading time build a 0–100 bond (stored locally); tiers light up hearts on the detail sheet |
-| 🏅 **Gyms** | 12 gyms by arXiv field; read 3 papers and write a note on one to earn the badge. A strip on the dex shows progress and filters by field |
+| 🏅 **Gyms** | 12 gyms by arXiv field with 4 tiers (Bronze / Silver / Gold / Platinum); a strip on the dex shows levels and filters by field |
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
 | 🖼️ **Share card** | Render a 640×900 PNG card (sprite, level, moves, QR); preview it, then download or copy. Scan the QR under Import to add the paper |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
@@ -58,8 +58,8 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
 | 💬 **Shared notes** | Public by default; other readers can see them. Public notes and summaries can be liked; the author gains +1 XP per like |
-| 📊 **Statistics** | Distribution by category, year and venue, plus read rate and level mix |
-| 🏆 **Leaderboard** | Rank everyone by level, XP, papers read, summaries and likes; your row is highlighted |
+| 📊 **Statistics** | Category / year / venue distribution, favourite authors and institutions, read rate and level mix |
+| 🏆 **Leaderboard** | Overall ranking by level / XP / reads / summaries / likes, plus a per-gym ladder |
 | 🔦 **In-PDF search** | Search across pages, highlight matches, jump prev / next |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Evolution stages** | Hatchling silhouette → juvenile (reading) → final form (read) → bond form (notes); size, accessories and patterns unlock as it grows |
@@ -448,6 +448,8 @@ piece of content once; unliking removes the row.
 - [x] Paper egg queue
 - [x] Batch artwork with progress
 - [x] Share-card preview and QR scan import
+- [x] Author and institution stats
+- [x] Gym levels and per-gym ladder
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -489,7 +491,7 @@ MIT © idejie
 | ✨ **异色精灵** | 高 star、顶会/顶刊、十年经典或 1/64 哈希命中，获得金色配色、粒子和 ✦ 标记 |
 | 🔊 **8-bit 叫声** | 每个 arXiv 号确定性生成 3–5 个音符的 WebAudio 叫声，点亮时播放，可在设置里关闭 |
 | ❤️ **羁绊** | 笔记、复访和阅读时长累积 0–100 羁绊（本地记录），等级点亮详情页爱心 |
-| 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，读满 3 篇 + 1 篇笔记得徽章；主页有道馆进度条，点击可按领域筛选 |
+| 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，分青铜 / 白银 / 黄金 / 铂金 4 级；主页有道馆条，显示等级并可筛选 |
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
 | 🖼️ **分享卡** | 生成 640×900 论文卡（精灵、等级、招式、二维码）；先预览，再下载或复制。二维码可在导入里扫描 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
@@ -500,8 +502,8 @@ MIT © idejie
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
 | 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到；公开批注和公开总结都可点赞，作者每赞 +1 XP |
-| 📊 **统计页** | 分类、年份、会议分布，阅读率与等级构成 |
-| 🏆 **天梯** | 所有人的等级、XP、已读、总结、获赞排行，当前用户高亮 |
+| 📊 **统计页** | 分类、年份、会议分布，常读作者与单位，阅读率与等级构成 |
+| 🏆 **天梯** | 按等级、XP、已读、总结、获赞排总榜；另有按道馆统计的「道馆榜」 |
 | 🔦 **PDF 内搜索** | 跨页搜索，命中高亮，支持上一处 / 下一处 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **四段进化** | 幼体剪影 → 成长体（在读）→ 完全体（已读）→ 羁绊形态（有笔记）；体型、配件和花纹随阅读深度解锁 |
@@ -983,6 +985,8 @@ interface Like {
 - [x] 论文蛋队列
 - [x] 批量插画（进度条）
 - [x] 分享卡预览与扫码导入
+- [x] 常读作者 / 单位统计
+- [x] 道馆等级与道馆榜
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

@@ -9,10 +9,35 @@ export interface GymDef {
   notes: number
 }
 
+export interface GymLevel {
+  level: number
+  name: string
+  read: number
+  notes: number
+}
+
 export interface GymStatus extends GymDef {
   readCount: number
   noteCount: number
   earned: boolean
+  level: number
+  tier: string
+  next: GymLevel | null
+}
+
+export const GYM_LEVELS: GymLevel[] = [
+  { level: 1, name: '青铜', read: 3, notes: 1 },
+  { level: 2, name: '白银', read: 6, notes: 2 },
+  { level: 3, name: '黄金', read: 12, notes: 4 },
+  { level: 4, name: '铂金', read: 24, notes: 8 },
+]
+
+export function gymLevelFor(read: number, notes: number): number {
+  let level = 0
+  for (const tier of GYM_LEVELS) {
+    if (read >= tier.read && notes >= tier.notes) level = tier.level
+  }
+  return level
 }
 
 export const GYMS: GymDef[] = [
@@ -49,11 +74,15 @@ export function gymStatus(papers: Paper[]): GymStatus[] {
     const inGym = papers.filter((paper) => belongs(paper, gym))
     const read = inGym.filter((paper) => paper.status === 'read')
     const notes = read.filter((paper) => Boolean((paper.notes ?? '').trim()))
+    const level = gymLevelFor(read.length, notes.length)
     return {
       ...gym,
       readCount: read.length,
       noteCount: notes.length,
-      earned: read.length >= gym.read && notes.length >= gym.notes,
+      earned: level >= 1,
+      level,
+      tier: GYM_LEVELS.find((tier) => tier.level === level)?.name ?? '未入门',
+      next: GYM_LEVELS.find((tier) => tier.level > level) ?? null,
     }
   })
 }

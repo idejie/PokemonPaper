@@ -224,6 +224,7 @@ for (const [name, ddl] of [
   ['dex_entry', 'TEXT'],
   ['egg_at', 'TEXT'],
   ['incubated_at', 'TEXT'],
+  ['affiliations', 'TEXT'],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -246,6 +247,7 @@ const FIELDS = {
   summaryPublic: 'summary_public',
   eggAt: 'egg_at',
   incubatedAt: 'incubated_at',
+  affiliations: 'affiliations',
   codeUrl: 'code_url',
   stars: 'stars',
   metricsAt: 'metrics_at',
@@ -279,6 +281,7 @@ function rowToPaper(row) {
     dexEntry: row.dex_entry ?? '',
     eggAt: row.egg_at ?? null,
     incubatedAt: row.incubated_at ?? null,
+    affiliations: row.affiliations ?? '',
     hasFullText: Boolean(row.full_text),
     fullTextChars: row.full_text ? row.full_text.length : 0,
     url: row.url ?? '',
@@ -933,6 +936,45 @@ function gymLeaders() {
   return { month: todayKey().slice(0, 7), gyms: leaders }
 }
 
+function gymLeaderboard() {
+  const rows = db
+    .prepare(
+      `SELECT p.user_id, p.primary_category, p.categories, p.notes, u.name, u.avatar_id
+         FROM papers p JOIN users u ON u.id = p.user_id
+        WHERE p.status = 'read'`,
+    )
+    .all()
+  const gyms = new Map()
+  for (const row of rows) {
+    const ids = new Set()
+    for (const category of [row.primary_category, ...String(row.categories || '').split(',')]) {
+      const id = gymIdFor((category || '').trim())
+      if (id) ids.add(id)
+    }
+    for (const id of ids) {
+      if (!gyms.has(id)) gyms.set(id, new Map())
+      const byUser = gyms.get(id)
+      const entry = byUser.get(row.user_id) ?? {
+        userId: row.user_id,
+        name: row.name || row.user_id.slice(0, 6),
+        avatarId: row.avatar_id,
+        read: 0,
+        notes: 0,
+      }
+      entry.read += 1
+      if (String(row.notes || '').trim()) entry.notes += 1
+      byUser.set(row.user_id, entry)
+    }
+  }
+  const out = {}
+  for (const [id, byUser] of gyms.entries()) {
+    out[id] = [...byUser.values()].sort(
+      (a, b) => b.read - a.read || b.notes - a.notes || a.name.localeCompare(b.name),
+    )
+  }
+  return { gyms: out }
+}
+
 function partyFor(userId) {
   return db
     .prepare(
@@ -1226,6 +1268,33 @@ function pdfFileName(row) {
   return `${row.arxiv}.pdf`
 }
 
+const INSTITUTION_HINT =
+  /university|universit[äa]t|institute|institut|laborator|\blabs?\b|college|school of|department of|academy|research cent|inc\.|corp\.|google|meta|microsoft|deepmind|openai|nvidia|mit\b|stanford|berkeley|cmu\b|tsinghua|peking|eth\b|epfl/i
+
+function extractAffiliations(text) {
+  const head = String(text || '').slice(0, 9000)
+  const found = []
+  for (const rawLine of head.split(/\n+/)) {
+    const line = rawLine.replace(/\s+/g, ' ').trim()
+    if (!line || line.length > 220) continue
+    if (!INSTITUTION_HINT.test(line)) continue
+    if (/^\[\d+\]/.test(line)) continue
+    if (/\bet al\.?\b/i.test(line) && line.length > 160) continue
+    const pieces = line.split(/\s*[;•|]\s*/)
+    for (let piece of pieces) {
+      piece = piece
+        .replace(/^\d+\s*/, '')
+        .replace(/^[\s,·-]+|[\s,·-]+$/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+      if (piece.length < 4 || piece.length > 120) continue
+      if (!INSTITUTION_HINT.test(piece)) continue
+      found.push(piece)
+    }
+  }
+  return [...new Set(found)].slice(0, 8)
+}
+
 async function ensurePdf(row) {
   if (!row.arxiv) throw new HttpError(400, '这篇没有 arXiv 编号，无法自动下载')
   if (!/^\d{4}\.\d{4,5}$/.test(row.arxiv)) throw new HttpError(400, 'arXiv 编号格式不对')
@@ -1366,13 +1435,14 @@ function upsert(paper, userId) {
   const status = paper.status ?? 'unread'
   const readAt = status === 'read' ? paper.readAt || now : null
   db.prepare(`
-    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, url, added_at, read_at, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO papers (id, arxiv, title, authors, affiliations, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, url, added_at, read_at, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     paper.arxiv || null,
     paper.title,
     paper.authors ?? '',
+    paper.affiliations ?? '',
     paper.venue ?? '',
     paper.year ?? null,
     'steel',
@@ -2143,6 +2213,10 @@ async function api(req, res, url) {
     }
   }
 
+  if (pathname === '/api/gym-leaderboard' && method === 'GET') {
+    return sendJSON(res, 200, gymLeaderboard())
+  }
+
   if (pathname === '/api/gym-leaders' && method === 'GET') {
     return sendJSON(res, 200, gymLeaders())
   }
@@ -2172,6 +2246,24 @@ async function api(req, res, url) {
       })
       return sendJSON(res, 200, { party: partyFor(user.id) })
     }
+  }
+
+  const affiliationsMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/affiliations$/)
+  if (affiliationsMatch && method === 'POST') {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(affiliationsMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+    const fresh = await ensurePdf(row)
+    const file = join(PDF_DIR, fresh.pdfPath)
+    if (!existsSync(file)) return sendJSON(res, 502, { error: 'PDF 不可用' })
+    const { text } = await extractPdfText(file)
+    const affiliations = extractAffiliations(text)
+    db.prepare('UPDATE papers SET affiliations = ? WHERE id = ?').run(
+      affiliations.join(', '),
+      row.id,
+    )
+    return sendJSON(res, 200, { affiliations })
   }
 
   if (pathname === '/api/breed' && method === 'POST') {

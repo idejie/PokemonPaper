@@ -31,6 +31,7 @@ const form = reactive({
   arxiv: '',
   title: '',
   authors: '',
+  affiliations: '',
   venue: '',
   year: currentYear as number | null,
   status: 'unread' as PaperStatus,
@@ -50,6 +51,7 @@ const spriteBusy = ref(false)
 const shareOpen = ref(false)
 const bond = ref<BondInfo | null>(null)
 const dexBusy = ref(false)
+const affBusy = ref(false)
 const tradeOpen = ref(false)
 const tradeEmail = ref('')
 const tradeBusy = ref(false)
@@ -128,6 +130,7 @@ function payload() {
     arxiv: form.arxiv.trim(),
     title: form.title.trim(),
     authors: form.authors.trim(),
+    affiliations: form.affiliations.trim(),
     venue: form.venue.trim(),
     year: form.year ? Number(form.year) : null,
     status: form.status,
@@ -283,6 +286,20 @@ async function toggleEgg() {
 
 async function toggleParty() {
   if (paper.value) await store.toggleParty(paper.value)
+}
+
+async function syncAffiliations() {
+  if (!props.id) return
+  affBusy.value = true
+  try {
+    const units = await api.syncAffiliations(props.id)
+    form.affiliations = units.join(', ')
+    store.notify(units.length ? t('提取到 {n} 个单位', { n: units.length }) : t('PDF 里没找到单位'))
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('提取失败'))
+  } finally {
+    affBusy.value = false
+  }
 }
 
 async function tradePaper() {
@@ -603,6 +620,25 @@ onBeforeUnmount(() => {
             <label class="field">
               <span>{{ t('作者') }}</span>
               <input v-model="form.authors" class="input" :placeholder="t('用逗号分隔')" />
+            </label>
+
+            <label class="field">
+              <span>{{ t('作者单位') }}</span>
+              <div class="key-row">
+                <input
+                  v-model="form.affiliations"
+                  class="input"
+                  :placeholder="t('逗号分隔，例如 Stanford University, Google DeepMind')"
+                />
+                <button
+                  type="button"
+                  class="btn ghost sm"
+                  :disabled="affBusy || !props.id"
+                  @click="syncAffiliations"
+                >
+                  {{ affBusy ? t('提取中…') : t('从 PDF 提取') }}
+                </button>
+              </div>
             </label>
 
             <label class="field">

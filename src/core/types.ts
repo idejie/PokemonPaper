@@ -23,6 +23,7 @@ export interface Paper {
   dexEntry: string
   eggAt: string | null
   incubatedAt: string | null
+  affiliations: string
   spriteUrl: string | null
   hasFullText: boolean
   fullTextChars: number
@@ -92,6 +93,14 @@ export interface PublicSummary {
   avatarId: string
   likes: number
   likedByMe: boolean
+}
+
+export interface GymRankEntry {
+  userId: string
+  name: string
+  avatarId: string
+  read: number
+  notes: number
 }
 
 export interface PartyMember {
