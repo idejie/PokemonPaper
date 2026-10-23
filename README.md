@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| ⚔️ **Move set** | Four deterministic moves per paper from title / tags / abstract keywords, shown on cards, details and the share card |
 | 📖 **Pokédex entries** | Two AI-written flavour sentences per paper, generated on demand and toggleable in settings |
 | 🗺️ **Regional dex** | Publication years are regions; finish every paper from a year to complete that region |
 | ✨ **Shiny variants** | High stars, top venues, decade-old classics and 1/64 hashes get a gold palette, sparkles and a shiny tag |
@@ -254,6 +255,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Shiny sprite variants
 - [x] Regional dex by publication year
 - [x] AI Pokédex entries
+- [x] Deterministic move sets
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -284,6 +286,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| ⚔️ **招式表** | 从标题 / 标签 / 摘要抽取 4 个确定性招式，展示在卡片、详情和分享卡 |
 | 📖 **图鉴描述** | AI 为每篇论文写两句宝可梦图鉴式的观察记录，按需生成，可在设置里关闭 |
 | 🗺️ **地区图鉴** | 按发表年份划分地区，完成某年的全部论文即点亮该地区 |
 | ✨ **异色精灵** | 高 star、顶会/顶刊、十年经典或 1/64 哈希命中，获得金色配色、粒子和 ✦ 标记 |
@@ -764,6 +767,7 @@ interface Like {
 - [x] 异色精灵（高引 / 顶会 / 经典 / 1/64）
 - [x] 地区图鉴（按年份）
 - [x] AI 图鉴描述
+- [x] 确定性招式表
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

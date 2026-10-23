@@ -3,6 +3,7 @@ import { SPRITE_SIZE, buildSprite } from './sprite'
 import { AVATARS, AVATAR_SIZE, buildAvatar, decodeAvatar } from './avatar'
 import { paperLevel, TIER_COLORS, type Tier } from './level'
 import { categoryChipColor } from './palette'
+import { movesFor } from './moves'
 
 export interface ShareCardInput {
   paper: Paper
@@ -314,6 +315,34 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
   ctx.textAlign = 'right'
   ctx.fillText(new Date().toISOString().slice(0, 10), W - 64, statsY)
   ctx.textAlign = 'left'
+
+  // moves
+  const moves = movesFor({
+    arxiv: paper.arxiv,
+    title: paper.title,
+    abstract: paper.abstract,
+    tags: paper.tags,
+  })
+  ctx.fillStyle = DIM
+  ctx.font = `700 9px ${MONO}`
+  ctx.fillText(zh ? '招式' : 'MOVES', 64, statsY + 22)
+  let moveX = 64
+  const moveY = statsY + 28
+  for (const move of moves) {
+    ctx.font = `700 9.5px ${FONT}`
+    const label = `${move.name} ${move.power}`
+    const width = ctx.measureText(label).width + 14
+    if (moveX + width > W - 64) break
+    ctx.fillStyle = '#efe6cf'
+    ctx.strokeStyle = INK
+    ctx.lineWidth = 1.5
+    roundRect(ctx, moveX, moveY, width, 20, 10)
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = INK
+    ctx.fillText(label, moveX + 7, moveY + 13.5)
+    moveX += width + 6
+  }
 
   // divider
   ctx.strokeStyle = 'rgba(43, 36, 32, 0.35)'

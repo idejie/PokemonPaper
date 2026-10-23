@@ -276,4 +276,5 @@ export const pagesDict: Record<string, string> = {
   '生成图鉴描述': 'Generate Pokédex entry',
   '图鉴描述已生成': 'Pokédex entry generated',
   '显示图鉴描述': 'Show Pokédex entries',
+  '招式': 'Moves',
 }

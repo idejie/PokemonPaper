@@ -6,6 +6,7 @@ import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
 import { t } from '../core/i18n'
 import { shinyOf } from '../core/shiny'
+import { movesFor } from '../core/moves'
 import PaperSprite from './PaperSprite.vue'
 
 const props = defineProps<{ paper: Paper }>()
@@ -13,6 +14,7 @@ const router = useRouter()
 
 const locked = computed(() => props.paper.status === 'unread')
 const shiny = computed(() => shinyOf(props.paper))
+const moves = computed(() => movesFor(props.paper))
 const justLit = ref(false)
 
 watch(
@@ -76,6 +78,9 @@ function readFull() {
     </div>
 
     <h3 class="title">{{ paper.title }}</h3>
+    <div class="moves">
+      <span v-for="move in moves.slice(0, 2)" :key="move.name" class="move">{{ move.name }}</span>
+    </div>
 
     <div class="card-foot">
       <span class="type-chip" :style="{ background: catColor }">
@@ -274,6 +279,23 @@ function readFull() {
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 2.9em;
+}
+
+.moves {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: -2px 0 7px;
+}
+
+.move {
+  padding: 0 5px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 800;
 }
 
 .card-foot {

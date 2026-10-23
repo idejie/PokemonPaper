@@ -16,6 +16,7 @@ import { t, locale } from '../core/i18n'
 import { downloadShareCard } from '../core/shareCard'
 import { playCry } from '../core/cry'
 import { SHINY_LABEL, shinyOf } from '../core/shiny'
+import { MOVE_ICON, movesFor } from '../core/moves'
 import { bondOf, bondStats, recordVisit, type BondInfo } from '../core/bond'
 import type { Explain, Paper, PaperStatus } from '../core/types'
 
@@ -51,6 +52,7 @@ const spriteBusy = ref(false)
 const cardBusy = ref(false)
 const bond = ref<BondInfo | null>(null)
 const dexBusy = ref(false)
+const moves = computed(() => movesFor({ arxiv: form.arxiv, title: form.title, abstract: form.abstract, tags: form.tags }))
 const shinyInfo = computed(() =>
   shinyOf({ arxiv: form.arxiv, venue: form.venue, stars: form.stars, year: form.year }),
 )
@@ -416,6 +418,15 @@ onBeforeUnmount(() => {
               >
                 {{ dexBusy ? t('生成中…') : t('生成图鉴描述') }}
               </button>
+            </div>
+
+            <div class="moves-line">
+              <span class="moves-kicker">{{ t('招式') }}</span>
+              <span v-for="move in moves" :key="move.name" class="move-chip">
+                <i>{{ MOVE_ICON[move.kind] }}</i>
+                {{ move.name }}
+                <b class="mono">{{ move.power }}</b>
+              </span>
             </div>
 
             <p class="stage-name">
@@ -804,6 +815,42 @@ onBeforeUnmount(() => {
 
 .stage.dim :deep(svg) {
   opacity: 0.7;
+}
+
+.moves-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 2px 0;
+}
+
+.moves-kicker {
+  width: 100%;
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.move-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 8.5px;
+  font-weight: 800;
+}
+
+.move-chip i {
+  font-style: normal;
+  font-size: 8px;
+}
+
+.move-chip b {
+  font-size: 8px;
+  color: var(--muted);
 }
 
 .dex-entry {

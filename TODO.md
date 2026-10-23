@@ -30,7 +30,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
       per-region completion. `M`
 - [x] **Dex entries** — two AI-generated flavour lines per paper, Pokémon-dex
       style; can be turned off. `S`
-- [ ] **Move set** — extract four moves from title / method
+- [x] **Move set** — extract four moves from title / method
       (Attention, Diffusion, RLHF…) for cards and the share image. `S`
 
 ## C. Social
