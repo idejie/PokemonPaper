@@ -81,7 +81,7 @@ function paperXp(paper: Paper): number {
   return 0
 }
 
-export function computeProgress(papers: Paper[]): Progress {
+export function computeProgress(papers: Paper[], bonusXp = 0): Progress {
   const stats: ProgressStats = {
     total: papers.length,
     read: 0,
@@ -103,6 +103,7 @@ export function computeProgress(papers: Paper[]): Progress {
     if (paper.pdfPath) stats.withPdf += 1
   }
 
+  xp += Math.max(0, bonusXp)
   const level = levelForXp(xp)
   const currentLevelXp = xpForLevel(level)
   const nextLevelXp = xpForLevel(level + 1)

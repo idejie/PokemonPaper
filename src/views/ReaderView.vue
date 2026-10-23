@@ -2,8 +2,10 @@
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MarkdownLite from '../components/MarkdownLite.vue'
+import AvatarSvg from '../components/AvatarSvg.vue'
 const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue'))
 import { api } from '../core/api'
+import type { PublicSummary } from '../core/types'
 import { paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
 import { t } from '../core/i18n'
@@ -24,6 +26,40 @@ const pdfBusy = ref(false)
 const editingSummary = ref(false)
 const summaryDraft = ref('')
 const savingSummary = ref(false)
+const publicSummaries = ref<PublicSummary[]>([])
+const summaryPublicBusy = ref(false)
+
+async function loadPublicSummaries() {
+  if (!paper.value?.id || !paper.value.arxiv) return
+  publicSummaries.value = await api.publicSummaries(paper.value.id).catch(() => [])
+}
+
+async function toggleSummaryPublic() {
+  if (!paper.value) return
+  summaryPublicBusy.value = true
+  try {
+    await store.update(paper.value.id, {
+      summaryPublic: !paper.value.summaryPublic,
+    } as never)
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('保存失败'))
+  } finally {
+    summaryPublicBusy.value = false
+  }
+}
+
+async function likeSummary(item: PublicSummary) {
+  try {
+    const result = await api.toggleLike('summary', item.id)
+    publicSummaries.value = publicSummaries.value.map((entry) =>
+      entry.id === item.id
+        ? { ...entry, likes: result.likes, likedByMe: result.liked }
+        : entry,
+    )
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('点赞失败'))
+  }
+}
 
 const paper = computed(() => store.byId(props.id))
 const lv = computed(() => (paper.value ? paperLevel(paper.value) : null))
@@ -126,6 +162,14 @@ watch(
 )
 
 watch(
+  [tab, () => paper.value?.id],
+  () => {
+    if (tab.value === 'summary') void loadPublicSummaries()
+  },
+  { immediate: true },
+)
+
+watch(
   () => route.query.tab,
   (value) => {
     if (value === 'pdf') tab.value = 'pdf'
@@ -206,6 +250,15 @@ onMounted(async () => {
               }}
             </span>
             <span class="spacer" />
+            <label v-if="summary" class="pub-toggle">
+              <input
+                type="checkbox"
+                :checked="paper.summaryPublic"
+                :disabled="summaryPublicBusy"
+                @change="toggleSummaryPublic"
+              />
+              {{ t('公开') }}
+            </label>
             <button v-if="summary" type="button" class="btn sm ghost" @click="exportSummary">
               {{ t('导出 Markdown') }}
             </button>
@@ -264,6 +317,26 @@ onMounted(async () => {
           <p v-else class="empty">
             {{ t('基于摘要和全文生成一份 600–900 字的中文总结：问题、方法、结果、局限、适合谁读。') }}
           </p>
+
+          <div v-if="publicSummaries.length" class="public-sums">
+            <h3>{{ t('公开总结') }}</h3>
+            <article v-for="item in publicSummaries" :key="item.id" class="public-sum">
+              <header>
+                <span class="mini-avatar"><AvatarSvg :id="item.avatarId" /></span>
+                <b>{{ item.author }}</b>
+                <button
+                  type="button"
+                  class="like"
+                  :class="{ on: item.likedByMe }"
+                  :title="t('点赞')"
+                  @click="likeSummary(item)"
+                >
+                  ❤ {{ item.likes }}
+                </button>
+              </header>
+              <MarkdownLite :source="item.summary" />
+            </article>
+          </div>
         </section>
       </template>
     </div>
@@ -408,6 +481,67 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.pub-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--muted);
+  flex: none;
+}
+
+.public-sums {
+  margin-top: 22px;
+  border-top: 2px dashed var(--line);
+  padding-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.public-sums h3 {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.public-sum {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 12px 14px;
+}
+
+.public-sum header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mini-avatar {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+  background: var(--panel);
+  padding: 1px;
+  display: inline-block;
+}
+
+.public-sum .like {
+  margin-left: auto;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 1px 8px;
+}
+
+.public-sum .like.on {
+  background: #ffd7dd;
 }
 
 .toolbar {

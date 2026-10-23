@@ -36,14 +36,14 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
-| ✍️ **Manual summary** | Write or edit Markdown in the summary tab; shares the same field as AI generation |
+| ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
 | 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user, 16 pixel avatars; scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
-| 💬 **Shared notes** | Public by default; other readers of the same paper can see them (joined by arXiv ID, dashed outline). Uncheck to keep one private |
+| 💬 **Shared notes** | Public by default; other readers can see them. Public notes and summaries can be liked; the author gains +1 XP per like |
 | 📊 **Statistics** | Distribution by category, year and venue, plus read rate and level mix |
 | 🏆 **Leaderboard** | Rank everyone by level, XP, papers read and summaries; your row is highlighted |
 | 🔦 **In-PDF search** | Search across pages, highlight matches, jump prev / next |
@@ -147,6 +147,7 @@ XP counts three things: **the paper's level, whether you finished it, and whethe
 | Reading | half the level + 10 |
 | Notes | +20 (+10 while reading) |
 | Collected but unread | 0 |
+| A public note or summary gets a like | +1 per like |
 
 Open source and stars already determine the paper level, so they are not counted again. The level curve is `50·(L−1)·L`. The progress bar in the header shows XP progress within the current level, not the share of papers read. The `?` button in the header opens a dedicated `/guide` page with the full rules, curve, titles, and badges.
 
@@ -260,14 +261,14 @@ MIT © idejie
 
 | | |
 |---|---|
-| ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段 |
+| ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
 | 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个像素头像可选；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
-| 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到（按 arXiv 号聚合，虚线高亮），可手动设为私有 |
+| 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到；公开批注和公开总结都可点赞，作者每赞 +1 XP |
 | 📊 **统计页** | 分类、年份、会议分布，阅读率与等级构成 |
 | 🏆 **天梯** | 所有人的等级、XP、已读、总结数排行，当前用户高亮 |
 | 🔦 **PDF 内搜索** | 跨页搜索，命中高亮，支持上一处 / 下一处 |
@@ -384,6 +385,7 @@ buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 1
 | 在读 | 等级的一半 + 10 |
 | 写了笔记 | +20（在读 +10） |
 | 只收录没读 | 0 |
+| 公开批注 / 总结被点赞 | +1 / 赞 |
 
 **开源和 star 不再单独加 XP**——它们已经决定了论文等级，再加一次就是双重计分。所以读一篇 Lv.82 的论文比读十篇 Lv.1 的更有价值，但前提是真的读完。
 

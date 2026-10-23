@@ -70,6 +70,17 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+  CREATE TABLE IF NOT EXISTS likes (
+    user_id    TEXT NOT NULL,
+    kind       TEXT NOT NULL,
+    target_id  TEXT NOT NULL,
+    owner_id   TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, kind, target_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_likes_owner ON likes(owner_id);
+
   CREATE TABLE IF NOT EXISTS password_resets (
     token_hash TEXT PRIMARY KEY,
     user_id    TEXT NOT NULL,
@@ -175,6 +186,7 @@ for (const [name, ddl] of [
   ['full_text_at', "TEXT"],
   ['summary_text', "TEXT NOT NULL DEFAULT ''"],
   ['summary_at', "TEXT"],
+  ['summary_public', 'INTEGER NOT NULL DEFAULT 0'],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -194,6 +206,7 @@ const FIELDS = {
   abstract: 'abstract',
   explain: 'explain',
   summary: 'summary_text',
+  summaryPublic: 'summary_public',
   codeUrl: 'code_url',
   stars: 'stars',
   metricsAt: 'metrics_at',
@@ -223,6 +236,7 @@ function rowToPaper(row) {
     categories: row.categories ? row.categories.split(',').filter(Boolean) : [],
     summary: row.summary_text ?? '',
     summaryAt: row.summary_at ?? null,
+    summaryPublic: Boolean(row.summary_public),
     hasFullText: Boolean(row.full_text),
     fullTextChars: row.full_text ? row.full_text.length : 0,
     url: row.url ?? '',
@@ -266,6 +280,18 @@ function spriteColors(code) {
   if (code.startsWith('hep-') || code.startsWith('nucl-')) return SPRITE_COLORS.crimson
   if (code.startsWith('astro-ph.') || code.startsWith('quant-ph')) return SPRITE_COLORS.indigo
   return SPRITE_COLORS.steel
+}
+
+function likeCount(kind, targetId) {
+  return db
+    .prepare('SELECT COUNT(*) AS n FROM likes WHERE kind = ? AND target_id = ?')
+    .get(kind, targetId).n
+}
+
+function likedBy(userId, kind, targetId) {
+  return Boolean(
+    db.prepare('SELECT 1 FROM likes WHERE user_id = ? AND kind = ? AND target_id = ?').get(userId, kind, targetId),
+  )
 }
 
 function spritePrompt(row) {
@@ -554,7 +580,13 @@ function pick(body) {
   const out = {}
   for (const [key, column] of Object.entries(FIELDS)) {
     if (body[key] === undefined) continue
-    out[column] = Array.isArray(body[key]) ? body[key].join(',') : body[key]
+    out[column] = Array.isArray(body[key])
+      ? body[key].join(',')
+      : typeof body[key] === 'boolean'
+        ? body[key]
+          ? 1
+          : 0
+        : body[key]
   }
   return out
 }
@@ -761,6 +793,9 @@ function leaderboard() {
       },
     ]),
   )
+  const likesByUser = new Map(
+    db.prepare('SELECT owner_id, COUNT(*) AS n FROM likes GROUP BY owner_id').all().map((row) => [row.owner_id, row.n]),
+  )
   for (const paper of papers) {
     const entry = byUser.get(paper.user_id)
     if (!entry) continue
@@ -777,7 +812,10 @@ function leaderboard() {
     }
   }
   const entries = [...byUser.values()]
-    .map((entry) => ({ ...entry, level: levelForXp(entry.xp) }))
+    .map((entry) => {
+      const likes = likesByUser.get(entry.userId) ?? 0
+      return { ...entry, likes, xp: entry.xp + likes, level: levelForXp(entry.xp + likes) }
+    })
     .sort((a, b) => b.xp - a.xp || b.read - a.read || a.name.localeCompare(b.name))
   return entries.map((entry, index) => ({ ...entry, rank: index + 1 }))
 }
@@ -1568,6 +1606,8 @@ async function api(req, res, url) {
         comment: row.comment,
         groupId: row.group_id ?? null,
         isPublic: Boolean(row.is_public),
+        likes: likeCount('annotation', row.id),
+        likedByMe: likedBy(user.id, 'annotation', row.id),
         mine,
         author: row.author ?? null,
         createdAt: row.created_at,
@@ -1636,6 +1676,85 @@ async function api(req, res, url) {
       db.prepare('DELETE FROM annotations WHERE id = ?').run(row.id)
       return sendJSON(res, 200, { ok: true })
     }
+  }
+
+  if (pathname === '/api/likes' && method === 'POST') {
+    const body = await readBody(req)
+    const kind = body.kind === 'summary' ? 'summary' : body.kind === 'annotation' ? 'annotation' : null
+    const targetId = String(body.targetId || '')
+    if (!kind || !targetId) return sendJSON(res, 400, { error: '参数不对' })
+
+    let ownerId = null
+    let allowed = false
+    if (kind === 'annotation') {
+      const row = db.prepare('SELECT * FROM annotations WHERE id = ?').get(targetId)
+      if (row) {
+        ownerId = row.user_id
+        allowed = Boolean(row.is_public)
+      }
+    } else {
+      const row = db.prepare('SELECT * FROM papers WHERE id = ?').get(targetId)
+      if (row) {
+        ownerId = row.user_id
+        allowed = Boolean(row.summary_public) && Boolean((row.summary_text || '').trim())
+      }
+    }
+    if (!allowed) return sendJSON(res, 404, { error: '内容不存在或未公开' })
+    if (ownerId === user.id) return sendJSON(res, 400, { error: '不能给自己的内容点赞' })
+
+    const existing = db
+      .prepare('SELECT 1 FROM likes WHERE user_id = ? AND kind = ? AND target_id = ?')
+      .get(user.id, kind, targetId)
+    if (existing) {
+      db.prepare('DELETE FROM likes WHERE user_id = ? AND kind = ? AND target_id = ?').run(
+        user.id,
+        kind,
+        targetId,
+      )
+    } else {
+      db.prepare(
+        'INSERT INTO likes (user_id, kind, target_id, owner_id, created_at) VALUES (?, ?, ?, ?, ?)',
+      ).run(user.id, kind, targetId, ownerId, new Date().toISOString())
+    }
+    return sendJSON(res, 200, {
+      liked: !existing,
+      likes: likeCount(kind, targetId),
+    })
+  }
+
+  if (pathname === '/api/likes/received' && method === 'GET') {
+    const n = db.prepare('SELECT COUNT(*) AS n FROM likes WHERE owner_id = ?').get(user.id).n
+    return sendJSON(res, 200, { likes: n })
+  }
+
+  const summariesMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/summaries$/)
+  if (summariesMatch && method === 'GET') {
+    const paper = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(summariesMatch[1], user.id)
+    if (!paper) return sendJSON(res, 404, { error: 'not found' })
+    const rows = paper.arxiv
+      ? db
+          .prepare(
+            `SELECT p.id, p.summary_text, p.summary_at, u.name, u.avatar_id
+               FROM papers p JOIN users u ON u.id = p.user_id
+              WHERE p.arxiv = ? AND p.user_id != ? AND p.summary_public = 1
+                AND p.summary_text != ''
+              ORDER BY p.summary_at DESC LIMIT 20`,
+          )
+          .all(paper.arxiv, user.id)
+      : []
+    return sendJSON(res, 200, {
+      summaries: rows.map((row) => ({
+        id: row.id,
+        summary: row.summary_text,
+        summaryAt: row.summary_at,
+        author: row.name,
+        avatarId: row.avatar_id,
+        likes: likeCount('summary', row.id),
+        likedByMe: likedBy(user.id, 'summary', row.id),
+      })),
+    })
   }
 
   if (pathname === '/api/sprites/generate' && method === 'POST') {

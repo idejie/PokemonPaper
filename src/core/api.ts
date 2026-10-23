@@ -8,6 +8,7 @@ import type {
   LlmConfig,
   PdfJob,
   Paper,
+  PublicSummary,
   PaperInput,
 } from './types'
 
@@ -135,6 +136,26 @@ export const api = {
       body: JSON.stringify(patch),
     })
     return data.user
+  },
+
+  async toggleLike(
+    kind: 'annotation' | 'summary',
+    targetId: string,
+  ): Promise<{ liked: boolean; likes: number }> {
+    return request<{ liked: boolean; likes: number }>('/api/likes', {
+      method: 'POST',
+      body: JSON.stringify({ kind, targetId }),
+    })
+  },
+
+  async likesReceived(): Promise<number> {
+    const data = await request<{ likes: number }>('/api/likes/received')
+    return data.likes
+  },
+
+  async publicSummaries(paperId: string): Promise<PublicSummary[]> {
+    const data = await request<{ summaries: PublicSummary[] }>(`/api/papers/${paperId}/summaries`)
+    return data.summaries
   },
 
   async leaderboard(): Promise<{ entries: LeaderboardEntry[]; me: string }> {

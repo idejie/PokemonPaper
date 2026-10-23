@@ -19,6 +19,7 @@ export interface Paper {
   metricsAt: string | null
   summary: string
   summaryAt: string | null
+  summaryPublic: boolean
   spriteUrl: string | null
   hasFullText: boolean
   fullTextChars: number
@@ -75,7 +76,18 @@ export interface LeaderboardEntry {
   read: number
   reading: number
   summaries: number
+  likes: number
   rank: number
+}
+
+export interface PublicSummary {
+  id: string
+  summary: string
+  summaryAt: string | null
+  author: string
+  avatarId: string
+  likes: number
+  likedByMe: boolean
 }
 
 export interface PdfJob {
@@ -104,6 +116,8 @@ export interface Annotation {
   color: 'yellow' | 'green' | 'blue' | 'pink'
   comment: string
   isPublic: boolean
+  likes: number
+  likedByMe: boolean
   groupId: string | null
   mine: boolean
   author: string | null

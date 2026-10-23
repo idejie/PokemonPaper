@@ -58,6 +58,7 @@ onMounted(async () => {
             <span>{{ t('经验') }}</span>
             <span>{{ t('已读') }}</span>
             <span>{{ t('总结') }}</span>
+            <span>{{ t('获赞') }}</span>
           </div>
           <div
             v-for="(entry, index) in entries"
@@ -79,6 +80,7 @@ onMounted(async () => {
             <span class="mono">{{ entry.xp }}</span>
             <span class="mono">{{ entry.read }}</span>
             <span class="mono">{{ entry.summaries }}</span>
+            <span class="mono">{{ entry.likes }}</span>
           </div>
         </div>
 
@@ -158,7 +160,7 @@ onMounted(async () => {
 
 .row {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 90px 90px 70px 70px;
+  grid-template-columns: 64px minmax(0, 1fr) 84px 84px 60px 64px 60px;
   align-items: center;
   gap: 8px;
   padding: 9px 14px;
@@ -261,7 +263,8 @@ onMounted(async () => {
   }
 
   .row > :nth-child(5),
-  .row > :nth-child(6) {
+  .row > :nth-child(6),
+  .row > :nth-child(7) {
     display: none;
   }
 

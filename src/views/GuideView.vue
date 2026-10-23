@@ -89,6 +89,7 @@ onMounted(async () => {
             <tr><td>{{ t('在读') }}</td><td class="mono">{{ t('论文等级的一半 + 10') }}</td></tr>
             <tr><td>{{ t('写了笔记') }}</td><td class="mono">+20（{{ t('在读 +10') }}）</td></tr>
             <tr><td>{{ t('只收录没读') }}</td><td class="mono">0</td></tr>
+            <tr><td>{{ t('公开批注 / 总结被点赞') }}</td><td class="mono">{{ t('每赞 +1') }}</td></tr>
           </tbody>
         </table>
         <div class="examples">

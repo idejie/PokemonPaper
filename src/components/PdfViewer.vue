@@ -108,6 +108,19 @@ const groupedNotes = computed(() => {
   return [...map.entries()].map(([page, items]) => ({ page, items }))
 })
 
+async function likeAnnotation(ann: Annotation) {
+  if (ann.mine) return
+  try {
+    const result = await api.toggleLike('annotation', ann.id)
+    annotations.value = annotations.value.map((item) =>
+      item.id === ann.id ? { ...item, likes: result.likes, likedByMe: result.liked } : item,
+    )
+    viewing.value = annotations.value.find((item) => item.id === ann.id) ?? null
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('点赞失败'))
+  }
+}
+
 function focusAnnotation(ann: Annotation) {
   const el = pagesEl.value?.querySelector<HTMLElement>(`[data-ann="${ann.id}"]`)
   el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -287,6 +300,8 @@ async function createAnnotation(color: string) {
       color: color as Annotation['color'],
       comment,
       isPublic: publicFlag.value,
+      likes: 0,
+      likedByMe: false,
       groupId,
       mine: true,
       author: null,
@@ -495,6 +510,17 @@ onBeforeUnmount(() => {
         <span class="sel-quote">“{{ viewing.quote.slice(0, 28) }}…”</span>
         <span class="author mono">{{ t('来自 {name}', { name: viewing.author || '?' }) }}</span>
         <span class="view-comment">{{ viewing.comment || t('没有批注') }}</span>
+        <button
+          v-if="!viewing.mine"
+          type="button"
+          class="like-btn"
+          :class="{ on: viewing.likedByMe }"
+          :title="t('点赞')"
+          @click="likeAnnotation(viewing)"
+        >
+          ❤ {{ viewing.likes }}
+        </button>
+        <span v-else class="like-count">❤ {{ viewing.likes }}</span>
         <button type="button" class="btn sm ghost" @click="viewing = null">{{ t('关闭') }}</button>
       </template>
     </div>
@@ -655,6 +681,24 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.like-btn {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 9px;
+}
+
+.like-btn.on {
+  background: #ffd7dd;
+}
+
+.like-count {
+  font-size: 11px;
+  color: var(--dim);
 }
 
 .notes-btn {

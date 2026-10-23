@@ -228,4 +228,10 @@ export const pagesDict: Record<string, string> = {
   '总结已保存': 'Summary saved',
   '用 Markdown 写总结：问题、方法、结果、局限…': 'Write with Markdown: problem, method, results, limits…',
   '支持 Markdown：标题、列表、加粗': 'Markdown supported: headings, lists, bold',
+  '公开总结': 'Public summaries',
+  '点赞': 'Like',
+  '点赞失败': 'Like failed',
+  '获赞': 'Likes',
+  '公开批注 / 总结被点赞': 'A public note or summary gets liked',
+  '每赞 +1': '+1 per like',
 }

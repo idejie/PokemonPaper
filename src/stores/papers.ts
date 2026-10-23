@@ -21,7 +21,8 @@ export const usePapersStore = defineStore('papers', () => {
   const total = computed(() => items.value.length)
   const readCount = computed(() => items.value.filter((p) => p.status === 'read').length)
   const readingCount = computed(() => items.value.filter((p) => p.status === 'reading').length)
-  const xp = computed(() => computeProgress(items.value))
+  const bonusXp = ref(0)
+  const xp = computed(() => computeProgress(items.value, bonusXp.value))
   const level = computed(() => xp.value.level)
   const progress = computed(() =>
     total.value === 0 ? 0 : Math.round((readCount.value / total.value) * 100),
@@ -42,7 +43,12 @@ export const usePapersStore = defineStore('papers', () => {
     loading.value = true
     error.value = ''
     try {
-      items.value = await api.list()
+      const [list, likes] = await Promise.all([
+        api.list(),
+        api.likesReceived().catch(() => 0),
+      ])
+      items.value = list
+      bonusXp.value = likes
     } catch (err) {
       error.value =
         err instanceof Error && err.message
@@ -135,6 +141,7 @@ export const usePapersStore = defineStore('papers', () => {
 
   function clear() {
     items.value = []
+    bonusXp.value = 0
   }
 
   function byId(id: string): Paper | undefined {
