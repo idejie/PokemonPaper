@@ -8,17 +8,21 @@ import { api } from '../core/api'
 import type { PublicSummary } from '../core/types'
 import { paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
-import { t } from '../core/i18n'
+import { locale, t } from '../core/i18n'
+import { downloadShareCard } from '../core/shareCard'
 import { addReadingTime, recordVisit } from '../core/bond'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 
 const props = defineProps<{ id: string }>()
 const route = useRoute()
 const store = usePapersStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
+const auth = useAuthStore()
+const cardBusy = ref(false)
 
 type Tab = 'abstract' | 'pdf' | 'summary'
 const tab = ref<Tab>(route.query.tab === 'pdf' ? 'pdf' : 'abstract')
@@ -177,6 +181,24 @@ watch(
   },
 )
 
+async function shareCard() {
+  if (!paper.value) return
+  cardBusy.value = true
+  try {
+    await downloadShareCard({
+      paper: paper.value,
+      trainer: auth.user?.name || 'Trainer',
+      avatarId: auth.user?.avatarId || 'red-cap',
+      locale: locale.value,
+    })
+    store.notify(t('卡片已下载'))
+  } catch {
+    store.notify(t('生成卡片失败'))
+  } finally {
+    cardBusy.value = false
+  }
+}
+
 let readingTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
@@ -206,6 +228,9 @@ onBeforeUnmount(() => {
           Lv.{{ lv.level }}
         </span>
         <span class="spacer" />
+        <button v-if="paper" type="button" class="link" :disabled="cardBusy" @click="shareCard">
+          {{ cardBusy ? t('生成中…') : t('分享卡片') }}
+        </button>
         <RouterLink v-if="paper" :to="`/p/${paper.id}`" class="link">{{ t('详情') }}</RouterLink>
         <button v-if="paper" type="button" class="link" :disabled="pdfBusy" @click="downloadPdf">
           {{ pdfBusy ? t('准备中…') : t('下载 PDF ↗') }}
