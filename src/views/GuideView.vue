@@ -154,6 +154,7 @@ onMounted(async () => {
 }
 
 .hero {
+  animation: fade-up 0.35s ease-out both;
   max-width: 760px;
   margin-bottom: 30px;
 }
@@ -197,6 +198,7 @@ onMounted(async () => {
 }
 
 .block {
+  animation: fade-up 0.35s ease-out both;
   border-top: 2px dashed var(--line);
   padding: 26px 0;
   max-width: 860px;

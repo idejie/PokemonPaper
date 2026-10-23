@@ -199,6 +199,7 @@ async function submit() {
 }
 
 .card {
+  animation: sheet-in 0.35s cubic-bezier(0.2, 1.1, 0.4, 1) both;
   width: min(880px, 100%);
   display: grid;
   grid-template-columns: 1fr 1fr;

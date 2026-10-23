@@ -60,10 +60,11 @@ onMounted(async () => {
             <span>{{ t('总结') }}</span>
           </div>
           <div
-            v-for="entry in entries"
+            v-for="(entry, index) in entries"
             :key="entry.userId"
             class="row"
             :class="{ self: entry.userId === me }"
+            :style="{ animationDelay: `${index * 35}ms` }"
           >
             <span class="rank mono">{{ medals[entry.rank] || `#${entry.rank}` }}</span>
             <span class="who">
@@ -95,6 +96,7 @@ onMounted(async () => {
 }
 
 .hero {
+  animation: fade-up 0.35s ease-out both;
   max-width: 720px;
   margin-bottom: 22px;
 }
@@ -125,6 +127,7 @@ onMounted(async () => {
 }
 
 .me {
+  animation: fade-up 0.35s ease-out both;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -165,6 +168,10 @@ onMounted(async () => {
 
 .row:last-child {
   border-bottom: 0;
+}
+
+.row:not(.head) {
+  animation: fade-up 0.3s ease-out both;
 }
 
 .row.head {

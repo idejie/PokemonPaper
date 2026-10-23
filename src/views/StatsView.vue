@@ -177,6 +177,7 @@ onMounted(async () => {
 }
 
 .hero {
+  animation: fade-up 0.35s ease-out both;
   max-width: 720px;
   margin-bottom: 26px;
 }
@@ -230,6 +231,7 @@ onMounted(async () => {
 }
 
 .block {
+  animation: fade-up 0.35s ease-out both;
   border-top: 2px dashed var(--line);
   padding: 26px 0 8px;
   max-width: 860px;
@@ -280,6 +282,8 @@ onMounted(async () => {
 }
 
 .bar-fill {
+  animation: grow-x 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: left;
   height: 100%;
   border-radius: 999px;
   min-width: 2px;

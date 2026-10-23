@@ -209,7 +209,21 @@ function readFull() {
   box-shadow: inset 0 0 0 2px rgba(255, 203, 5, 0.7);
 }
 
+.card:hover .sprite-box :deep(svg) {
+  animation: bob 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+
 .spark {
+  animation: twinkle 1.8s ease-in-out infinite;
   position: absolute;
   top: 3px;
   right: 6px;

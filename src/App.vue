@@ -117,7 +117,11 @@ watch(
 
   <template v-else>
     <TrainerBar />
-    <RouterView />
+    <RouterView v-slot="{ Component }">
+      <Transition name="page" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </RouterView>
 
     <div v-if="levelUp" class="levelup" @click="levelUp = null">
       <div class="levelup-card">

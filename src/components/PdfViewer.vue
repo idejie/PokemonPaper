@@ -672,6 +672,7 @@ onBeforeUnmount(() => {
 }
 
 .notes-panel {
+  animation: sheet-in 0.2s ease-out both;
   position: fixed;
   top: 86px;
   right: 16px;

@@ -302,6 +302,7 @@ onMounted(async () => {
 }
 
 .panel {
+  animation: fade-up 0.22s ease-out both;
   border: 3px solid var(--ink);
   border-radius: 14px;
   background: var(--panel);
@@ -311,6 +312,7 @@ onMounted(async () => {
 }
 
 .pdf-panel {
+  animation: fade-up 0.22s ease-out both;
   border: 3px solid var(--ink);
   border-radius: 14px;
   background: var(--panel-2);

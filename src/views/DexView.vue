@@ -161,13 +161,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
       </button>
     </div>
 
-    <div v-else-if="prefs.layout === 'grid'" class="grid">
+    <TransitionGroup v-else-if="prefs.layout === 'grid'" name="card" tag="div" class="grid" appear>
       <PaperCard v-for="paper in filtered" :key="paper.id" :paper="paper" />
-    </div>
+    </TransitionGroup>
 
-    <div v-else class="list">
+    <TransitionGroup v-else name="card" tag="div" class="list" appear>
       <PaperRow v-for="paper in filtered" :key="paper.id" :paper="paper" />
-    </div>
+    </TransitionGroup>
 
     <p class="hint">
       {{ t('编号即 arXiv 号 · 读完点亮 · 数据存在本地 SQLite（') }}<code>data/pokemonpaper.db</code>{{ t('）') }}
@@ -303,6 +303,21 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
   padding-block: 6px;
 }
 
+.card-enter-active,
+.card-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.card-enter-from,
+.card-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(6px);
+}
+
+.card-move {
+  transition: transform 0.25s ease;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -400,7 +415,22 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
     top: 60px;
   }
 
-  .grid {
+  .card-enter-active,
+.card-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.card-enter-from,
+.card-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(6px);
+}
+
+.card-move {
+  transition: transform 0.25s ease;
+}
+
+.grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
   }
