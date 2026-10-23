@@ -50,6 +50,7 @@ const pdfBusy = ref(false)
 const spriteBusy = ref(false)
 const cardBusy = ref(false)
 const bond = ref<BondInfo | null>(null)
+const dexBusy = ref(false)
 const shinyInfo = computed(() =>
   shinyOf({ arxiv: form.arxiv, venue: form.venue, stars: form.stars, year: form.year }),
 )
@@ -250,6 +251,25 @@ function loadBond() {
   bond.value = bondOf(paper.value, bondStats(props.id))
 }
 
+async function generateDexEntry() {
+  if (!paper.value) return
+  if (!settings.ready) {
+    store.notify(t('先在设置里配置模型'))
+    ui.openSettings()
+    return
+  }
+  dexBusy.value = true
+  try {
+    await api.generateDexEntry(paper.value.id, settings.config, locale.value)
+    await store.load()
+    store.notify(t('图鉴描述已生成'))
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('生成失败'))
+  } finally {
+    dexBusy.value = false
+  }
+}
+
 async function shareCard() {
   if (!paper.value) {
     store.notify(t('先保存这篇论文'))
@@ -384,6 +404,20 @@ onBeforeUnmount(() => {
             >
               {{ cardBusy ? t('生成中…') : t('分享卡片') }}
             </button>
+            <div v-if="prefs.dexEntries" class="dex-entry">
+              <span class="dex-kicker">📖 {{ t('图鉴描述') }}</span>
+              <p v-if="paper?.dexEntry">{{ paper.dexEntry }}</p>
+              <button
+                v-else
+                type="button"
+                class="btn sm ghost"
+                :disabled="dexBusy"
+                @click="generateDexEntry"
+              >
+                {{ dexBusy ? t('生成中…') : t('生成图鉴描述') }}
+              </button>
+            </div>
+
             <p class="stage-name">
               <span>{{ t(stageName) }}</span>
               <span
@@ -770,6 +804,30 @@ onBeforeUnmount(() => {
 
 .stage.dim :deep(svg) {
   opacity: 0.7;
+}
+
+.dex-entry {
+  display: grid;
+  gap: 3px;
+  margin: 6px 2px 0;
+  padding: 6px 7px;
+  border: 1.5px dashed var(--line);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.dex-kicker {
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.dex-entry p {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--ink);
 }
 
 .bond {

@@ -20,6 +20,7 @@ export interface Paper {
   summary: string
   summaryAt: string | null
   summaryPublic: boolean
+  dexEntry: string
   spriteUrl: string | null
   hasFullText: boolean
   fullTextChars: number

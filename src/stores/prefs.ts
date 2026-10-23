@@ -5,10 +5,12 @@ export type Layout = 'grid' | 'list'
 
 const KEY = 'pokemonpaper.layout'
 const CRY_KEY = 'pokemonpaper.cries'
+const DEX_KEY = 'pokemonpaper.dexEntries'
 
 export const usePrefsStore = defineStore('prefs', () => {
   const layout = ref<Layout>(load())
   const cryEnabled = ref(loadCry())
+  const dexEntries = ref(loadDex())
 
   function load(): Layout {
     try {
@@ -25,6 +27,24 @@ export const usePrefsStore = defineStore('prefs', () => {
       return value === null ? true : value === '1'
     } catch {
       return true
+    }
+  }
+
+  function loadDex(): boolean {
+    try {
+      const value = localStorage.getItem(DEX_KEY)
+      return value === null ? true : value === '1'
+    } catch {
+      return true
+    }
+  }
+
+  function setDexEntries(next: boolean) {
+    dexEntries.value = next
+    try {
+      localStorage.setItem(DEX_KEY, next ? '1' : '0')
+    } catch {
+      /* 无痕模式下忽略 */
     }
   }
 
@@ -46,5 +66,5 @@ export const usePrefsStore = defineStore('prefs', () => {
     }
   }
 
-  return { layout, setLayout, cryEnabled, setCry }
+  return { layout, setLayout, cryEnabled, setCry, dexEntries, setDexEntries }
 })

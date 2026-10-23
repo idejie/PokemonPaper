@@ -272,4 +272,8 @@ export const pagesDict: Record<string, string> = {
   '未知年份': 'Unknown year',
   '完成': 'Complete',
   '已点亮 {read} / {total}': 'Lit {read} / {total}',
+  '图鉴描述': 'Pokédex entry',
+  '生成图鉴描述': 'Generate Pokédex entry',
+  '图鉴描述已生成': 'Pokédex entry generated',
+  '显示图鉴描述': 'Show Pokédex entries',
 }

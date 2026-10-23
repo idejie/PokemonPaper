@@ -18,6 +18,10 @@ function toggleCry(event: Event) {
   prefs.setCry((event.target as HTMLInputElement).checked)
 }
 
+function toggleDexEntries(event: Event) {
+  prefs.setDexEntries((event.target as HTMLInputElement).checked)
+}
+
 const form = reactive({ ...settings.config })
 const imageForm = reactive({ ...settings.image })
 const showKey = ref(false)
@@ -205,6 +209,10 @@ onBeforeUnmount(() => {
             {{ t('试听') }}
           </button>
         </div>
+        <label class="check dex-toggle">
+          <input type="checkbox" :checked="prefs.dexEntries" @change="toggleDexEntries" />
+          {{ t('显示图鉴描述') }}
+        </label>
 
         <div class="divider" />
 
@@ -362,6 +370,10 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.dex-toggle {
+  margin-top: 8px;
 }
 
 .check {

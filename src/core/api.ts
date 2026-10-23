@@ -149,6 +149,18 @@ export const api = {
     })
   },
 
+  async generateDexEntry(
+    id: string,
+    config: { baseUrl: string; apiKey: string; model: string },
+    locale: 'zh' | 'en',
+  ): Promise<string> {
+    const data = await request<{ dexEntry: string }>(`/api/papers/${id}/dex`, {
+      method: 'POST',
+      body: JSON.stringify({ config, locale }),
+    })
+    return data.dexEntry
+  },
+
   async progressBonus(): Promise<{ likes: number; daily: number; total: number }> {
     return request<{ likes: number; daily: number; total: number }>('/api/progress/bonus')
   },

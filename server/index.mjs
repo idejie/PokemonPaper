@@ -196,6 +196,7 @@ for (const [name, ddl] of [
   ['summary_text', "TEXT NOT NULL DEFAULT ''"],
   ['summary_at', "TEXT"],
   ['summary_public', 'INTEGER NOT NULL DEFAULT 0'],
+  ['dex_entry', 'TEXT'],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -246,6 +247,7 @@ function rowToPaper(row) {
     summary: row.summary_text ?? '',
     summaryAt: row.summary_at ?? null,
     summaryPublic: Boolean(row.summary_public),
+    dexEntry: row.dex_entry ?? '',
     hasFullText: Boolean(row.full_text),
     fullTextChars: row.full_text ? row.full_text.length : 0,
     url: row.url ?? '',
@@ -977,6 +979,29 @@ async function chatCompletion(config, messages, maxTokens = 1400) {
     throw new HttpError(502, '模型没有返回内容')
   }
   return content.trim()
+}
+
+function buildDexPrompt(paper, zh) {
+  const lines = zh
+    ? [
+        '你在为一本论文图鉴写宝可梦式的图鉴描述。',
+        '写 2 句，总共不超过 60 个汉字，口吻像野外观察记录：准确，但带一点俏皮。',
+        '不要 markdown、不要引号、不要用「这篇论文」开头，不要编造数字。',
+      ]
+    : [
+        'You are writing a Pokédex-style entry for a paper dex.',
+        'Write exactly 2 sentences, under 45 words, in the tone of a field note: accurate but playful.',
+        'No markdown, no quotes, do not start with "This paper", do not invent numbers.',
+      ]
+  lines.push(
+    '',
+    `Title: ${paper.title || ''}`,
+    `Authors: ${paper.authors || ''}`,
+    `Venue: ${paper.venue || ''} ${paper.year || ''}`,
+    `Categories: ${paper.primary_category || ''} ${paper.categories || ''}`,
+    `Abstract: ${String(paper.abstract || '').slice(0, 1200) || '(none)'}`,
+  )
+  return lines.join('\n')
 }
 
 async function callLLM(config, paper) {
@@ -1929,6 +1954,38 @@ async function api(req, res, url) {
       )
       return sendJSON(res, 200, { text, chars: text.length, pages })
     }
+  }
+
+  const dexMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/dex$/)
+  if (dexMatch && method === 'POST') {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(dexMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+    if (!row.title && !row.abstract) {
+      return sendJSON(res, 400, { error: '先补标题或摘要' })
+    }
+    const body = await readBody(req)
+    const content = await chatCompletion(
+      body.config || {},
+      [
+        {
+          role: 'system',
+          content: body.locale === 'zh'
+            ? '你写论文图鉴条目，只输出两句话，不要解释。'
+            : 'You write paper-dex entries. Reply with exactly two sentences, no explanation.',
+        },
+        { role: 'user', content: buildDexPrompt(row, body.locale === 'zh') },
+      ],
+      300,
+    )
+    const entry = content
+      .replace(/^["'“”]+|["'“”]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 260)
+    db.prepare('UPDATE papers SET dex_entry = ? WHERE id = ?').run(entry, row.id)
+    return sendJSON(res, 200, { dexEntry: entry })
   }
 
   const summaryMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/summary$/)
