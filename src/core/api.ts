@@ -4,6 +4,7 @@ import type {
   AuthUser,
   Explain,
   Invite,
+  LeaderboardEntry,
   LlmConfig,
   PdfJob,
   Paper,
@@ -134,6 +135,10 @@ export const api = {
       body: JSON.stringify(patch),
     })
     return data.user
+  },
+
+  async leaderboard(): Promise<{ entries: LeaderboardEntry[]; me: string }> {
+    return request<{ entries: LeaderboardEntry[]; me: string }>('/api/leaderboard')
   },
 
   async list(): Promise<Paper[]> {

@@ -5,6 +5,7 @@ import ReaderView from './views/ReaderView.vue'
 import GuideView from './views/GuideView.vue'
 import StatsView from './views/StatsView.vue'
 import ResetView from './views/ResetView.vue'
+import LeaderboardView from './views/LeaderboardView.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -21,6 +22,7 @@ export const router = createRouter({
     { path: '/guide', name: 'guide', component: GuideView },
     { path: '/stats', name: 'stats', component: StatsView },
     { path: '/reset', name: 'reset', component: ResetView },
+    { path: '/leaderboard', name: 'leaderboard', component: LeaderboardView },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

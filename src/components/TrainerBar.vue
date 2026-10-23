@@ -83,6 +83,14 @@ async function exportJson() {
         <button class="btn ghost import-btn" @click="ui.openImport()">{{ t('导入') }}</button>
         <button class="btn ghost" :disabled="busy" @click="exportJson">{{ t('导出') }}</button>
         <button class="btn ghost" :title="t('退出登录')" @click="logout">{{ t('退出') }}</button>
+        <RouterLink
+          to="/leaderboard"
+          class="btn icon"
+          :title="t('天梯')"
+          :aria-label="t('天梯')"
+        >
+          🏆
+        </RouterLink>
         <RouterLink to="/stats" class="btn icon" :title="t('统计')" :aria-label="t('统计')">
           📊
         </RouterLink>

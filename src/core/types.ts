@@ -64,6 +64,19 @@ export interface AuthUser {
   createdAt: string
 }
 
+export interface LeaderboardEntry {
+  userId: string
+  name: string
+  avatarId: string
+  xp: number
+  level: number
+  total: number
+  read: number
+  reading: number
+  summaries: number
+  rank: number
+}
+
 export interface PdfJob {
   running: boolean
   total: number

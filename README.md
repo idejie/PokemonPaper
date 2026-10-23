@@ -43,6 +43,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
 | 💬 **Shared notes** | Public by default; other readers of the same paper can see them (joined by arXiv ID, dashed outline). Uncheck to keep one private |
 | 📊 **Statistics** | Distribution by category, year and venue, plus read rate and level mix |
+| 🏆 **Leaderboard** | Rank everyone by level, XP, papers read and summaries; your row is highlighted |
 | 🔦 **In-PDF search** | Search across pages, highlight matches, jump prev / next |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
@@ -254,6 +255,7 @@ MIT © idejie
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
 | 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到（按 arXiv 号聚合，虚线高亮），可手动设为私有 |
 | 📊 **统计页** | 分类、年份、会议分布，阅读率与等级构成 |
+| 🏆 **天梯** | 所有人的等级、XP、已读、总结数排行，当前用户高亮 |
 | 🔦 **PDF 内搜索** | 跨页搜索，命中高亮，支持上一处 / 下一处 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |

@@ -646,6 +646,60 @@ async function refreshStaleMetrics() {
   console.log(`[paperdex] refreshed ${ok}/${repos.length} repos`)
 }
 
+function paperLevel(paper) {
+  if (!paper.code_url) return 1
+  const stars = Math.max(0, paper.stars || 0)
+  const raw = 15 + (85 * Math.log10(1 + stars)) / Math.log10(50001)
+  return Math.max(15, Math.min(100, Math.round(raw)))
+}
+
+function levelForXp(xp) {
+  let level = 1
+  while (50 * level * (level + 1) <= xp) level += 1
+  return level
+}
+
+function leaderboard() {
+  const users = db.prepare('SELECT id, name, avatar_id FROM users').all()
+  const papers = db
+    .prepare('SELECT user_id, status, notes, code_url, stars, summary_text FROM papers')
+    .all()
+  const byUser = new Map(
+    users.map((user) => [
+      user.id,
+      {
+        userId: user.id,
+        name: user.name || user.id.slice(0, 6),
+        avatarId: user.avatar_id,
+        xp: 0,
+        total: 0,
+        read: 0,
+        reading: 0,
+        summaries: 0,
+      },
+    ]),
+  )
+  for (const paper of papers) {
+    const entry = byUser.get(paper.user_id)
+    if (!entry) continue
+    entry.total += 1
+    if (paper.status === 'read') entry.read += 1
+    if (paper.status === 'reading') entry.reading += 1
+    if ((paper.summary_text || '').trim()) entry.summaries += 1
+    const level = paperLevel(paper)
+    const hasNotes = Boolean((paper.notes || '').trim())
+    if (paper.status === 'read') {
+      entry.xp += level + 40 + (hasNotes ? 20 : 0)
+    } else if (paper.status === 'reading') {
+      entry.xp += Math.round(level / 2) + 10 + (hasNotes ? 10 : 0)
+    }
+  }
+  const entries = [...byUser.values()]
+    .map((entry) => ({ ...entry, level: levelForXp(entry.xp) }))
+    .sort((a, b) => b.xp - a.xp || b.read - a.read || a.name.localeCompare(b.name))
+  return entries.map((entry, index) => ({ ...entry, rank: index + 1 }))
+}
+
 async function backfillRows(rows) {
   let updated = 0
   for (let i = 0; i < rows.length; i += 50) {
@@ -1255,6 +1309,10 @@ async function api(req, res, url) {
     const paper = upsert({ ...body, id: randomUUID() }, user.id)
     return sendJSON(res, 201, { paper })
   }
+  if (pathname === '/api/leaderboard' && method === 'GET') {
+    return sendJSON(res, 200, { entries: leaderboard(), me: user.id })
+  }
+
   if (pathname === '/api/export' && method === 'GET') {
     const rows = db.prepare('SELECT * FROM papers WHERE user_id = ? ORDER BY arxiv ASC').all(user.id)
     return sendJSON(res, 200, { exportedAt: new Date().toISOString(), papers: rows.map(rowToPaper) })
