@@ -97,6 +97,7 @@ const annotationColumns = db.prepare('PRAGMA table_info(annotations)').all().map
 for (const [name, ddl] of [
   ['page', 'INTEGER NOT NULL DEFAULT 0'],
   ['rects', "TEXT NOT NULL DEFAULT '[]'"],
+  ['is_public', 'INTEGER NOT NULL DEFAULT 0'],
 ]) {
   if (!annotationColumns.includes(name)) {
     db.exec(`ALTER TABLE annotations ADD COLUMN ${name} ${ddl}`)
@@ -1203,27 +1204,46 @@ async function api(req, res, url) {
   if (annotationMatch) {
     const paperId = annotationMatch[1]
     const paper = db
-      .prepare('SELECT id FROM papers WHERE id = ? AND user_id = ?')
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
       .get(paperId, user.id)
     if (!paper) return sendJSON(res, 404, { error: 'not found' })
 
     if (method === 'GET') {
-      const rows = db
+      const own = db
         .prepare('SELECT * FROM annotations WHERE paper_id = ? AND user_id = ? ORDER BY start ASC')
         .all(paperId, user.id)
+      const shared = paper.arxiv
+        ? db
+            .prepare(
+              `SELECT a.*, u.name AS author
+                 FROM annotations a
+                 JOIN papers p ON p.id = a.paper_id
+                 JOIN users u ON u.id = a.user_id
+                WHERE p.arxiv = ? AND a.user_id != ? AND a.is_public = 1
+                ORDER BY a.created_at ASC`,
+            )
+            .all(paper.arxiv, user.id)
+        : []
+      const shape = (row, mine) => ({
+        id: row.id,
+        start: row.start,
+        end: row.end,
+        page: row.page ?? 0,
+        rects: JSON.parse(row.rects || '[]'),
+        quote: row.quote,
+        color: row.color,
+        comment: row.comment,
+        isPublic: Boolean(row.is_public),
+        mine,
+        author: row.author ?? null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at ?? null,
+      })
       return sendJSON(res, 200, {
-        annotations: rows.map((row) => ({
-          id: row.id,
-          start: row.start,
-          end: row.end,
-          page: row.page ?? 0,
-          rects: JSON.parse(row.rects || '[]'),
-          quote: row.quote,
-          color: row.color,
-          comment: row.comment,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at ?? null,
-        })),
+        annotations: [
+          ...own.map((row) => shape(row, true)),
+          ...shared.map((row) => shape(row, false)),
+        ],
       })
     }
 
@@ -1239,7 +1259,7 @@ async function api(req, res, url) {
       if (!rects.length) return sendJSON(res, 400, { error: '没有选区' })
       const id = randomUUID()
       db.prepare(
-        'INSERT INTO annotations (id, paper_id, user_id, start, end, page, rects, quote, color, comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO annotations (id, paper_id, user_id, start, end, page, rects, quote, color, comment, is_public, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       ).run(
         id,
         paperId,
@@ -1251,6 +1271,7 @@ async function api(req, res, url) {
         String(body.quote || '').slice(0, 2000),
         color,
         String(body.comment || '').slice(0, 4000),
+        body.isPublic ? 1 : 0,
         new Date().toISOString(),
       )
       return sendJSON(res, 201, { id })
@@ -1269,12 +1290,10 @@ async function api(req, res, url) {
       const comment = body.comment === undefined ? row.comment : String(body.comment).slice(0, 4000)
       const colors = ['yellow', 'green', 'blue', 'pink']
       const color = colors.includes(body.color) ? body.color : row.color
-      db.prepare('UPDATE annotations SET comment = ?, color = ?, updated_at = ? WHERE id = ?').run(
-        comment,
-        color,
-        new Date().toISOString(),
-        row.id,
-      )
+      const isPublic = body.isPublic === undefined ? row.is_public ?? 0 : body.isPublic ? 1 : 0
+      db.prepare(
+        'UPDATE annotations SET comment = ?, color = ?, is_public = ?, updated_at = ? WHERE id = ?',
+      ).run(comment, color, isPublic, new Date().toISOString(), row.id)
       return sendJSON(res, 200, { ok: true })
     }
 

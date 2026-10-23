@@ -80,6 +80,9 @@ export interface Annotation {
   quote: string
   color: 'yellow' | 'green' | 'blue' | 'pink'
   comment: string
+  isPublic: boolean
+  mine: boolean
+  author: string | null
   createdAt: string
   updatedAt: string | null
 }

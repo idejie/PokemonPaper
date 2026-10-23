@@ -54,6 +54,8 @@ const annotations = ref<Annotation[]>([])
 const selection = ref<{ page: number; rects: Rect[]; quote: string } | null>(null)
 const editing = ref<Annotation | null>(null)
 const draft = ref('')
+const publicFlag = ref(false)
+const viewing = ref<Annotation | null>(null)
 
 const canvasRefs = new Map<number, HTMLCanvasElement>()
 const textRefs = new Map<number, HTMLDivElement>()
@@ -210,6 +212,7 @@ function onMouseUp(event: MouseEvent) {
 function cancelSelection() {
   selection.value = null
   draft.value = ''
+  publicFlag.value = false
   window.getSelection()?.removeAllRanges()
 }
 
@@ -223,6 +226,7 @@ async function createAnnotation(color: string) {
     quote,
     color,
     comment,
+    isPublic: publicFlag.value,
   } as never)
   annotations.value = [
     ...annotations.value,
@@ -235,6 +239,9 @@ async function createAnnotation(color: string) {
       quote,
       color: color as Annotation['color'],
       comment,
+      isPublic: publicFlag.value,
+      mine: true,
+      author: null,
       createdAt: new Date().toISOString(),
       updatedAt: null,
     },
@@ -245,20 +252,28 @@ async function createAnnotation(color: string) {
 
 function openEdit(ann: Annotation) {
   selection.value = null
-  editing.value = ann
+  viewing.value = null
   draft.value = ann.comment
+  if (ann.mine === false) {
+    viewing.value = ann
+    editing.value = null
+    return
+  }
+  editing.value = ann
+  publicFlag.value = Boolean(ann.isPublic)
 }
 
 async function saveAnnotation() {
   if (!editing.value) return
   const ann = editing.value
   const comment = draft.value
-  await api.updateAnnotation(ann.id, { comment })
+  await api.updateAnnotation(ann.id, { comment, isPublic: publicFlag.value })
   annotations.value = annotations.value.map((item) =>
-    item.id === ann.id ? { ...item, comment } : item,
+    item.id === ann.id ? { ...item, comment, isPublic: publicFlag.value } : item,
   )
   editing.value = null
   draft.value = ''
+  publicFlag.value = false
   store.notify(t('批注已保存'))
 }
 
@@ -269,6 +284,7 @@ async function removeAnnotation() {
   annotations.value = annotations.value.filter((item) => item.id !== id)
   editing.value = null
   draft.value = ''
+  publicFlag.value = false
   store.notify(t('已删除标注'))
 }
 
@@ -313,6 +329,8 @@ onBeforeUnmount(() => {
               v-for="(rect, index) in rectsOf(ann)"
               :key="`${ann.id}-${index}`"
               class="hl"
+              :class="{ shared: ann.mine === false }"
+              :title="ann.mine === false ? t('来自 {name}', { name: ann.author || '?' }) : ''"
               :style="{
                 left: `${rect.x * 100}%`,
                 top: `${rect.y * 100}%`,
@@ -328,7 +346,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="selection || editing" class="annotate-bar" @mousedown.stop>
+    <div v-if="selection || editing || viewing" class="annotate-bar" @mousedown.stop>
       <template v-if="selection">
         <span class="sel-quote">“{{ selection.quote.slice(0, 36) }}…”</span>
         <button
@@ -340,6 +358,10 @@ onBeforeUnmount(() => {
           :title="color"
           @click="createAnnotation(color)"
         />
+        <label class="pub">
+          <input v-model="publicFlag" type="checkbox" />
+          {{ t('公开') }}
+        </label>
         <input
           v-model="draft"
           class="input comment-input"
@@ -354,6 +376,10 @@ onBeforeUnmount(() => {
 
       <template v-else-if="editing">
         <span class="sel-quote">“{{ editing.quote.slice(0, 28) }}…”</span>
+        <label class="pub">
+          <input v-model="publicFlag" type="checkbox" />
+          {{ t('公开') }}
+        </label>
         <input
           v-model="draft"
           class="input comment-input"
@@ -365,6 +391,13 @@ onBeforeUnmount(() => {
           {{ t('删除') }}
         </button>
         <button type="button" class="btn sm ghost" @click="editing = null">{{ t('关闭') }}</button>
+      </template>
+
+      <template v-else-if="viewing">
+        <span class="sel-quote">“{{ viewing.quote.slice(0, 28) }}…”</span>
+        <span class="author mono">{{ t('来自 {name}', { name: viewing.author || '?' }) }}</span>
+        <span class="view-comment">{{ viewing.comment || t('没有批注') }}</span>
+        <button type="button" class="btn sm ghost" @click="viewing = null">{{ t('关闭') }}</button>
       </template>
     </div>
   </div>
@@ -453,6 +486,39 @@ onBeforeUnmount(() => {
   border-radius: 2px;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.hl.shared {
+  opacity: 0.3;
+  border: 1.5px dashed rgba(43, 36, 32, 0.6);
+}
+
+.pub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--muted);
+  flex: none;
+}
+
+.author {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.view-comment {
+  font-size: 12px;
+  color: var(--text);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .text-layer {

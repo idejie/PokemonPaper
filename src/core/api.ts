@@ -168,6 +168,7 @@ export const api = {
       quote: string
       color: string
       comment: string
+      isPublic: boolean
     },
   ): Promise<string> {
     const data = await request<{ id: string }>(`/api/papers/${paperId}/annotations`, {
@@ -177,7 +178,10 @@ export const api = {
     return data.id
   },
 
-  async updateAnnotation(id: string, patch: { comment?: string; color?: string }): Promise<void> {
+  async updateAnnotation(
+    id: string,
+    patch: { comment?: string; color?: string; isPublic?: boolean },
+  ): Promise<void> {
     await request<{ ok: boolean }>(`/api/annotations/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
