@@ -199,7 +199,7 @@ level = 15 + 85 × log10(1 + stars) / log10(50001)
 | 层 | 选型 | 说明 |
 |---|---|---|
 | 前端 | Vue 3 + TypeScript + Vite + Pinia + Vue Router | 深链接 `/p/<id>` |
-| 后端 | Node `http` 单文件服务 | 零运行时依赖 |
+| 后端 | Node `http` 单文件服务 | 无框架，唯一运行时依赖是 pdfjs |
 | 数据库 | `node:sqlite` | Node 22+ 内置，无原生模块编译 |
 | PDF 解析 | `pdfjs-dist` | 纯 JS，无需 poppler |
 
