@@ -57,7 +57,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
       has the per-paper button; add a batch action with progress. `S`
 - [x] **Likes in profile** — show "likes received" in the trainer profile, not
       just on the leaderboard. `S`
-- [ ] **English README parity** — the Chinese section still has the data model,
+- [x] **English README parity** — the Chinese section still has the data model,
       account section and more screenshots than the English one. `S`
 
 ## Not doing
