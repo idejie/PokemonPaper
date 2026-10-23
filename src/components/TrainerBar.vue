@@ -80,6 +80,9 @@ async function exportJson() {
         <button class="btn ghost import-btn" @click="ui.openImport()">{{ t('导入') }}</button>
         <button class="btn ghost" :disabled="busy" @click="exportJson">{{ t('导出') }}</button>
         <button class="btn ghost" :title="t('退出登录')" @click="logout">{{ t('退出') }}</button>
+        <RouterLink to="/guide" class="btn icon" :title="t('等级说明')" :aria-label="t('等级说明')">
+          ?
+        </RouterLink>
         <LocaleToggle />
         <button
           class="btn icon"

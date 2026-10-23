@@ -109,7 +109,7 @@ XP counts three things: **the paper's level, whether you finished it, and whethe
 | Notes | +20 (+10 while reading) |
 | Collected but unread | 0 |
 
-Open source and stars already determine the paper level, so they are not counted again. The level curve is `50·(L−1)·L`.
+Open source and stars already determine the paper level, so they are not counted again. The level curve is `50·(L−1)·L`. The `?` button in the header opens a dedicated `/guide` page with the full rules, curve, titles, and badges.
 
 ## Project structure
 

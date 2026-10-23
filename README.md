@@ -161,7 +161,7 @@ buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]
 
 八枚徽章：初次登记、十篇达成、第一束光、十盏灯、笔记习惯、速读卡收藏家、开源猎人、本地图书馆。
 
-点顶栏的头像打开「训练家档案」，能看到 XP 进度条、统计和徽章墙。
+点顶栏的头像打开「训练家档案」，能看到 XP 进度条、统计和徽章墙；顶栏的 `?` 进入独立的 `/guide` 页面，完整讲清楚等级、经验、曲线、称号与徽章。
 
 ![训练家档案](docs/profile.png)
 

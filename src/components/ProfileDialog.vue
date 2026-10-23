@@ -91,33 +91,9 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <details class="guide" open>
-          <summary>{{ t('等级怎么算？') }}</summary>
-
-          <h4>{{ t('论文等级') }}</h4>
-          <p>
-            {{ t('只看开源与 GitHub star：没开源 = Lv.1；开源后按 star 从 Lv.15 涨到 Lv.100。分为常见 / 稀有 / 史诗 / 传说四档。') }}
-          </p>
-
-          <h4>{{ t('训练家经验') }}</h4>
-          <ul>
-            <li>{{ t('读完一篇：论文等级 + 40 XP') }}</li>
-            <li>{{ t('在读：论文等级的一半 + 10 XP') }}</li>
-            <li>{{ t('写了笔记：+20 XP（在读 +10）') }}</li>
-            <li>{{ t('只收录没读：0 XP') }}</li>
-          </ul>
-          <p class="note">
-            {{ t('开源和 star 已经决定论文等级，不再单独加 XP，避免同一件事算两次。') }}
-          </p>
-
-          <h4>{{ t('升级曲线') }}</h4>
-          <p>{{ t('升到 L 级需要 50·(L−1)·L 经验：Lv.2 = 100，Lv.5 = 1000，Lv.10 = 4500。') }}</p>
-
-          <h4>{{ t('称号') }}</h4>
-          <p>
-            {{ t('新手训练家 → 见习研究员（5）→ 图鉴收集者（10）→ 论文猎人（20）→ 知识训练家（35）→ 文献大师（50）。') }}
-          </p>
-        </details>
+        <RouterLink to="/guide" class="guide-link" @click="close">
+          {{ t('查看完整等级说明 →') }}
+        </RouterLink>
       </div>
     </section>
   </div>
@@ -351,38 +327,13 @@ onBeforeUnmount(() => {
   color: var(--dim);
 }
 
-.guide {
+.guide-link {
+  display: inline-block;
   border-top: 2px dashed var(--line);
   padding-top: 10px;
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-
-.guide summary {
-  cursor: pointer;
   font-size: 11.5px;
-  font-weight: 900;
-  color: var(--text);
-  letter-spacing: 0.02em;
-}
-
-.guide h4 {
-  margin: 10px 0 2px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.guide ul {
-  margin: 2px 0;
-  padding-left: 16px;
-}
-
-.guide .note {
-  color: var(--dim);
-  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--blue);
 }
 
 @media (max-width: 560px) {

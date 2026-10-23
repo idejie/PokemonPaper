@@ -41,7 +41,7 @@ const XP = {
   reading: 10,
 }
 
-const TITLES: Array<[number, string]> = [
+export const TITLES: Array<[number, string]> = [
   [50, '文献大师'],
   [35, '知识训练家'],
   [20, '论文猎人'],
