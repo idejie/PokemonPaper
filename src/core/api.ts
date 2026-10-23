@@ -149,6 +149,13 @@ export const api = {
     })
   },
 
+  async tradePaper(id: string, email: string): Promise<{ to: string; arxiv: string }> {
+    return request<{ to: string; arxiv: string }>(`/api/papers/${id}/trade`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  },
+
   async generateDexEntry(
     id: string,
     config: { baseUrl: string; apiKey: string; model: string },

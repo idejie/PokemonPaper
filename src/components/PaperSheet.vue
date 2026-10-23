@@ -52,6 +52,9 @@ const spriteBusy = ref(false)
 const cardBusy = ref(false)
 const bond = ref<BondInfo | null>(null)
 const dexBusy = ref(false)
+const tradeOpen = ref(false)
+const tradeEmail = ref('')
+const tradeBusy = ref(false)
 const moves = computed(() => movesFor({ arxiv: form.arxiv, title: form.title, abstract: form.abstract, tags: form.tags }))
 const shinyInfo = computed(() =>
   shinyOf({ arxiv: form.arxiv, venue: form.venue, stars: form.stars, year: form.year }),
@@ -253,6 +256,21 @@ function loadBond() {
   bond.value = bondOf(paper.value, bondStats(props.id))
 }
 
+async function tradePaper() {
+  if (!paper.value || !tradeEmail.value.trim()) return
+  tradeBusy.value = true
+  try {
+    const result = await api.tradePaper(paper.value.id, tradeEmail.value.trim())
+    store.notify(t('已交换给 {name}', { name: result.to }))
+    tradeOpen.value = false
+    tradeEmail.value = ''
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('交换失败'))
+  } finally {
+    tradeBusy.value = false
+  }
+}
+
 async function generateDexEntry() {
   if (!paper.value) return
   if (!settings.ready) {
@@ -406,6 +424,25 @@ onBeforeUnmount(() => {
             >
               {{ cardBusy ? t('生成中…') : t('分享卡片') }}
             </button>
+            <button
+              type="button"
+              class="btn sm ghost art-btn"
+              :disabled="!props.id"
+              @click="tradeOpen = !tradeOpen"
+            >
+              {{ t('交换') }}
+            </button>
+            <div v-if="tradeOpen" class="trade-row">
+              <input v-model="tradeEmail" class="input" type="email" :placeholder="t('对方邮箱')" />
+              <button
+                type="button"
+                class="btn sm"
+                :disabled="tradeBusy || !tradeEmail.trim()"
+                @click="tradePaper"
+              >
+                {{ tradeBusy ? t('交换中…') : t('确认') }}
+              </button>
+            </div>
             <div v-if="prefs.dexEntries" class="dex-entry">
               <span class="dex-kicker">📖 {{ t('图鉴描述') }}</span>
               <p v-if="paper?.dexEntry">{{ paper.dexEntry }}</p>
@@ -815,6 +852,18 @@ onBeforeUnmount(() => {
 
 .stage.dim :deep(svg) {
   opacity: 0.7;
+}
+
+.trade-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.trade-row .input {
+  min-width: 0;
+  height: 28px;
+  font-size: 11px;
 }
 
 .moves-line {

@@ -278,4 +278,9 @@ export const dialogsDict: Record<string, string> = {
   '体验': 'Experience',
   '点亮时播放 8-bit 叫声': 'Play an 8-bit cry when a paper lights up',
   '试听': 'Preview',
+  '交换': 'Trade',
+  '交换中…': 'Trading…',
+  '对方邮箱': 'Recipient email',
+  '已交换给 {name}': 'Traded to {name}',
+  '交换失败': 'Trade failed',
 }

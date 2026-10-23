@@ -70,6 +70,14 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+  CREATE TABLE IF NOT EXISTS trades (
+    id         TEXT PRIMARY KEY,
+    from_user  TEXT NOT NULL,
+    to_user    TEXT NOT NULL,
+    arxiv      TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS daily_picks (
     user_id    TEXT NOT NULL,
     date       TEXT NOT NULL,
@@ -1954,6 +1962,42 @@ async function api(req, res, url) {
       )
       return sendJSON(res, 200, { text, chars: text.length, pages })
     }
+  }
+
+  const tradeMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/trade$/)
+  if (tradeMatch && method === 'POST') {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(tradeMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+    if (!row.arxiv) return sendJSON(res, 400, { error: '这篇没有 arXiv 编号，不能交换' })
+    const body = await readBody(req)
+    const email = String(body.email || '').trim().toLowerCase()
+    if (!email) return sendJSON(res, 400, { error: '填对方邮箱' })
+    const to = db.prepare('SELECT id, name, email FROM users WHERE lower(email) = ?').get(email)
+    if (!to) return sendJSON(res, 404, { error: '没有这个邮箱的账号' })
+    if (to.id === user.id) return sendJSON(res, 400, { error: '不能交换给自己' })
+    const exists = db
+      .prepare('SELECT 1 FROM papers WHERE user_id = ? AND arxiv = ?')
+      .get(to.id, row.arxiv)
+    if (exists) return sendJSON(res, 409, { error: '对方图鉴里已经有这篇了' })
+
+    const copy = { ...row, summary_public: 0 }
+    delete copy.id
+    delete copy.user_id
+    delete copy.status
+    delete copy.read_at
+    delete copy.added_at
+    const columns = Object.keys(copy)
+    const id = randomUUID()
+    db.prepare(
+      `INSERT INTO papers (id, user_id, status, added_at, ${columns.join(', ')})
+       VALUES (?, ?, 'unread', ?, ${columns.map(() => '?').join(', ')})`,
+    ).run(id, to.id, new Date().toISOString(), ...columns.map((key) => copy[key]))
+    db.prepare(
+      'INSERT INTO trades (id, from_user, to_user, arxiv, created_at) VALUES (?, ?, ?, ?, ?)',
+    ).run(randomUUID(), user.id, to.id, row.arxiv, new Date().toISOString())
+    return sendJSON(res, 200, { to: to.name || to.email, arxiv: row.arxiv })
   }
 
   const dexMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/dex$/)
