@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
 import { t } from '../core/i18n'
+import { gymStatus } from '../core/gyms'
 
 const auth = useAuthStore()
 const store = usePapersStore()
@@ -12,6 +13,8 @@ const ui = useUiStore()
 
 const progress = computed(() => store.xp)
 const nextLevel = computed(() => progress.value.level + 1)
+const gyms = computed(() => gymStatus(store.items))
+const gymEarned = computed(() => gyms.value.filter((gym) => gym.earned).length)
 
 function openAccount() {
   ui.closeProfile()
@@ -75,6 +78,26 @@ onBeforeUnmount(() => {
           <div class="stat"><b class="mono">{{ progress.stats.withPdf }}</b><span>{{ t('本地 PDF') }}</span></div>
           <div class="stat"><b class="mono">{{ store.likesReceived }}</b><span>{{ t('获赞') }}</span></div>
         </div>
+
+        <section class="gyms">
+          <div class="gym-head">
+            <h3>{{ t('道馆徽章') }}</h3>
+            <span class="mono dim">{{ gymEarned }}/{{ gyms.length }}</span>
+          </div>
+          <div class="gym-grid">
+            <div
+              v-for="gym in gyms"
+              :key="gym.id"
+              class="gym"
+              :class="{ on: gym.earned }"
+              :title="`${t(gym.name)} · ${gym.readCount}/${gym.read} · ${gym.noteCount}/${gym.notes}`"
+            >
+              <span class="gym-icon">{{ gym.icon }}</span>
+              <b>{{ t(gym.name) }}</b>
+              <small class="mono">{{ gym.readCount }}/{{ gym.read }} · {{ gym.noteCount }}/{{ gym.notes }}</small>
+            </div>
+          </div>
+        </section>
 
         <div class="badges">
           <div
@@ -273,6 +296,64 @@ onBeforeUnmount(() => {
 
 .stat b.lit {
   color: var(--red);
+}
+
+.gyms {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.gym-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.gym-head h3 {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.gym-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.gym {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 6px 3px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+
+.gym.on {
+  opacity: 1;
+  filter: none;
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  background: #fff4cf;
+}
+
+.gym-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.gym b {
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.gym small {
+  font-size: 8px;
+  color: var(--muted);
 }
 
 .stat span {

@@ -3,9 +3,12 @@ import { computed, onMounted } from 'vue'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { TITLES, xpForLevel } from '../core/progress'
 import { t } from '../core/i18n'
+import { gymStatus } from '../core/gyms'
 import { usePapersStore } from '../stores/papers'
 
 const store = usePapersStore()
+const gyms = computed(() => gymStatus(store.items))
+const gymEarned = computed(() => gyms.value.filter((gym) => gym.earned).length)
 
 const starRows = [0, 10, 100, 1000, 5000].map((stars) => {
   const lv = paperLevel({ codeUrl: 'https://github.com/example/repo', stars })
@@ -140,6 +143,20 @@ onMounted(async () => {
             <span class="dot" />
             <b>{{ t(badge.name) }}</b>
             <small>{{ t(badge.desc) }}</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2><span class="num mono">06</span>{{ t('道馆') }}</h2>
+        <p>{{ t('每个 arXiv 大类是一座道馆：读满 3 篇、其中 1 篇有笔记，就能拿到徽章。') }}</p>
+        <p class="dim mono">{{ t('已获得 {n} / {m}', { n: gymEarned, m: gyms.length }) }}</p>
+        <div class="gyms">
+          <div v-for="gym in gyms" :key="gym.id" class="gym-row" :class="{ on: gym.earned }">
+            <span class="gym-icon">{{ gym.icon }}</span>
+            <b>{{ t(gym.name) }}</b>
+            <span class="gym-progress mono">{{ gym.readCount }}/{{ gym.read }} · {{ gym.noteCount }}/{{ gym.notes }}</span>
+            <span class="gym-state">{{ gym.earned ? t('已获得') : t('未获得') }}</span>
           </div>
         </div>
       </section>
@@ -402,6 +419,52 @@ td:last-child {
   color: var(--dim);
   font-size: 9.5px;
   display: block;
+}
+
+.gyms {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.gym-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 11px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: 11px;
+  opacity: 0.6;
+  filter: grayscale(1);
+}
+
+.gym-row.on {
+  opacity: 1;
+  filter: none;
+  border-color: var(--ink);
+  background: #fff4cf;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.gym-icon {
+  font-size: 16px;
+}
+
+.gym-progress {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.gym-state {
+  flex: none;
+  font-size: 9px;
+  font-weight: 800;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 6px;
 }
 
 .back {

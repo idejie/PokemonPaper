@@ -12,7 +12,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
       per seed, so lighting up actually evolves the creature. `M`
 - [x] **Daily wild paper** — one recommended arXiv paper per day ("a wild paper
       appeared"), double XP if read; answers "what should I read today". `M`
-- [ ] **Category gyms** — 12 gyms by arXiv top-level field; read N papers and
+- [x] **Category gyms** — 12 gyms by arXiv top-level field; read N papers and
       write notes to earn the badge. Gives the 155 categories a long-term goal. `M`
 
 ## A. Growth
