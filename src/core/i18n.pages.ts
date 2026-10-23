@@ -187,4 +187,8 @@ export const pagesDict: Record<string, string> = {
   '下一处': 'Next match',
   '导出 Markdown': 'Export Markdown',
   '已导出 Markdown': 'Markdown exported',
+  '标注': 'Notes',
+  '我的': 'Mine',
+  '私有': 'Private',
+  '还没有标注': 'No notes yet',
 }

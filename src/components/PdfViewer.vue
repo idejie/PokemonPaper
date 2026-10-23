@@ -89,6 +89,7 @@ const viewing = ref<Annotation | null>(null)
 const searchQuery = ref('')
 const hits = ref<HTMLElement[]>([])
 const hitIndex = ref(0)
+const notesOpen = ref(false)
 
 const canvasRefs = new Map<number, HTMLCanvasElement>()
 const textRefs = new Map<number, HTMLDivElement>()
@@ -96,6 +97,22 @@ let doc: pdfjs.PDFDocumentProxy | null = null
 let task: pdfjs.PDFDocumentLoadingTask | null = null
 
 const count = computed(() => annotations.value.length)
+
+const groupedNotes = computed(() => {
+  const map = new Map<number, Annotation[]>()
+  for (const ann of [...annotations.value].sort((a, b) => a.page - b.page)) {
+    const list = map.get(ann.page) ?? []
+    list.push(ann)
+    map.set(ann.page, list)
+  }
+  return [...map.entries()].map(([page, items]) => ({ page, items }))
+})
+
+function focusAnnotation(ann: Annotation) {
+  const el = pagesEl.value?.querySelector<HTMLElement>(`[data-ann="${ann.id}"]`)
+  el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  openEdit(ann)
+}
 
 function setCanvas(page: number, el: unknown) {
   if (el instanceof HTMLCanvasElement) canvasRefs.set(page, el)
@@ -348,10 +365,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="viewer">
+  <div class="viewer" :class="{ 'with-notes': notesOpen }">
     <div class="toolbar">
       <span class="mono">{{ t('{n} 页', { n: pages.length }) }}</span>
       <span class="hint">{{ t('在页面上选文字即可高亮 / 写批注') }}</span>
+      <button type="button" class="count mono notes-btn" @click="notesOpen = !notesOpen">
+        📝 {{ t('{n} 条标注', { n: count }) }}
+      </button>
       <div class="find">
         <input
           v-model="searchQuery"
@@ -382,7 +402,6 @@ onBeforeUnmount(() => {
         </button>
       </div>
       <span class="spacer" />
-      <span class="count mono">{{ t('{n} 条标注', { n: count }) }}</span>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -406,6 +425,7 @@ onBeforeUnmount(() => {
             <i
               v-for="(rect, index) in rectsOf(ann)"
               :key="`${ann.id}-${index}`"
+              :data-ann="ann.id"
               class="hl"
               :class="{ shared: ann.mine === false }"
               :title="ann.mine === false ? t('来自 {name}', { name: ann.author || '?' }) : ''"
@@ -478,6 +498,33 @@ onBeforeUnmount(() => {
         <button type="button" class="btn sm ghost" @click="viewing = null">{{ t('关闭') }}</button>
       </template>
     </div>
+
+    <aside v-if="notesOpen" class="notes-panel">
+      <header class="notes-head">
+        <b>{{ t('标注') }} · {{ count }}</b>
+        <button type="button" class="notes-close" @click="notesOpen = false">×</button>
+      </header>
+      <p v-if="!count" class="hint">{{ t('还没有标注') }}</p>
+      <div v-for="group in groupedNotes" :key="group.page" class="note-group">
+        <h4 class="mono">P{{ group.page }}</h4>
+        <button
+          v-for="ann in group.items"
+          :key="ann.id"
+          type="button"
+          class="note"
+          @click="focusAnnotation(ann)"
+        >
+          <span class="dot" :style="{ background: COLORS[ann.color] }" />
+          <span class="note-body">
+            <span class="quote">{{ ann.quote }}</span>
+            <span v-if="ann.comment" class="comment">{{ ann.comment }}</span>
+            <span class="note-meta mono">
+              {{ ann.mine ? t('我的') : ann.author || '?' }} · {{ ann.isPublic ? t('公开') : t('私有') }}
+            </span>
+          </span>
+        </button>
+      </div>
+    </aside>
   </div>
 </template>
 
@@ -485,6 +532,17 @@ onBeforeUnmount(() => {
 .viewer {
   display: grid;
   gap: 10px;
+  transition: margin-right 0.15s ease;
+}
+
+.viewer.with-notes {
+  margin-right: 316px;
+}
+
+@media (max-width: 720px) {
+  .viewer.with-notes {
+    margin-right: 0;
+  }
 }
 
 .toolbar {
@@ -597,6 +655,108 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.notes-btn {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 10px;
+}
+
+.notes-btn:hover {
+  background: var(--gold);
+}
+
+.notes-panel {
+  position: fixed;
+  top: 86px;
+  right: 16px;
+  bottom: 18px;
+  width: 300px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 5px 5px 0 var(--ink);
+  padding: 12px;
+}
+
+.notes-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  border-bottom: 2px dashed var(--line);
+  padding-bottom: 8px;
+}
+
+.notes-close {
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--gold);
+  width: 22px;
+  height: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.note-group {
+  display: grid;
+  gap: 4px;
+}
+
+.note-group h4 {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+
+.note {
+  display: flex;
+  gap: 7px;
+  text-align: left;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 6px;
+}
+
+.note:hover {
+  border-color: var(--ink);
+}
+
+.note .dot {
+  width: 4px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.note-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.note-meta {
+  font-size: 8.5px;
+  color: var(--dim);
+}
+
+@media (max-width: 720px) {
+  .notes-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    top: 120px;
+  }
 }
 
 .find {

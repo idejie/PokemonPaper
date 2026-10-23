@@ -51,7 +51,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🏷️ **arXiv categories** | Full official taxonomy (155 categories); cards and rows show `cs.RO`, sprite colors follow the field |
 | ⚔️ **Paper level** | Lv.1–100 from open-source availability and GitHub stars; tiers: common / rare / epic / legendary |
 | 🤖 **AI paper cards** | One-liner / problem / method / key numbers / limits / next step via any OpenAI-compatible endpoint; key stays local |
-| 📖 **PDF reader** | Original PDFs rendered page by page; select text to highlight and comment; cross-page selections are split and edited as one |
+| 📖 **PDF reader** | Original PDFs rendered page by page; highlight and comment on selections; cross-page notes split and edit as one; a sidebar lists notes by page |
 | 📄 **Local PDFs** | Files live in `data/pdfs/`; the DB stores URL + relative path, downloads on demand |
 | 🔍 **Search** | Title / author / ID / tags / venue, `/` to focus |
 | 💾 **Portable** | One-click JSON export, merge-import by arXiv ID |
@@ -192,7 +192,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Statistics: categories, years, venues
 - [x] Deploy for multiple users: `HOST` binding, reverse proxy / HTTPS guide
 - [x] Batch download of missing PDFs (background queue + progress)
-- [ ] Annotation list panel (grouped by page, click to jump)
+- [x] Annotation list panel (grouped by page, click to jump)
 - [ ] Scheduled metric refresh (stars / categories)
 - [x] Export AI summaries to Markdown
 - [ ] Password reset by email (needs SMTP)
@@ -260,7 +260,7 @@ MIT © idejie
 | 🏷️ **arXiv 分类** | 内置官方 155 个类目，卡片/列表直接显示 `cs.RO`，精灵按领域配色 |
 | ⚔️ **论文等级** | Lv.1–100，由开源代码与 GitHub star 决定，分常见/稀有/史诗/传说 |
 | 🤖 **AI 速读卡** | 一句话 / 问题 / 方法 / 关键数字 / 局限 / 下一步，OpenAI 兼容接口，Key 存本地 |
-| 📖 **PDF 阅读器** | 原版 PDF 逐页渲染，选中文字可高亮、写批注；跨页选择自动拆段并同步编辑 |
+| 📖 **PDF 阅读器** | 原版 PDF 逐页渲染，选中文字可高亮、写批注；跨页自动拆段，标注侧栏按页聚合 |
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
 | 💾 **可迁移** | 一键导出 JSON，按 arXiv 号合并导入 |
@@ -640,7 +640,7 @@ interface Paper {
 - [x] 多用户账号（邀请制，数据按用户隔离）
 - [x] 对外部署：`HOST` 绑定 + 反向代理 / HTTPS 说明
 - [x] 批量下载缺失 PDF（后台队列 + 进度）
-- [ ] 标注列表（按页聚合，点击跳转）
+- [x] 标注列表（按页聚合，点击跳转）
 - [ ] 指标定时刷新（star / 分类）
 - [x] 解读导出为 Markdown
 - [ ] 邮件找回密码（需要 SMTP）
