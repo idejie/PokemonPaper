@@ -68,6 +68,8 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🗂️ **Two layouts** | Cards for sprites, list for information; choice persisted locally |
 | 🏷️ **arXiv categories** | Full official taxonomy (155 categories); cards and rows show `cs.RO`, sprite colors follow the field |
 | ⚔️ **Paper level** | Lv.1–100 from open-source availability and GitHub stars; tiers: common / rare / epic / legendary |
+| 💬 **Paper Q&A** | Ask questions about a paper; answers use the abstract and full text and are saved as history |
+| 🧪 **Code review / reproduction** | Fetches a GitHub repo's README, dependencies and file tree to generate a reproduction plan and risk checklist |
 | 🤖 **AI paper cards** | One-liner / problem / method / key numbers / limits / next step via any OpenAI-compatible endpoint; key stays local |
 | 📖 **PDF reader** | Original PDFs rendered page by page; highlight and comment on selections; cross-page notes split and edit as one; a sidebar lists notes by page |
 | 📄 **Local PDFs** | Files live in `data/pdfs/`; the DB stores URL + relative path, downloads on demand |
@@ -456,6 +458,8 @@ piece of content once; unliking removes the row.
 - [x] Monthly gym leaders
 - [x] Breeding from 1–5 papers with a user direction
 - [x] First-run onboarding tour
+- [x] Paper Q&A with saved history
+- [x] GitHub code analysis and reproduction plans
 - [x] Paper egg queue
 - [x] Batch artwork with progress
 - [x] Share-card preview and QR scan import
@@ -523,6 +527,8 @@ MIT © idejie
 | 🗂️ **两种布局** | 卡片看精灵，列表看信息；选择记在本地 |
 | 🏷️ **arXiv 分类** | 内置官方 155 个类目，卡片/列表直接显示 `cs.RO`，精灵按领域配色 |
 | ⚔️ **论文等级** | Lv.1–100，由开源代码与 GitHub star 决定，分常见/稀有/史诗/传说 |
+| 💬 **论文问答** | 针对单篇论文提问，基于摘要和全文回答，历史自动保存 |
+| 🧪 **代码复现分析** | 抓取 GitHub README、依赖和目录树，生成复现步骤与风险清单（只做静态分析，不执行代码） |
 | 🤖 **AI 速读卡** | 一句话 / 问题 / 方法 / 关键数字 / 局限 / 下一步，OpenAI 兼容接口，Key 存本地 |
 | 📖 **PDF 阅读器** | 原版 PDF 逐页渲染，选中文字可高亮、写批注；跨页自动拆段，标注侧栏按页聚合 |
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
@@ -1004,6 +1010,8 @@ interface Like {
 - [x] 每月道馆馆主
 - [x] 论文培育（1–5 篇 + 自定义方向）
 - [x] 新用户 5 步导引
+- [x] 论文问答与历史记录
+- [x] GitHub 代码分析与复现计划
 - [x] 论文蛋队列
 - [x] 批量插画（进度条）
 - [x] 分享卡预览与扫码导入

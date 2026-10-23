@@ -24,6 +24,8 @@ export interface Paper {
   eggAt: string | null
   incubatedAt: string | null
   affiliations: string
+  codeReview: string
+  codeReviewAt: string | null
   spriteUrl: string | null
   hasFullText: boolean
   fullTextChars: number
@@ -94,6 +96,13 @@ export interface PublicSummary {
   avatarId: string
   likes: number
   likedByMe: boolean
+}
+
+export interface PaperQuestion {
+  id: string
+  question: string
+  answer: string
+  createdAt: string
 }
 
 export interface GymRankEntry {

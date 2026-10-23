@@ -189,6 +189,44 @@ export const api = {
     return data.job
   },
 
+  async questions(id: string): Promise<import('./types').PaperQuestion[]> {
+    const data = await request<{ questions: import('./types').PaperQuestion[] }>(
+      `/api/papers/${id}/questions`,
+    )
+    return data.questions
+  },
+
+  async askQuestion(
+    id: string,
+    question: string,
+    config: { baseUrl: string; apiKey: string; model: string },
+    locale: 'zh' | 'en',
+  ): Promise<import('./types').PaperQuestion> {
+    const data = await request<{ question: import('./types').PaperQuestion }>(
+      `/api/papers/${id}/questions`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ question, config, locale }),
+      },
+    )
+    return data.question
+  },
+
+  async codeReview(id: string): Promise<{ review: string; reviewedAt: string | null }> {
+    return request(`/api/papers/${id}/code-review`)
+  },
+
+  async analyzeCode(
+    id: string,
+    config: { baseUrl: string; apiKey: string; model: string },
+    locale: 'zh' | 'en',
+  ): Promise<{ review: string; reviewedAt: string | null }> {
+    return request(`/api/papers/${id}/code-review`, {
+      method: 'POST',
+      body: JSON.stringify({ config, locale }),
+    })
+  },
+
   async syncAffiliations(id: string): Promise<string[]> {
     const data = await request<{ affiliations: string[] }>(`/api/papers/${id}/affiliations`, {
       method: 'POST',

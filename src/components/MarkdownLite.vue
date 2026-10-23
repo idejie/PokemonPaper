@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 interface Block {
-  type: 'h' | 'p' | 'ul'
+  type: 'h' | 'p' | 'ul' | 'code'
   text?: string
   items?: string[]
 }
@@ -13,6 +13,8 @@ const blocks = computed<Block[]>(() => {
   const out: Block[] = []
   let paragraph: string[] = []
   let list: string[] = []
+  let code: string[] = []
+  let inCode = false
 
   const flushParagraph = () => {
     if (paragraph.length) {
@@ -29,6 +31,22 @@ const blocks = computed<Block[]>(() => {
 
   for (const raw of props.source.split(/\r?\n/)) {
     const line = raw.trim()
+    if (line.startsWith('```')) {
+      if (inCode) {
+        out.push({ type: 'code', text: code.join('\n') })
+        code = []
+        inCode = false
+      } else {
+        flushParagraph()
+        flushList()
+        inCode = true
+      }
+      continue
+    }
+    if (inCode) {
+      code.push(raw)
+      continue
+    }
     if (!line) {
       flushParagraph()
       flushList()
@@ -48,6 +66,7 @@ const blocks = computed<Block[]>(() => {
     if (list.length) flushList()
     paragraph.push(line)
   }
+  if (inCode && code.length) out.push({ type: 'code', text: code.join('\n') })
   flushParagraph()
   flushList()
   return out
@@ -61,6 +80,7 @@ const blocks = computed<Block[]>(() => {
       <ul v-else-if="block.type === 'ul'">
         <li v-for="(item, i) in block.items" :key="i">{{ item }}</li>
       </ul>
+      <pre v-else-if="block.type === 'code'"><code>{{ block.text }}</code></pre>
       <p v-else>{{ block.text }}</p>
     </template>
   </div>
@@ -98,5 +118,20 @@ const blocks = computed<Block[]>(() => {
 
 .md li {
   color: var(--text);
+}
+
+.md pre {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 9px;
+  background: var(--ink);
+  color: #f7f1df;
+  overflow-x: auto;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.md pre code {
+  font-family: var(--mono, ui-monospace, monospace);
 }
 </style>

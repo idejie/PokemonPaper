@@ -5,10 +5,10 @@ import MarkdownLite from '../components/MarkdownLite.vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
 const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue'))
 import { api } from '../core/api'
-import type { PublicSummary } from '../core/types'
+import type { PaperQuestion, PublicSummary } from '../core/types'
 import { paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
-import { t } from '../core/i18n'
+import { locale, t } from '../core/i18n'
 import ShareCardDialog from '../components/ShareCardDialog.vue'
 import { addReadingTime, recordVisit } from '../core/bond'
 import { usePapersStore } from '../stores/papers'
@@ -22,8 +22,15 @@ const settings = useSettingsStore()
 const ui = useUiStore()
 const shareOpen = ref(false)
 
-type Tab = 'abstract' | 'pdf' | 'summary'
-const tab = ref<Tab>(route.query.tab === 'pdf' ? 'pdf' : 'abstract')
+type Tab = 'abstract' | 'pdf' | 'summary' | 'ask' | 'code'
+function tabFromQuery(): Tab {
+  const value = String(route.query.tab || '')
+  return value === 'pdf' || value === 'summary' || value === 'ask' || value === 'code'
+    ? value
+    : 'abstract'
+}
+
+const tab = ref<Tab>(tabFromQuery())
 const summarizing = ref(false)
 const pdfBusy = ref(false)
 const editingSummary = ref(false)
@@ -31,6 +38,72 @@ const summaryDraft = ref('')
 const savingSummary = ref(false)
 const publicSummaries = ref<PublicSummary[]>([])
 const summaryPublicBusy = ref(false)
+const questions = ref<PaperQuestion[]>([])
+const askDraft = ref('')
+const asking = ref(false)
+const codeReview = ref('')
+const codeReviewAt = ref<string | null>(null)
+const reviewing = ref(false)
+const askSuggestions = computed(() => [
+  t('这篇论文解决了什么问题？'),
+  t('用了什么数据集和指标？'),
+  t('方法最大的局限是什么？'),
+])
+const codeReviewDate = computed(() =>
+  codeReviewAt.value ? new Date(codeReviewAt.value).toLocaleDateString() : '',
+)
+
+async function loadQuestions() {
+  if (!paper.value?.id) return
+  questions.value = await api.questions(paper.value.id).catch(() => [])
+}
+
+async function loadCodeReview() {
+  if (!paper.value?.id) return
+  const data = await api.codeReview(paper.value.id).catch(() => null)
+  codeReview.value = data?.review || ''
+  codeReviewAt.value = data?.reviewedAt || null
+}
+
+async function ask() {
+  const question = askDraft.value.trim()
+  if (!paper.value || !question || asking.value) return
+  if (!settings.ready) {
+    store.notify(t('先在设置里配置模型'))
+    ui.openSettings()
+    return
+  }
+  asking.value = true
+  try {
+    const item = await api.askQuestion(paper.value.id, question, settings.config, locale.value)
+    questions.value = [...questions.value, item]
+    askDraft.value = ''
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('提问失败'))
+  } finally {
+    asking.value = false
+  }
+}
+
+async function analyzeCode() {
+  if (!paper.value?.codeUrl || reviewing.value) return
+  if (!settings.ready) {
+    store.notify(t('先在设置里配置模型'))
+    ui.openSettings()
+    return
+  }
+  reviewing.value = true
+  try {
+    const data = await api.analyzeCode(paper.value.id, settings.config, locale.value)
+    codeReview.value = data.review
+    codeReviewAt.value = data.reviewedAt
+    store.notify(t('代码分析完成'))
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('代码分析失败'))
+  } finally {
+    reviewing.value = false
+  }
+}
 
 async function loadPublicSummaries() {
   if (!paper.value?.id || !paper.value.arxiv) return
@@ -65,6 +138,15 @@ async function likeSummary(item: PublicSummary) {
 }
 
 const paper = computed(() => store.byId(props.id))
+
+watch(
+  [tab, () => paper.value?.id],
+  () => {
+    if (tab.value === 'ask') void loadQuestions()
+    if (tab.value === 'code') void loadCodeReview()
+  },
+  { immediate: true },
+)
 const lv = computed(() => (paper.value ? paperLevel(paper.value) : null))
 const typeColor = computed(() => categoryChipColor(paper.value?.primaryCategory))
 const summary = computed(() => paper.value?.summary ?? '')
@@ -160,7 +242,7 @@ async function generateSummary() {
 watch(
   () => props.id,
   () => {
-    tab.value = route.query.tab === 'pdf' ? 'pdf' : 'abstract'
+    tab.value = tabFromQuery()
   },
 )
 
@@ -241,6 +323,8 @@ onBeforeUnmount(() => {
           <button :class="{ on: tab === 'summary' }" @click="tab = 'summary'">
             {{ t('总结') }}
           </button>
+          <button :class="{ on: tab === 'ask' }" @click="tab = 'ask'">{{ t('问答') }}</button>
+          <button :class="{ on: tab === 'code' }" @click="tab = 'code'">{{ t('复现') }}</button>
         </nav>
 
         <section v-if="tab === 'abstract'" class="panel">
@@ -254,7 +338,7 @@ onBeforeUnmount(() => {
           <PdfViewer :paper-id="paper.id" />
         </section>
 
-        <section v-else class="panel">
+        <section v-else-if="tab === 'summary'" class="panel">
           <div class="toolbar">
             <span class="hint">
               {{
@@ -354,6 +438,79 @@ onBeforeUnmount(() => {
             </article>
           </div>
         </section>
+
+        <section v-else-if="tab === 'ask'" class="panel">
+          <div class="toolbar">
+            <span class="hint">{{ t('基于摘要与全文回答；找不到会说「论文里没提到」。') }}</span>
+            <span class="spacer" />
+            <span class="mono hint">{{ questions.length }} Q</span>
+          </div>
+
+          <div v-if="!questions.length" class="ask-empty">
+            <p>{{ t('问点具体的，比如：') }}</p>
+            <div class="suggest-row">
+              <button
+                v-for="item in askSuggestions"
+                :key="item"
+                type="button"
+                class="suggest"
+                @click="askDraft = item; ask()"
+              >
+                {{ item }}
+              </button>
+            </div>
+          </div>
+
+          <div v-else class="qa-list">
+            <article v-for="item in questions" :key="item.id" class="qa">
+              <p class="q">{{ item.question }}</p>
+              <p class="a">{{ item.answer }}</p>
+            </article>
+          </div>
+
+          <div class="ask-box">
+            <input
+              v-model="askDraft"
+              class="input"
+              maxlength="500"
+              :placeholder="t('问这篇论文：方法、数据、局限…')"
+              @keydown.enter="ask"
+            />
+            <button type="button" class="btn" :disabled="asking || !askDraft.trim()" @click="ask">
+              {{ asking ? t('思考中…') : t('提问') }}
+            </button>
+          </div>
+        </section>
+
+        <section v-else class="panel">
+          <div class="toolbar">
+            <a v-if="paper.codeUrl" :href="paper.codeUrl" target="_blank" rel="noreferrer" class="link">
+              {{ t('打开代码仓库 ↗') }}
+            </a>
+            <span v-else class="hint">{{ t('还没有填代码仓库') }}</span>
+            <span class="spacer" />
+            <span v-if="codeReviewDate" class="mono hint">{{ codeReviewDate }}</span>
+            <button
+              v-if="paper.codeUrl"
+              type="button"
+              class="btn sm"
+              :disabled="reviewing"
+              @click="analyzeCode"
+            >
+              {{ reviewing ? t('分析中…') : codeReview ? t('重新分析') : t('分析代码') }}
+            </button>
+          </div>
+
+          <p v-if="!paper.codeUrl" class="empty">
+            {{ t('回详情页填上 GitHub 仓库，再回来生成复现计划。') }}
+          </p>
+          <template v-else>
+            <MarkdownLite v-if="codeReview" :source="codeReview" />
+            <p v-else class="empty">
+              {{ t('抓取 README、依赖文件和目录树，生成复现步骤与风险清单。只做静态分析，不会执行代码。') }}
+            </p>
+          </template>
+        </section>
       </template>
     </div>
 
@@ -441,6 +598,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 6px;
   margin: 22px 0 16px;
+  overflow-x: auto;
 }
 
 .tabs button {
@@ -603,4 +761,73 @@ onBeforeUnmount(() => {
     padding: 8px;
   }
 }
+
+.qa-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.qa {
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.qa .q {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.qa .a {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.ask-empty {
+  display: grid;
+  gap: 10px;
+  padding: 26px 0;
+}
+
+.ask-empty p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.suggest-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.suggest {
+  padding: 6px 10px;
+  border: 2px dashed var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.ask-box {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 0;
+  background: var(--paper);
+}
+
+.ask-box .input {
+  flex: 1;
+  min-width: 0;
+}
+
 </style>

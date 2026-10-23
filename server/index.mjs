@@ -71,6 +71,15 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+  CREATE TABLE IF NOT EXISTS paper_questions (
+    id         TEXT PRIMARY KEY,
+    paper_id   TEXT NOT NULL,
+    user_id    TEXT NOT NULL,
+    question   TEXT NOT NULL,
+    answer     TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS breeds (
     id         TEXT PRIMARY KEY,
     user_id    TEXT NOT NULL,
@@ -247,6 +256,8 @@ for (const [name, ddl] of [
   ['egg_at', 'TEXT'],
   ['incubated_at', 'TEXT'],
   ['affiliations', 'TEXT'],
+  ['code_review', 'TEXT'],
+  ['code_review_at', 'TEXT'],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -304,6 +315,8 @@ function rowToPaper(row) {
     eggAt: row.egg_at ?? null,
     incubatedAt: row.incubated_at ?? null,
     affiliations: row.affiliations ?? '',
+    codeReview: row.code_review ?? '',
+    codeReviewAt: row.code_review_at ?? null,
     hasFullText: Boolean(row.full_text),
     fullTextChars: row.full_text ? row.full_text.length : 0,
     url: row.url ?? '',
@@ -1242,6 +1255,144 @@ async function callLLM(config, paper) {
   const parsed = extractJson(content)
   if (!parsed) throw new HttpError(502, '模型没有返回可解析的 JSON，换个模型试试')
   return normalizeExplain(parsed)
+}
+
+function buildQuestionPrompt(paper, context, question, zh) {
+  return [
+    zh
+      ? '你只根据下面的论文内容回答问题。找不到答案就说「论文里没有提到」，不要编造。'
+      : 'Answer only from the paper content below. If the answer is missing, say "not mentioned in the paper"; do not invent.',
+    zh ? '回答控制在 250 字以内，必要时引用原文短句。' : 'Keep the answer under 180 words and quote short phrases when useful.',
+    '',
+    `Title: ${paper.title || ''}`,
+    `Abstract: ${String(paper.abstract || '').slice(0, 1500)}`,
+    '',
+    'Content:',
+    context,
+    '',
+    zh ? `问题：${question}` : `Question: ${question}`,
+  ].join('\n')
+}
+
+async function githubJson(url, token) {
+  const response = await fetch(url, {
+    headers: {
+      accept: 'application/vnd.github+json',
+      'user-agent': 'PokemonPaper/0.1',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+    signal: AbortSignal.timeout(30000),
+  })
+  if (!response.ok) {
+    throw new HttpError(502, `GitHub 返回 ${response.status}${response.status === 403 ? '（可能触发限流，配置 GITHUB_TOKEN 可提高额度）' : ''}`)
+  }
+  return response.json()
+}
+
+async function githubText(url, token) {
+  const response = await fetch(url, {
+    headers: {
+      'user-agent': 'PokemonPaper/0.1',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+    signal: AbortSignal.timeout(30000),
+  })
+  if (!response.ok) throw new HttpError(502, `GitHub 文件返回 ${response.status}`)
+  return response.text()
+}
+
+async function buildCodeReviewPrompt(paper, config, zh) {
+  const repo = parseRepo(paper.code_url)
+  if (!repo) throw new HttpError(400, '代码仓库不是 GitHub 地址')
+  const token = process.env.GITHUB_TOKEN || ''
+  const meta = await githubJson(
+    `https://api.github.com/repos/${repo.owner}/${repo.repo}`,
+    token,
+  )
+  const branch = meta.default_branch || 'main'
+  let readme = ''
+  try {
+    const data = await githubJson(
+      `https://api.github.com/repos/${repo.owner}/${repo.repo}/readme`,
+      token,
+    )
+    readme = Buffer.from(data.content || '', 'base64').toString('utf8').slice(0, 6000)
+  } catch {
+    readme = ''
+  }
+  let paths = []
+  try {
+    const tree = await githubJson(
+      `https://api.github.com/repos/${repo.owner}/${repo.repo}/git/trees/${branch}?recursive=1`,
+      token,
+    )
+    paths = (tree.tree || [])
+      .filter((item) => item.type === 'blob' && !item.path.startsWith('.'))
+      .map((item) => item.path)
+      .slice(0, 250)
+  } catch {
+    paths = []
+  }
+  const wanted = paths
+    .filter((path) =>
+      /(^|\/)(requirements.*\.txt|pyproject\.toml|environment.*\.ya?ml|setup\.py|package\.json|README[^/]*|train[^/]*\.py|eval[^/]*\.py|main[^/]*\.py|run[^/]*\.py|config[^/]*\.(yaml|yml|json))$/i.test(
+        path,
+      ),
+    )
+    .slice(0, 6)
+  let files = ''
+  for (const path of wanted) {
+    try {
+      const text = await githubText(
+        `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${branch}/${path}`,
+        token,
+      )
+      files += `\n--- ${path} ---\n${text.slice(0, 2500)}\n`
+    } catch {
+      /* skip */
+    }
+  }
+  const zhPrompt = [
+    '你在评估一个研究代码仓库能否被复现。只根据下面的仓库内容回答，不要编造。',
+    '输出 Markdown，严格用这 7 个二级标题：',
+    '## 项目结构',
+    '## 入口与关键文件',
+    '## 环境与依赖',
+    '## 数据准备',
+    '## 训练 / 评测命令',
+    '## 复现风险',
+    '## 最小复现步骤（checklist）',
+    '最后用 - [ ] 列 5–8 步可执行清单；缺失的信息写「仓库未说明」。',
+  ].join('\n')
+  const enPrompt = [
+    'You are assessing whether a research repository can be reproduced. Use only the content below; do not invent.',
+    'Return Markdown with exactly these H2 sections:',
+    '## Project structure',
+    '## Entry points',
+    '## Environment',
+    '## Data preparation',
+    '## Training / evaluation commands',
+    '## Reproduction risks',
+    '## Minimal reproduction checklist',
+    'End with 5–8 actionable `- [ ]` steps; write "not specified" when missing.',
+  ].join('\n')
+  return [
+    zh ? zhPrompt : enPrompt,
+    '',
+    `Repo: ${repo.owner}/${repo.repo}`,
+    `Description: ${meta.description || ''}`,
+    `Language: ${meta.language || ''} · Stars: ${meta.stargazers_count || 0} · Branch: ${branch}`,
+    `Paper: ${paper.title || ''}`,
+    '',
+    'README:',
+    readme || '(no README fetched)',
+    '',
+    `Files (${paths.length}):`,
+    paths.slice(0, 120).join('\n'),
+    '',
+    'Key files:',
+    files || '(none fetched)',
+  ].join('\n')
 }
 
 /* --------------------------------------------------------------- text */
@@ -2288,6 +2439,116 @@ async function api(req, res, url) {
         )
       })
       return sendJSON(res, 200, { party: partyFor(user.id) })
+    }
+  }
+
+  const questionsMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/questions$/)
+  if (questionsMatch) {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(questionsMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+    if (method === 'GET') {
+      const items = db
+        .prepare(
+          'SELECT id, question, answer, created_at FROM paper_questions WHERE paper_id = ? AND user_id = ? ORDER BY created_at ASC',
+        )
+        .all(row.id, user.id)
+        .map((item) => ({
+          id: item.id,
+          question: item.question,
+          answer: item.answer,
+          createdAt: item.created_at,
+        }))
+      return sendJSON(res, 200, { questions: items })
+    }
+    if (method === 'POST') {
+      const body = await readBody(req)
+      const question = String(body.question || '').trim().slice(0, 500)
+      if (!question) return sendJSON(res, 400, { error: '先写问题' })
+      let context = String(row.full_text || '')
+      if (!context && row.pdf_path) {
+        const file = join(PDF_DIR, row.pdf_path)
+        if (existsSync(file)) {
+          try {
+            const extracted = await extractPdfText(file)
+            context = extracted.text || ''
+            if (context) {
+              db.prepare('UPDATE papers SET full_text = ?, full_text_at = ? WHERE id = ?').run(
+                context,
+                new Date().toISOString(),
+                row.id,
+              )
+            }
+          } catch {
+            context = ''
+          }
+        }
+      }
+      context = context.slice(0, 16000) || String(row.abstract || '')
+      if (!context) return sendJSON(res, 400, { error: '这篇还没有可用的正文或摘要' })
+      const answer = await chatCompletion(
+        body.config || {},
+        [
+          {
+            role: 'system',
+            content:
+              body.locale === 'zh'
+                ? '你是论文问答助手，只根据给定内容回答。'
+                : 'You are a paper Q&A assistant. Answer only from the supplied content.',
+          },
+          { role: 'user', content: buildQuestionPrompt(row, context, question, body.locale === 'zh') },
+        ],
+        800,
+      )
+      const id = randomUUID()
+      const now = new Date().toISOString()
+      db.prepare(
+        'INSERT INTO paper_questions (id, paper_id, user_id, question, answer, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ).run(id, row.id, user.id, question, answer, now)
+      return sendJSON(res, 200, { question: { id, question, answer, createdAt: now } })
+    }
+  }
+
+  const codeReviewMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/code-review$/)
+  if (codeReviewMatch) {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(codeReviewMatch[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+    if (method === 'GET') {
+      return sendJSON(res, 200, {
+        review: row.code_review || '',
+        reviewedAt: row.code_review_at || null,
+      })
+    }
+    if (method === 'POST') {
+      if (!row.code_url) return sendJSON(res, 400, { error: '这篇没有填代码仓库' })
+      const body = await readBody(req)
+      const prompt = await buildCodeReviewPrompt(row, body.config || {}, body.locale === 'zh')
+      const review = (
+        await chatCompletion(
+          body.config || {},
+          [
+            {
+              role: 'system',
+              content:
+                body.locale === 'zh'
+                  ? '你是严谨的复现工程师，只输出 Markdown。'
+                  : 'You are a rigorous reproducibility engineer. Output Markdown only.',
+            },
+            { role: 'user', content: prompt },
+          ],
+          1600,
+        )
+      ).slice(0, 8000)
+      const now = new Date().toISOString()
+      db.prepare('UPDATE papers SET code_review = ?, code_review_at = ? WHERE id = ?').run(
+        review,
+        now,
+        row.id,
+      )
+      return sendJSON(res, 200, { review, reviewedAt: now })
     }
   }
 
