@@ -64,6 +64,15 @@ export interface AuthUser {
   createdAt: string
 }
 
+export interface PdfJob {
+  running: boolean
+  total: number
+  done: number
+  failed: number
+  current: string
+  finishedAt: string | null
+}
+
 export interface AnnotationRect {
   x: number
   y: number

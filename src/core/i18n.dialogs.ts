@@ -244,4 +244,9 @@ export const dialogsDict: Record<string, string> = {
   '搜索失败': 'Search failed',
   '排除已收录': 'Hide papers already in my library',
   '这些结果都已在库里了': 'All of these are already in your library',
+  '维护': 'Maintenance',
+  '把还没有本地 PDF 的论文排队下载，一次一篇，后台执行。': 'Queue papers without a local PDF and download them one at a time in the background.',
+  '{n} 篇待下载': '{n} to download',
+  '批量下载': 'Download all',
+  '批量下载完成：成功 {done} 篇，失败 {failed} 篇': 'Batch download finished: {done} succeeded, {failed} failed',
 }

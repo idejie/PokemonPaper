@@ -4,6 +4,8 @@ import { PROVIDERS, providerById } from '../core/providers'
 import { useSettingsStore } from '../stores/settings'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
+import { api } from '../core/api'
+import type { PdfJob } from '../core/types'
 import { t } from '../core/i18n'
 
 const settings = useSettingsStore()
@@ -12,6 +14,37 @@ const ui = useUiStore()
 
 const form = reactive({ ...settings.config })
 const showKey = ref(false)
+const pdfJob = ref<PdfJob | null>(null)
+let pdfTimer: number | undefined
+
+const missingPdf = computed(
+  () => store.items.filter((paper) => paper.arxiv && !paper.pdfPath).length,
+)
+
+async function pollPdfJob() {
+  const job = await api.pdfBackfillStatus()
+  pdfJob.value = job
+  if (!job.running) {
+    window.clearInterval(pdfTimer)
+    pdfTimer = undefined
+    if (job.total) {
+      store.notify(
+        t('批量下载完成：成功 {done} 篇，失败 {failed} 篇', {
+          done: job.done,
+          failed: job.failed,
+        }),
+      )
+      await store.load()
+    }
+  }
+}
+
+async function startPdfDownload() {
+  if (pdfJob.value?.running) return
+  pdfJob.value = await api.startPdfBackfill()
+  window.clearInterval(pdfTimer)
+  pdfTimer = window.setInterval(pollPdfJob, 1500)
+}
 const provider = computed(() => providerById(form.providerId))
 
 function selectProvider(id: string) {
@@ -42,10 +75,15 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  void api.pdfBackfillStatus().then((job) => {
+    pdfJob.value = job
+    if (job.running) pdfTimer = window.setInterval(pollPdfJob, 1500)
+  }).catch(() => {})
   document.addEventListener('keydown', onKeydown)
   document.body.style.overflow = 'hidden'
 })
 onBeforeUnmount(() => {
+  window.clearInterval(pdfTimer)
   document.removeEventListener('keydown', onKeydown)
   document.body.style.overflow = ''
 })
@@ -116,6 +154,25 @@ onBeforeUnmount(() => {
         <p v-if="provider.keyUrl" class="hint">
           {{ t('没有 Key？') }}
           <a :href="provider.keyUrl" target="_blank" rel="noreferrer">{{ t('去 {name} 申请 →', { name: t(provider.name) }) }}</a>
+        </p>
+
+        <div class="divider" />
+
+        <h3 class="block-title">{{ t('维护') }}</h3>
+        <p class="lead">{{ t('把还没有本地 PDF 的论文排队下载，一次一篇，后台执行。') }}</p>
+        <div class="maint">
+          <span class="hint">{{ t('{n} 篇待下载', { n: missingPdf }) }}</span>
+          <button
+            type="button"
+            class="btn sm"
+            :disabled="pdfJob?.running || !missingPdf"
+            @click="startPdfDownload"
+          >
+            {{ pdfJob?.running ? t('下载中…') : t('批量下载') }}
+          </button>
+        </div>
+        <p v-if="pdfJob?.running" class="hint mono">
+          {{ pdfJob.done }}/{{ pdfJob.total }} · {{ pdfJob.current }}
         </p>
 
         <div class="actions">
@@ -248,6 +305,24 @@ onBeforeUnmount(() => {
 .hint {
   font-size: 12px;
   color: var(--dim);
+}
+
+.divider {
+  border-top: 2px dashed var(--line);
+  margin: 4px 0;
+}
+
+.block-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.maint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .actions {

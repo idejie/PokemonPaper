@@ -546,6 +546,32 @@ function extractJson(text) {
   }
 }
 
+const downloadJobs = new Map()
+
+async function runDownloadJob(userId) {
+  const job = downloadJobs.get(userId)
+  if (!job) return
+  const rows = db
+    .prepare(
+      "SELECT * FROM papers WHERE user_id = ? AND arxiv != '' AND (pdf_path IS NULL OR pdf_path = '')",
+    )
+    .all(userId)
+  job.total = rows.length
+  for (const row of rows) {
+    job.current = row.arxiv
+    try {
+      await ensurePdf(row)
+      job.done += 1
+    } catch {
+      job.failed += 1
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400))
+  }
+  job.running = false
+  job.current = ''
+  job.finishedAt = new Date().toISOString()
+}
+
 async function backfillRows(rows) {
   let updated = 0
   for (let i = 0; i < rows.length; i += 50) {
@@ -1140,6 +1166,41 @@ async function api(req, res, url) {
       )
       .get(user.id).n
     return sendJSON(res, 200, { updated, remaining })
+  }
+
+  if (pathname === '/api/papers/download-missing' && method === 'POST') {
+    const existing = downloadJobs.get(user.id)
+    if (existing?.running) return sendJSON(res, 200, { job: existing })
+    const job = {
+      running: true,
+      total: 0,
+      done: 0,
+      failed: 0,
+      current: '',
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+    }
+    downloadJobs.set(user.id, job)
+    void runDownloadJob(user.id).catch((error) => {
+      job.running = false
+      job.current = ''
+      job.error = error?.message || 'download failed'
+    })
+    return sendJSON(res, 202, { job })
+  }
+
+  if (pathname === '/api/papers/download-missing' && method === 'GET') {
+    const job = downloadJobs.get(user.id)
+    return sendJSON(res, 200, {
+      job: job ?? {
+        running: false,
+        total: 0,
+        done: 0,
+        failed: 0,
+        current: '',
+        finishedAt: null,
+      },
+    })
   }
 
   if (pathname === '/api/arxiv/search' && method === 'POST') {

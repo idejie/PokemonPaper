@@ -191,7 +191,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Bilingual UI (zh / en)
 - [x] Statistics: categories, years, venues
 - [x] Deploy for multiple users: `HOST` binding, reverse proxy / HTTPS guide
-- [ ] Batch download of missing PDFs (background queue + progress)
+- [x] Batch download of missing PDFs (background queue + progress)
 - [ ] Annotation list panel (grouped by page, click to jump)
 - [ ] Scheduled metric refresh (stars / categories)
 - [ ] Export AI summaries to Markdown / standalone HTML
@@ -639,7 +639,7 @@ interface Paper {
 - [x] 统计页：按分类、年份、会议分布
 - [x] 多用户账号（邀请制，数据按用户隔离）
 - [x] 对外部署：`HOST` 绑定 + 反向代理 / HTTPS 说明
-- [ ] 批量下载缺失 PDF（后台队列 + 进度）
+- [x] 批量下载缺失 PDF（后台队列 + 进度）
 - [ ] 标注列表（按页聚合，点击跳转）
 - [ ] 指标定时刷新（star / 分类）
 - [ ] 解读导出为 Markdown / 独立 HTML
@@ -651,7 +651,6 @@ interface Paper {
 - 没有邮箱验证、找回密码和 OAuth（改密码已有，但忘了就进不去）
 - 会话存在 SQLite，多实例部署需要共享数据库
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
-- 批量下载 PDF 还没做，目前是一篇一篇点
 - star 来自 GitHub，有分钟级延迟
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 扫描版 PDF 没有文字层，无法选中标注，总结也只能靠摘要

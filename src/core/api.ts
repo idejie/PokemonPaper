@@ -5,6 +5,7 @@ import type {
   Explain,
   Invite,
   LlmConfig,
+  PdfJob,
   Paper,
   PaperInput,
 } from './types'
@@ -116,6 +117,18 @@ export const api = {
   async list(): Promise<Paper[]> {
     const data = await request<{ papers: Paper[] }>('/api/papers')
     return data.papers
+  },
+
+  async startPdfBackfill(): Promise<PdfJob> {
+    const data = await request<{ job: PdfJob }>('/api/papers/download-missing', {
+      method: 'POST',
+    })
+    return data.job
+  },
+
+  async pdfBackfillStatus(): Promise<PdfJob> {
+    const data = await request<{ job: PdfJob }>('/api/papers/download-missing')
+    return data.job
   },
 
   async backfillPapers(): Promise<{ updated: number; remaining: number }> {
