@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MarkdownLite from '../components/MarkdownLite.vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
@@ -9,6 +9,7 @@ import type { PublicSummary } from '../core/types'
 import { paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
 import { t } from '../core/i18n'
+import { addReadingTime, recordVisit } from '../core/bond'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
@@ -176,8 +177,18 @@ watch(
   },
 )
 
+let readingTimer: ReturnType<typeof setInterval> | null = null
+
 onMounted(async () => {
+  recordVisit(props.id)
   if (!store.items.length) await store.load()
+  readingTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') addReadingTime(props.id, 30)
+  }, 30000)
+})
+
+onBeforeUnmount(() => {
+  if (readingTimer) clearInterval(readingTimer)
 })
 </script>
 

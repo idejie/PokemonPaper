@@ -256,4 +256,8 @@ export const pagesDict: Record<string, string> = {
   '已获得': 'Earned',
   '未获得': 'Locked',
   '已获得 {n} / {m}': 'Earned {n} / {m}',
+  '羁绊': 'Bond',
+  '陌生': 'Stranger',
+  '熟悉': 'Familiar',
+  '亲密': 'Close',
 }

@@ -17,7 +17,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
 
 ## A. Growth
 
-- [ ] **Bond / 羁绊值** — notes, revisits and reading time raise bond; unlock
+- [x] **Bond / 羁绊值** — notes, revisits and reading time raise bond; unlock
       accessories and idle animations. `S`
 - [ ] **8-bit cries** — deterministic WebAudio cry per arXiv ID, played when a
       paper lights up. No audio assets needed. `S`

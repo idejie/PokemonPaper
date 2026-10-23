@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| ❤️ **Bond** | Notes, revisits and reading time build a 0–100 bond (stored locally); tiers light up hearts on the detail sheet |
 | 🏅 **Gyms** | 12 gyms by arXiv field; read 3 papers and write a note on one to earn the badge, shown on the profile and guide |
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
 | 🖼️ **Share card** | Export a paper as a 640×900 PNG card with its sprite, level, category and trainer |
@@ -244,6 +245,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Four-stage sprite evolution (hatchling → bond form)
 - [x] Daily wild paper with double XP
 - [x] Category gyms (12 badges)
+- [x] Bond from notes, revisits and reading time
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -274,6 +276,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| ❤️ **羁绊** | 笔记、复访和阅读时长累积 0–100 羁绊（本地记录），等级点亮详情页爱心 |
 | 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，读满 3 篇 + 1 篇笔记得徽章，展示在档案和 Guide |
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
 | 🖼️ **分享卡** | 一键导出论文卡 PNG（精灵、等级、分类、训练家），适合发推 / 朋友圈 |
@@ -744,6 +747,7 @@ interface Like {
 - [x] 四段精灵进化（幼体 → 羁绊形态）
 - [x] 每日野生论文 + 双倍 XP
 - [x] 分类道馆（12 枚徽章）
+- [x] 羁绊值（笔记 / 复访 / 阅读时长）
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

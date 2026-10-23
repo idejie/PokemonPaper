@@ -13,6 +13,7 @@ import { ARXIV_CATEGORIES } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import { t, locale } from '../core/i18n'
 import { downloadShareCard } from '../core/shareCard'
+import { bondOf, bondStats, recordVisit, type BondInfo } from '../core/bond'
 import type { Explain, Paper, PaperStatus } from '../core/types'
 
 const props = defineProps<{ id?: string }>()
@@ -44,6 +45,7 @@ const fetching = ref(false)
 const pdfBusy = ref(false)
 const spriteBusy = ref(false)
 const cardBusy = ref(false)
+const bond = ref<BondInfo | null>(null)
 const stageName = computed(() => {
   if (form.status === 'unread') return '幼体'
   if (form.status === 'reading') return '成长体'
@@ -226,6 +228,15 @@ async function syncMetrics() {
   }
 }
 
+function loadBond() {
+  if (!props.id || !paper.value) {
+    bond.value = null
+    return
+  }
+  recordVisit(props.id)
+  bond.value = bondOf(paper.value, bondStats(props.id))
+}
+
 async function shareCard() {
   if (!paper.value) {
     store.notify(t('先保存这篇论文'))
@@ -309,7 +320,13 @@ function onKeydown(event: KeyboardEvent) {
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
   document.body.style.overflow = 'hidden'
+  loadBond()
 })
+
+watch(
+  [() => props.id, () => paper.value?.id],
+  () => loadBond(),
+)
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeydown)
@@ -355,6 +372,18 @@ onBeforeUnmount(() => {
               {{ cardBusy ? t('生成中…') : t('分享卡片') }}
             </button>
             <p class="stage-name">{{ t(stageName) }}</p>
+            <div v-if="bond" class="bond">
+              <div class="bond-top">
+                <span class="mono dim">{{ t('羁绊') }} {{ bond.score }}</span>
+                <b>{{ t(bond.tier) }}</b>
+                <span class="bond-hearts">
+                  <i v-for="n in 3" :key="n" :class="{ on: n <= bond.hearts }">❤</i>
+                </span>
+              </div>
+              <div class="bond-bar">
+                <div class="bond-fill" :style="{ width: bond.score + '%' }" />
+              </div>
+            </div>
 
             <div class="preview-meta">
               <span class="type-chip" :style="{ background: catColor }">
@@ -719,6 +748,53 @@ onBeforeUnmount(() => {
 
 .stage.dim :deep(svg) {
   opacity: 0.7;
+}
+
+.bond {
+  display: grid;
+  gap: 3px;
+  margin: 6px 2px 0;
+}
+
+.bond-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+}
+
+.bond-top b {
+  font-size: 10px;
+}
+
+.bond-hearts {
+  margin-left: auto;
+  letter-spacing: 1px;
+  font-style: normal;
+}
+
+.bond-hearts i {
+  font-style: normal;
+  color: var(--line);
+  font-size: 9px;
+}
+
+.bond-hearts i.on {
+  color: #e0586f;
+}
+
+.bond-bar {
+  height: 5px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.bond-fill {
+  height: 100%;
+  background: #e0586f;
+  transition: width 0.3s ease;
 }
 
 .stage-name {
