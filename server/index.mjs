@@ -75,6 +75,8 @@ db.exec(`
     user_id    TEXT NOT NULL,
     a_id       TEXT NOT NULL,
     b_id       TEXT NOT NULL,
+    paper_ids  TEXT,
+    user_idea  TEXT,
     seed       TEXT NOT NULL,
     idea       TEXT NOT NULL,
     created_at TEXT NOT NULL
@@ -196,6 +198,18 @@ if (papersSql && /arxiv\s+TEXT\s+UNIQUE/i.test(papersSql.sql)) {
 db.exec(
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_papers_user_arxiv ON papers(user_id, arxiv) WHERE arxiv IS NOT NULL AND arxiv != ''",
 )
+
+// old databases: add breed columns used by multi-paper breeding
+for (const [name, ddl] of [
+  ['paper_ids', 'TEXT'],
+  ['user_idea', 'TEXT'],
+]) {
+  try {
+    db.exec(`ALTER TABLE breeds ADD COLUMN ${name} ${ddl}`)
+  } catch {
+    /* already exists */
+  }
+}
 
 // 老库升级：没有任何管理员时，把最早注册的用户提升为管理员
 const adminCount = db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').get().n
@@ -851,26 +865,37 @@ function levelForXp(xp) {
   return level
 }
 
-function buildBreedPrompt(a, b, zh) {
+function buildBreedPrompt(rows, userIdea, zh) {
   const lines = zh
     ? [
-        '你在帮研究者把两篇论文“培育”成一个新的交叉研究点。',
+        '你在帮研究者把论文“培育”成新的研究点。',
         '输出 3 段纯文本，每段 2–3 句，不要 markdown 标题，不要客套：',
-        '1) 两篇论文共同缺口；2) 一个可执行实验（数据、方法、指标）；3) 最大风险或反例。',
+        '1) 共同缺口（只有一篇时写它没解决的后续问题）；2) 一个可执行实验（数据、方法、指标）；3) 最大风险或反例。',
+        rows.length === 1
+          ? '这次只有一篇论文：请为它设计一个具体的后续实验，而不是复述原文。'
+          : '这次有多篇论文：请找出它们真正的交叉点，不要简单拼接。',
+        userIdea.trim()
+          ? `用户指定的方向（必须优先考虑）：${userIdea.trim()}`
+          : '用户没有指定方向，请自己提出一个有价值的方向。',
       ]
     : [
-        'You are cross-breeding two papers into one concrete research idea.',
+        'You are cross-breeding papers into one concrete research idea.',
         'Write exactly 3 plain-text paragraphs, 2–3 sentences each, no markdown headings, no preamble:',
-        '1) the shared gap; 2) one executable experiment (data, method, metric); 3) the biggest risk or counterexample.',
+        '1) the shared gap (for a single paper, the follow-up it leaves open); 2) one executable experiment (data, method, metric); 3) the biggest risk or counterexample.',
+        rows.length === 1
+          ? 'There is only one paper: design a concrete follow-up experiment, do not summarise it.'
+          : 'There are multiple papers: find a real intersection, do not just concatenate them.',
+        userIdea.trim()
+          ? `The user's direction (prioritise this): ${userIdea.trim()}`
+          : 'The user gave no direction; propose one worth pursuing.',
       ]
-  lines.push(
-    '',
-    `Paper A: ${a.title || ''} (${a.primary_category || ''})`,
-    `Abstract A: ${String(a.abstract || '').slice(0, 900) || '(none)'}`,
-    '',
-    `Paper B: ${b.title || ''} (${b.primary_category || ''})`,
-    `Abstract B: ${String(b.abstract || '').slice(0, 900) || '(none)'}`,
-  )
+  for (const [index, row] of rows.entries()) {
+    lines.push(
+      '',
+      `Paper ${index + 1}: ${row.title || ''} (${row.primary_category || ''})`,
+      `Abstract: ${String(row.abstract || '').slice(0, 900) || '(none)'}`,
+    )
+  }
   return lines.join('\n')
 }
 
@@ -2268,10 +2293,17 @@ async function api(req, res, url) {
 
   if (pathname === '/api/breed' && method === 'POST') {
     const body = await readBody(req)
-    const a = db.prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?').get(String(body.a || ''), user.id)
-    const b = db.prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?').get(String(body.b || ''), user.id)
-    if (!a || !b) return sendJSON(res, 404, { error: '找不到这两篇论文' })
-    if (a.id === b.id) return sendJSON(res, 400, { error: '选两篇不同的论文' })
+    const rawIds = Array.isArray(body.paperIds)
+      ? body.paperIds
+      : [body.a, body.b].filter(Boolean)
+    const ids = [...new Set(rawIds.map(String))].slice(0, 6)
+    if (!ids.length) return sendJSON(res, 400, { error: '至少选一篇论文' })
+    if (ids.length > 5) return sendJSON(res, 400, { error: '最多选 5 篇论文' })
+    const rows = ids
+      .map((id) => db.prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?').get(id, user.id))
+      .filter(Boolean)
+    if (rows.length !== ids.length) return sendJSON(res, 404, { error: '找不到其中一些论文' })
+    const userIdea = String(body.idea || '').slice(0, 1200)
     const idea = (
       await chatCompletion(
         body.config || {},
@@ -2283,7 +2315,7 @@ async function api(req, res, url) {
                 ? '你是严谨的交叉研究方向顾问，只输出三段纯文本。'
                 : 'You are a rigorous cross-field research advisor. Reply with exactly three plain-text paragraphs.',
           },
-          { role: 'user', content: buildBreedPrompt(a, b, body.locale === 'zh') },
+          { role: 'user', content: buildBreedPrompt(rows, userIdea, body.locale === 'zh') },
         ],
         900,
       )
@@ -2291,16 +2323,37 @@ async function api(req, res, url) {
       .replace(/\s+\n/g, '\n')
       .trim()
       .slice(0, 2400)
-    const seed = `${a.arxiv || a.id}+${b.arxiv || b.id}`
+    const seed = rows.map((row) => row.arxiv || row.id).join('+')
+    const categories = rows.map((row) => row.primary_category).filter(Boolean)
+    const category =
+      categories.sort(
+        (a, b) =>
+          categories.filter((item) => item === b).length -
+          categories.filter((item) => item === a).length,
+      )[0] || ''
     db.prepare(
-      'INSERT INTO breeds (id, user_id, a_id, b_id, seed, idea, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    ).run(randomUUID(), user.id, a.id, b.id, seed, idea, new Date().toISOString())
+      `INSERT INTO breeds (id, user_id, a_id, b_id, paper_ids, user_idea, seed, idea, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      randomUUID(),
+      user.id,
+      rows[0].id,
+      rows[1]?.id || rows[0].id,
+      JSON.stringify(rows.map((row) => row.id)),
+      userIdea,
+      seed,
+      idea,
+      new Date().toISOString(),
+    )
     return sendJSON(res, 200, {
       idea,
       seed,
-      category: b.primary_category || a.primary_category || '',
-      a: { id: a.id, arxiv: a.arxiv, title: a.title },
-      b: { id: b.id, arxiv: b.arxiv, title: b.title },
+      category,
+      papers: rows.map((row) => ({
+        id: row.id,
+        arxiv: row.arxiv,
+        title: row.title,
+      })),
     })
   }
 

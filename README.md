@@ -37,7 +37,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | | |
 |---|---|
 | 🥚 **Paper eggs** | Put unread papers in an egg queue; opening the detail starts incubation and finishing hatches it |
-| 🧬 **Breeding** | Pick two papers and the model proposes a concrete cross-field experiment, paired with a hybrid sprite |
+| 🧬 **Breeding** | Pick 1–5 papers, add your own direction, and the model proposes a concrete follow-up experiment with a hybrid sprite |
 | 👑 **Gym leaders** | Monthly crown for the top reader of each gym, based on this month's finished papers |
 | 🧑‍🤝‍🧑 **Party of six** | Pin up to six papers; they show as sprites on your profile and your leaderboard row |
 | 🤝 **Trading** | Send a paper with its notes to another account by email; their copy starts unread |
@@ -444,7 +444,7 @@ piece of content once; unliking removes the row.
 - [x] Paper trading between accounts
 - [x] Party of six
 - [x] Monthly gym leaders
-- [x] Cross-paper breeding
+- [x] Breeding from 1–5 papers with a user direction
 - [x] Paper egg queue
 - [x] Batch artwork with progress
 - [x] Share-card preview and QR scan import
@@ -481,7 +481,7 @@ MIT © idejie
 | | |
 |---|---|
 | 🥚 **论文蛋** | 未读论文可放进蛋队列，打开详情开始孵化，读完破壳 |
-| 🧬 **论文培育** | 选两篇论文，模型给出可执行的交叉实验方案，并生成一只混合精灵 |
+| 🧬 **论文培育** | 选 1–5 篇论文并写下自己的想法，模型给出可执行的后续/交叉实验方案，生成一只混合精灵 |
 | 👑 **道馆馆主** | 每个道馆按本月已读篇数评选馆主，展示在 Guide 页 |
 | 🧑‍🤝‍🧑 **六人队伍** | 选最多 6 篇论文组队，展示在训练家档案和天梯行 |
 | 🤝 **论文交换** | 按邮箱把论文连同笔记交换给另一个账号，对方从“未读”开始 |
@@ -981,7 +981,7 @@ interface Like {
 - [x] 论文交换
 - [x] 六人队伍
 - [x] 每月道馆馆主
-- [x] 论文培育 / 交叉想法
+- [x] 论文培育（1–5 篇 + 自定义方向）
 - [x] 论文蛋队列
 - [x] 批量插画（进度条）
 - [x] 分享卡预览与扫码导入

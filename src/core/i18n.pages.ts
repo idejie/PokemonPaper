@@ -331,4 +331,13 @@ export const pagesDict: Record<string, string> = {
   '总榜': 'Overall',
   '笔记': 'Notes',
   '这个道馆还没有人读完论文。': 'Nobody has finished a paper in this gym yet.',
+  '选择 1–5 篇论文，可以加上你的想法。': 'Pick 1–5 papers and optionally add your own direction.',
+  '还没有选择论文': 'No paper selected yet',
+  '搜索标题 / 作者 / 编号': 'Search title / author / arXiv ID',
+  '没有匹配的论文': 'No matching paper',
+  '你的想法（可选）': 'Your idea (optional)',
+  '例如：把扩散策略用到触觉反馈上，重点看 sim2real 差距': 'e.g. apply diffusion policies to tactile feedback and measure the sim2real gap',
+  '最多选 5 篇论文': 'Pick at most 5 papers',
+  '至少选一篇论文': 'Pick at least one paper',
+  '培育 {n} 篇': 'Breed {n} papers',
 }

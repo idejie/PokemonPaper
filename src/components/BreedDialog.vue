@@ -11,15 +11,15 @@ import SpriteSvg from './SpriteSvg.vue'
 const props = defineProps<{ papers: Paper[] }>()
 const emit = defineEmits<{ close: [] }>()
 
+const MAX = 5
 const settings = useSettingsStore()
 const store = usePapersStore()
 const ui = useUiStore()
 
 const candidates = computed(() => props.papers.filter((paper) => paper.arxiv))
-const aId = ref(candidates.value[0]?.id ?? '')
-const bId = ref(candidates.value.find((paper) => paper.id !== aId.value)?.id ?? '')
-const a = computed(() => candidates.value.find((paper) => paper.id === aId.value) ?? null)
-const b = computed(() => candidates.value.find((paper) => paper.id === bId.value) ?? null)
+const selected = ref<string[]>(candidates.value[0] ? [candidates.value[0].id] : [])
+const idea = ref('')
+const query = ref('')
 const busy = ref(false)
 const result = ref<{
   idea: string
@@ -27,13 +27,42 @@ const result = ref<{
   category: string
 } | null>(null)
 
-async function breed() {
-  if (!a.value || !b.value) {
-    store.notify(t('至少需要两篇论文'))
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return candidates.value
+  return candidates.value.filter(
+    (paper) =>
+      paper.title.toLowerCase().includes(q) ||
+      paper.arxiv.toLowerCase().includes(q) ||
+      paper.authors.toLowerCase().includes(q),
+  )
+})
+
+const selectedPapers = computed(() =>
+  selected.value
+    .map((id) => candidates.value.find((paper) => paper.id === id))
+    .filter((paper): paper is Paper => Boolean(paper)),
+)
+
+function toggle(paper: Paper) {
+  if (selected.value.includes(paper.id)) {
+    selected.value = selected.value.filter((id) => id !== paper.id)
     return
   }
-  if (aId.value === bId.value) {
-    store.notify(t('选两篇不同的论文'))
+  if (selected.value.length >= MAX) {
+    store.notify(t('最多选 5 篇论文'))
+    return
+  }
+  selected.value = [...selected.value, paper.id]
+}
+
+function clear(id: string) {
+  selected.value = selected.value.filter((item) => item !== id)
+}
+
+async function breed() {
+  if (!selected.value.length) {
+    store.notify(t('至少选一篇论文'))
     return
   }
   if (!settings.ready) {
@@ -43,7 +72,7 @@ async function breed() {
   }
   busy.value = true
   try {
-    result.value = await api.breed(aId.value, bId.value, settings.config, locale.value)
+    result.value = await api.breed(selected.value, idea.value.trim(), settings.config, locale.value)
   } catch (err) {
     store.notify(err instanceof Error ? err.message : t('培育失败'))
   } finally {
@@ -60,60 +89,68 @@ async function breed() {
         <button type="button" class="close" :aria-label="t('关闭')" @click="emit('close')">×</button>
       </header>
 
-      <p class="lead">{{ t('选择两篇论文，模型会给一个可执行的交叉研究点。') }}</p>
+      <p class="lead">{{ t('选择 1–5 篇论文，可以加上你的想法。') }}</p>
 
-      <div class="pickers">
-        <label>
-          <span>{{ t('论文 A') }}</span>
-          <select v-model="aId" class="select">
-            <option v-for="paper in candidates" :key="paper.id" :value="paper.id">
-              {{ paper.title }}
-            </option>
-          </select>
-        </label>
-        <span class="plus">+</span>
-        <label>
-          <span>{{ t('论文 B') }}</span>
-          <select v-model="bId" class="select">
-            <option v-for="paper in candidates" :key="paper.id" :value="paper.id">
-              {{ paper.title }}
-            </option>
-          </select>
-        </label>
+      <div class="chosen">
+        <span v-if="!selectedPapers.length" class="hint">{{ t('还没有选择论文') }}</span>
+        <button
+          v-for="paper in selectedPapers"
+          :key="paper.id"
+          type="button"
+          class="chosen-chip"
+          :title="paper.title"
+          @click="clear(paper.id)"
+        >
+          {{ paper.arxiv }}
+          <b>×</b>
+        </button>
+        <span class="chosen-count mono">{{ selected.length }} / {{ MAX }}</span>
       </div>
 
-      <div v-if="a && b" class="parents">
-        <div class="parent">
-          <SpriteSvg :seed="a.arxiv || a.title" :category="a.primaryCategory" :status="a.status" />
-          <small>{{ a.arxiv }}</small>
-        </div>
-        <span class="plus">+</span>
-        <div class="parent">
-          <SpriteSvg :seed="b.arxiv || b.title" :category="b.primaryCategory" :status="b.status" />
-          <small>{{ b.arxiv }}</small>
-        </div>
-        <span class="arrow">→</span>
-        <div class="parent hybrid" :class="{ empty: !result }">
-          <SpriteSvg
-            v-if="result"
-            :seed="result.seed"
-            :category="result.category"
+      <input v-model="query" class="input search" :placeholder="t('搜索标题 / 作者 / 编号')" />
+
+      <div class="paper-list">
+        <label v-for="paper in filtered" :key="paper.id" class="paper-line" :class="{ on: selected.includes(paper.id) }">
+          <input
+            type="checkbox"
+            :checked="selected.includes(paper.id)"
+            @change="toggle(paper)"
           />
+          <span class="paper-title">{{ paper.title }}</span>
+          <span class="mono paper-arxiv">{{ paper.arxiv }}</span>
+          <small class="mono">{{ paper.primaryCategory }}</small>
+        </label>
+        <p v-if="!filtered.length" class="hint">{{ t('没有匹配的论文') }}</p>
+      </div>
+
+      <label class="idea">
+        <span>{{ t('你的想法（可选）') }}</span>
+        <textarea
+          v-model="idea"
+          class="textarea"
+          maxlength="1200"
+          :placeholder="t('例如：把扩散策略用到触觉反馈上，重点看 sim2real 差距')"
+        />
+      </label>
+
+      <div class="parents">
+        <div v-for="paper in selectedPapers" :key="paper.id" class="parent">
+          <SpriteSvg :seed="paper.arxiv || paper.title" :category="paper.primaryCategory" :status="paper.status" />
+          <small class="mono">{{ paper.arxiv }}</small>
+        </div>
+        <span v-if="selectedPapers.length" class="arrow">→</span>
+        <div class="parent hybrid" :class="{ empty: !result }">
+          <SpriteSvg v-if="result" :seed="result.seed" :category="result.category" />
           <span v-else class="egg">🥚</span>
           <small>{{ result ? t('杂交种') : '?' }}</small>
         </div>
       </div>
 
-      <button
-        type="button"
-        class="btn"
-        :disabled="busy || !a || !b"
-        @click="breed()"
-      >
-        {{ busy ? t('培育中…') : result ? t('再培育一次') : t('生成交叉想法') }}
+      <button type="button" class="btn" :disabled="busy || !selected.length" @click="breed">
+        {{ busy ? t('培育中…') : result ? t('再培育一次') : t('培育 {n} 篇', { n: selected.length }) }}
       </button>
 
-      <article v-if="result" class="idea">
+      <article v-if="result" class="idea-result">
         <h3>{{ t('交叉研究点') }}</h3>
         <p>{{ result.idea }}</p>
       </article>
@@ -133,16 +170,16 @@ async function breed() {
 }
 
 .breed-sheet {
-  width: min(760px, 100%);
-  max-height: 90vh;
+  width: min(780px, 100%);
+  max-height: 92vh;
   overflow: auto;
-  padding: 18px 20px 20px;
+  padding: 16px 18px 18px;
   border: 3px solid var(--ink);
   border-radius: 14px;
   background: var(--paper);
   box-shadow: 8px 8px 0 var(--ink);
   display: grid;
-  gap: 12px;
+  gap: 9px;
 }
 
 header {
@@ -172,67 +209,126 @@ h2 {
   color: var(--muted);
 }
 
-.pickers {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 10px;
-  align-items: end;
+.chosen {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 26px;
 }
 
-.pickers label {
+.chosen-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: #fff4cf;
+  font-size: 9px;
+  font-family: var(--mono, monospace);
+}
+
+.chosen-chip b {
+  font-size: 11px;
+}
+
+.chosen-count {
+  margin-left: auto;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.search {
+  height: 30px;
+  font-size: 11px;
+}
+
+.paper-list {
+  max-height: 200px;
+  overflow: auto;
+  border: 2px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+
+.paper-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-bottom: 1px dashed var(--line);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.paper-line.on {
+  background: #fff4cf;
+}
+
+.paper-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.paper-arxiv,
+.paper-line small {
+  flex: none;
+  font-size: 8.5px;
+  color: var(--muted);
+}
+
+.idea {
   display: grid;
   gap: 4px;
   font-size: 10px;
   font-weight: 800;
 }
 
-.select {
-  width: 100%;
-  padding: 6px 8px;
-  border: 2px solid var(--ink);
-  border-radius: 7px;
-  background: var(--panel);
+.idea .textarea {
+  min-height: 64px;
   font-size: 11px;
-}
-
-.plus {
-  font-size: 18px;
-  font-weight: 900;
-  padding-bottom: 6px;
 }
 
 .parents {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 6px 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
 }
 
 .parent {
   display: grid;
   justify-items: center;
-  gap: 2px;
-  width: 96px;
-  height: 96px;
-  padding: 4px;
+  gap: 1px;
+  width: 76px;
+  height: 76px;
+  padding: 3px;
   border: 2px solid var(--line);
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--panel-2);
 }
 
 .parent.hybrid {
+  width: 88px;
+  height: 88px;
   border-color: #a86b12;
   background: #fff4cf;
 }
 
 .parent small {
-  font-size: 8px;
+  font-size: 7.5px;
   color: var(--muted);
 }
 
 .parent .egg {
-  font-size: 38px;
+  font-size: 32px;
   align-self: center;
 }
 
@@ -241,20 +337,20 @@ h2 {
   font-weight: 900;
 }
 
-.idea {
+.idea-result {
   border: 2px dashed var(--line);
   border-radius: 9px;
   background: var(--panel-2);
   padding: 10px 12px;
 }
 
-.idea h3 {
+.idea-result h3 {
   margin: 0 0 4px;
   font-size: 11px;
   font-weight: 900;
 }
 
-.idea p {
+.idea-result p {
   margin: 0;
   font-size: 11.5px;
   line-height: 1.8;
@@ -262,16 +358,13 @@ h2 {
 }
 
 @media (max-width: 640px) {
-  .pickers {
-    grid-template-columns: 1fr;
-  }
-
-  .pickers .plus {
-    display: none;
-  }
-
   .parents {
-    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .parent {
+    width: 62px;
+    height: 62px;
   }
 }
 </style>
