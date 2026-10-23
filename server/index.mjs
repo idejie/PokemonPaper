@@ -785,9 +785,15 @@ async function api(req, res, url) {
       notes.push('没有填开源仓库，跳过 star')
     }
 
-    if (row.arxiv) {
+    const scholar = body.scholar
+    const scholarReady = Boolean(
+      scholar && scholar.provider && scholar.provider !== 'off' && scholar.apiKey,
+    )
+    if (!scholarReady) {
+      notes.push('未配置 Google Scholar Key，跳过引用量（不影响等级）')
+    } else if (row.arxiv) {
       try {
-        const result = await fetchCitations(row.arxiv, row.title, body.scholar)
+        const result = await fetchCitations(row.arxiv, row.title, scholar)
         citations = result.count
         notes.push(`引用来源：${result.source}`)
         notes.push(...result.notes)

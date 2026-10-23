@@ -53,9 +53,7 @@ const scholarUrl = computed(
   () => `https://scholar.google.com/scholar?q=${encodeURIComponent(`"${form.title}"`)}`,
 )
 
-const level = computed(() =>
-  paperLevel({ codeUrl: form.codeUrl, stars: form.stars, citations: form.citations }),
-)
+const level = computed(() => paperLevel({ codeUrl: form.codeUrl, stars: form.stars }))
 
 const explainData = computed<Explain | null>(() => {
   const raw = paper.value?.explain
@@ -227,11 +225,13 @@ async function syncMetrics() {
     if (result) {
       form.stars = result.paper.stars
       form.citations = result.paper.citations
+      const scholarOn =
+        settings.config.scholarProvider !== 'off' && Boolean(settings.config.scholarKey)
       const citationFailed = result.notes.some((note) => note.includes('引用量抓取失败'))
       const parts: string[] = []
       if (form.codeUrl) parts.push(`${result.paper.stars} star`)
-      if (!citationFailed) parts.push(`${result.paper.citations} 引用`)
-      const suffix = citationFailed ? '，引用量被抓取限流，可手动填' : ''
+      if (scholarOn && !citationFailed) parts.push(`${result.paper.citations} 引用`)
+      const suffix = scholarOn && citationFailed ? '，引用量被限流，可手动填' : ''
       store.notify(parts.length ? `已同步 ${parts.join(' · ')}${suffix}` : `同步失败${suffix}`)
       if (result.notes.length) console.info('[metrics]', result.notes)
     }
@@ -421,7 +421,7 @@ onBeforeUnmount(() => {
               <div class="lv-info">
                 <b>{{ level.tier }}</b>
                 <span class="mono">
-                  开源 +{{ level.parts.code }} · Star +{{ level.parts.stars }} · 引用 +{{ level.parts.cites }}
+                  {{ form.codeUrl ? `开源 · ${Number(form.stars) || 0} star` : '未开源，按普通计' }}
                 </span>
               </div>
               <button

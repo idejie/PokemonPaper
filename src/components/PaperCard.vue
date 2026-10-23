@@ -13,7 +13,10 @@ const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.no
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const lv = computed(() => paperLevel(props.paper))
 const levelTitle = computed(
-  () => `${lv.value.tier} · 开源 +${lv.value.parts.code} / Star +${lv.value.parts.stars} / 引用 +${lv.value.parts.cites}`,
+  () =>
+    props.paper.codeUrl
+      ? `${lv.value.tier} · 开源 · ${props.paper.stars.toLocaleString()} star`
+      : '普通 · 未开源',
 )
 const statusText = computed(() => {
   if (props.paper.status === 'read') return '已点亮'

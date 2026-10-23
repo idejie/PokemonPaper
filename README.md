@@ -94,45 +94,27 @@ buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
 
 ## 论文等级
 
-每只精灵都有等级，反映论文的实际影响力。三个输入，对数刻度：
+规则很简单：**不开源就是普通；开源的按 GitHub star 分级。**
 
-| 信号 | 权重 | 来源 |
+| 条件 | 等级 | 段位 |
 |---|---|---|
-| 开源代码 | +15 | 填了 GitHub 仓库地址就算 |
-| GitHub star | 最多 +40 | 点「同步指标」抓取，10k star 拿满 |
-| 引用量 | 最多 +45 | Google Scholar 优先；直连失败退回 Semantic Scholar → OpenAlex → Crossref |
+| 没有开源仓库 | Lv.1 | 普通 |
+| 开源，0 star | Lv.15 | 普通 |
+| 开源，10 star | Lv.34 | 稀有 |
+| 开源，100 star | Lv.51 | 史诗 |
+| 开源，1k star | Lv.69 | 史诗 |
+| 开源，5k star | Lv.82 | 传说 |
+| 开源，50k star | Lv.100 | 传说 |
 
-```
-level = 1 + 15·[有代码] + 40·log10(1+stars)/log10(10001) + 45·log10(1+cites)/log10(5001)
-```
-
-换算成人话：
-
-| 论文 | 代码 | star | 引用 | 等级 |
-|---|---|---|---|---|
-| 刚挂 arXiv，无代码 | — | 0 | 0 | Lv.1 普通 |
-| 有官方实现，几百 star | ✓ | 800 | 120 | Lv.50 稀有 |
-| 领域经典，社区很大 | ✓ | 4.7k | 600 | Lv.86 传说 |
-
-对数刻度的用意：不让一篇万引综述把所有精灵压成 1 级，也不让新论文永远垫底。
-
-**同步**：详情页点「同步指标」，服务端去 GitHub 和 Google Scholar 拉数据。没配置 `GITHUB_TOKEN` 时，GitHub API 容易触发未认证限流，会自动退回抓取仓库页面里的星数。
-
-### 为什么 Google Scholar 需要配 Key
-
-Google Scholar 没有公开 API，且对机房 IP 直接返回 `403 Sorry...`（本项目实测如此）。所以引用量的抓取是一条降级链：
-
-```
-Google Scholar（SerpAPI / Serper）
-  → Google Scholar 直连（住宅网络才有机会）
-  → Semantic Scholar
-  → OpenAlex
-  → Crossref（通常偏低）
+```ts
+level = 15 + 85 × log10(1 + stars) / log10(50001)
 ```
 
-想稳定拿到 GS 数字，在设置里选 SerpAPI 或 Serper 并填 Key。都没有时，详情页「引用量」旁边有 `Scholar ↗` 链接，可以自己查完手动填。
+对数刻度的用意：10 star 和 100 star 的差距，应该比 10k 和 20k 的差距更明显。
 
-> 这几个公共接口都有速率限制。同一 IP 短时间内连点几篇，可能会看到「引用量被抓取限流」，过一会儿再试，或者直接手填。
+**引用量不参与等级计算**，只作为参考信息记录在库里。想抓的话在设置里配 Google Scholar 通道（SerpAPI / Serper），否则保持手动填。
+
+**同步 star**：详情页点「同步指标」。没配 `GITHUB_TOKEN` 时 GitHub API 容易触发未认证限流（60 次/时），会自动退回抓取仓库页面里的星数。
 
 ## PDF 本地化
 
@@ -281,8 +263,8 @@ interface Paper {
 - 单用户、单机，没有登录
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
 - 批量下载 PDF 还没做，目前是一篇一篇点
-- 指标来自第三方 API，有速率限制；引用量有几天到几周的滞后
-- Google Scholar 直连基本被 403，想要 GS 数字需要 SerpAPI / Serper 的 Key
+- star 来自 GitHub，有分钟级延迟；引用量有几天到几周的滞后
+- Google Scholar 直连基本被 403，想要 GS 引用数需要 SerpAPI / Serper 的 Key（且不影响等级）
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 精灵生成器是模板式的，形状会有重复，但配色和细节组合足够区分
 - 未做全文检索，只搜已录入的字段
