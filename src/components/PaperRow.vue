@@ -1,17 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import SpriteSvg from './SpriteSvg.vue'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { TYPE_COLORS, TYPES } from '../core/typeMap'
 
 const props = defineProps<{ paper: Paper }>()
+const router = useRouter()
 
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const locked = computed(() => props.paper.status === 'unread')
 const lv = computed(() => paperLevel(props.paper))
 const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.normal)
+function openDetail() {
+  void router.push(`/p/${props.paper.id}`)
+}
+
+function readFull() {
+  void router.push(`/p/${props.paper.id}/read?tab=pdf`)
+}
+
 const statusText = computed(() => {
   if (props.paper.status === 'read') return '已点亮'
   if (props.paper.status === 'reading') return '在读'
@@ -20,7 +30,14 @@ const statusText = computed(() => {
 </script>
 
 <template>
-  <RouterLink class="row" :class="`is-${paper.status}`" :to="`/p/${paper.id}`">
+  <article
+    class="row"
+    :class="`is-${paper.status}`"
+    role="link"
+    tabindex="0"
+    @click="openDetail"
+    @keydown.enter="openDetail"
+  >
     <div class="pic">
       <SpriteSvg :seed="seed" :type="paper.type" :locked="locked" />
     </div>
@@ -43,7 +60,9 @@ const statusText = computed(() => {
       </span>
       <span class="state" :class="paper.status">{{ statusText }}</span>
     </div>
-  </RouterLink>
+
+    <button class="read-btn" type="button" @click.stop="readFull">阅读</button>
+  </article>
 </template>
 
 <style scoped>
@@ -60,8 +79,10 @@ const statusText = computed(() => {
   border-bottom: none;
 }
 
-.row:hover {
+.row:hover,
+.row:focus-visible {
   background: var(--panel-2);
+  outline: none;
 }
 
 .pic {
@@ -118,6 +139,21 @@ const statusText = computed(() => {
 
 .venue {
   flex: none;
+}
+
+.read-btn {
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 9px;
+}
+
+.row:hover .read-btn {
+  background: var(--gold);
 }
 
 .side {

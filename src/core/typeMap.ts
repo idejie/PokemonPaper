@@ -36,6 +36,16 @@ export const TYPE_COLORS: Record<TypeKey, string> = {
 }
 
 const RULES: Array<[RegExp, TypeKey]> = [
+  // 先看 arXiv 分类：同一领域的论文应该拿到同一个属性
+  [/\bcs\.ro\b/i, 'steel'],
+  [/\bcs\.cv\b/i, 'water'],
+  [/\bcs\.lg\b/i, 'psychic'],
+  [/\bcs\.ai\b/i, 'dragon'],
+  [/\bcs\.cl\b/i, 'normal'],
+  [/\bcs\.ma\b/i, 'ghost'],
+  [/\beess\b/i, 'electric'],
+  [/\bcs\.ne\b|\bcs\.ds\b/i, 'dark'],
+  // 再看标题与摘要里的关键词
   [/world[- ]model|wam|视频预测|video prediction|model-based/i, 'psychic'],
   [/humanoid|human-plus|whole[- ]body|locomotion|motion tracking/i, 'steel'],
   [/reinforcement|\brl\b|ppo|\brl\b|reward/i, 'fire'],

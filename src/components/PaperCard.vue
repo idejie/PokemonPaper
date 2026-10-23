@@ -1,36 +1,48 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Paper } from '../core/types'
-import { TYPE_COLORS, TYPES } from '../core/typeMap'
 import { TIER_COLORS, paperLevel } from '../core/level'
+import { TYPE_COLORS, TYPES } from '../core/typeMap'
 import SpriteSvg from './SpriteSvg.vue'
 
 const props = defineProps<{ paper: Paper }>()
+const router = useRouter()
 
 const locked = computed(() => props.paper.status === 'unread')
 const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.normal)
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const lv = computed(() => paperLevel(props.paper))
-const levelTitle = computed(
-  () =>
-    props.paper.codeUrl
-      ? `${lv.value.tier} · 开源 · ${props.paper.stars.toLocaleString()} star`
-      : '普通 · 未开源',
-)
 const statusText = computed(() => {
   if (props.paper.status === 'read') return '已点亮'
   if (props.paper.status === 'reading') return '在读'
   return '未点亮'
 })
+const levelTitle = computed(() =>
+  props.paper.codeUrl
+    ? `${lv.value.tier} · 开源 · ${props.paper.stars.toLocaleString()} star`
+    : '普通 · 未开源',
+)
+
+function openDetail() {
+  void router.push(`/p/${props.paper.id}`)
+}
+
+function readFull() {
+  void router.push(`/p/${props.paper.id}/read?tab=pdf`)
+}
 </script>
 
 <template>
-  <RouterLink
+  <article
     class="card"
     :class="[`is-${paper.status}`]"
-    :to="`/p/${paper.id}`"
+    role="link"
+    tabindex="0"
     :title="paper.title"
+    @click="openDetail"
+    @keydown.enter="openDetail"
   >
     <div class="card-top">
       <span class="no mono">
@@ -53,11 +65,14 @@ const statusText = computed(() => {
       <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
       <span class="venue mono">{{ paper.venue || '—' }}{{ paper.year ? ` · ${paper.year}` : '' }}</span>
     </div>
-  </RouterLink>
+
+    <button class="read-btn" type="button" @click.stop="readFull">阅读全文</button>
+  </article>
 </template>
 
 <style scoped>
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -66,12 +81,15 @@ const statusText = computed(() => {
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
   padding: 9px;
+  cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.card:hover {
+.card:hover,
+.card:focus-visible {
   transform: translate(-2px, -2px);
   box-shadow: var(--shadow);
+  outline: none;
 }
 
 .card-top {
@@ -202,5 +220,21 @@ const statusText = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.read-btn {
+  width: 100%;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 0;
+  transition: background 0.12s ease;
+}
+
+.card:hover .read-btn {
+  background: var(--gold);
 }
 </style>

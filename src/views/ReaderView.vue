@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkdownLite from '../components/MarkdownLite.vue'
 const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue'))
 import { api } from '../core/api'
@@ -10,12 +11,13 @@ import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 
 const props = defineProps<{ id: string }>()
+const route = useRoute()
 const store = usePapersStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
 
 type Tab = 'abstract' | 'pdf' | 'summary'
-const tab = ref<Tab>('abstract')
+const tab = ref<Tab>(route.query.tab === 'pdf' ? 'pdf' : 'abstract')
 const summarizing = ref(false)
 
 const paper = computed(() => store.byId(props.id))
@@ -55,7 +57,14 @@ async function generateSummary() {
 watch(
   () => props.id,
   () => {
-    tab.value = 'abstract'
+    tab.value = route.query.tab === 'pdf' ? 'pdf' : 'abstract'
+  },
+)
+
+watch(
+  () => route.query.tab,
+  (value) => {
+    if (value === 'pdf') tab.value = 'pdf'
   },
 )
 
