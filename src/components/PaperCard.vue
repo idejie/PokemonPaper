@@ -1,0 +1,184 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { Paper } from '../core/types'
+import { TYPE_COLORS, TYPES } from '../core/typeMap'
+import SpriteSvg from './SpriteSvg.vue'
+
+const props = defineProps<{ paper: Paper }>()
+
+const locked = computed(() => props.paper.status === 'unread')
+const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.normal)
+const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.normal)
+const seed = computed(() => props.paper.arxiv || props.paper.title)
+const statusText = computed(() => {
+  if (props.paper.status === 'read') return '已点亮'
+  if (props.paper.status === 'reading') return '在读'
+  return '未点亮'
+})
+</script>
+
+<template>
+  <RouterLink
+    class="card"
+    :class="[`is-${paper.status}`]"
+    :to="`/p/${paper.id}`"
+    :title="paper.title"
+  >
+    <div class="card-top">
+      <span class="no mono">No.{{ paper.arxiv || '—' }}</span>
+      <span class="status" :class="paper.status">{{ statusText }}</span>
+    </div>
+
+    <div class="sprite-box">
+      <SpriteSvg :seed="seed" :type="paper.type" :locked="locked" />
+      <span v-if="!locked" class="spark" aria-hidden="true">✦</span>
+    </div>
+
+    <h3 class="title">{{ paper.title }}</h3>
+
+    <div class="card-foot">
+      <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
+      <span class="venue mono">{{ paper.venue || '—' }}{{ paper.year ? ` · ${paper.year}` : '' }}</span>
+    </div>
+  </RouterLink>
+</template>
+
+<style scoped>
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  background: var(--panel);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 9px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.no {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.status {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  white-space: nowrap;
+}
+
+.status.read {
+  background: var(--gold);
+  color: #221d1a;
+}
+
+.status.reading {
+  background: #ffe8b0;
+  color: #7a5b00;
+}
+
+.status.unread {
+  background: #efe7d4;
+  color: var(--dim);
+}
+
+.sprite-box {
+  position: relative;
+  aspect-ratio: 1;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background-color: #f7ecd2;
+  background-image: linear-gradient(rgba(43, 36, 32, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 36, 32, 0.07) 1px, transparent 1px);
+  background-size: 16px 16px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 6px;
+}
+
+.sprite-box :deep(svg) {
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.is-unread .sprite-box :deep(svg) {
+  opacity: 0.42;
+}
+
+.is-reading .sprite-box :deep(svg) {
+  opacity: 0.8;
+  filter: saturate(0.65);
+}
+
+.is-read .sprite-box {
+  box-shadow: inset 0 0 0 2px rgba(255, 203, 5, 0.7);
+}
+
+.spark {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  color: var(--gold);
+  font-size: 13px;
+  text-shadow: 1px 1px 0 var(--ink);
+}
+
+.title {
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.9em;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.type-chip {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 8px;
+  box-shadow: 1.5px 1.5px 0 var(--ink);
+  white-space: nowrap;
+}
+
+.venue {
+  font-size: 9.5px;
+  color: var(--dim);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

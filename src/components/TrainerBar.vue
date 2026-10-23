@@ -1,0 +1,232 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { usePapersStore } from '../stores/papers'
+import { api } from '../core/api'
+
+const store = usePapersStore()
+const fileInput = ref<HTMLInputElement | null>(null)
+const busy = ref(false)
+
+async function exportJson() {
+  busy.value = true
+  try {
+    const data = await api.exportAll()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `pokemonpaper-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    store.notify('已导出 JSON 备份')
+  } catch {
+    store.notify('导出失败')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function onFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const parsed = JSON.parse(await file.text()) as { papers?: unknown } | unknown[]
+    const papers = Array.isArray(parsed) ? parsed : (parsed.papers ?? [])
+    const count = await api.importAll({ papers: papers as never[] })
+    await store.load()
+    store.notify(`导入 ${count} 篇`)
+  } catch {
+    store.notify('导入失败：JSON 结构不对')
+  } finally {
+    input.value = ''
+  }
+}
+</script>
+
+<template>
+  <header class="trainer">
+    <div class="wrap bar">
+      <RouterLink to="/" class="brand">
+        <span class="ball" />
+        <span class="brand-text">
+          <strong>PokemonPaper</strong>
+          <small>论文图鉴</small>
+        </span>
+      </RouterLink>
+
+      <div class="stats">
+        <div class="stat">
+          <b class="mono">{{ store.total }}</b>
+          <span>收录</span>
+        </div>
+        <div class="stat">
+          <b class="mono lit">{{ store.readCount }}</b>
+          <span>已点亮</span>
+        </div>
+        <div class="stat">
+          <b class="mono">Lv.{{ store.level }}</b>
+          <span>训练家</span>
+        </div>
+        <div class="progress" :title="`完成度 ${store.progress}%`">
+          <div class="progress-fill" :style="{ width: store.progress + '%' }" />
+          <span class="progress-label mono">{{ store.progress }}%</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <RouterLink to="/new" class="btn">＋ 登记论文</RouterLink>
+        <button class="btn ghost" :disabled="busy" @click="exportJson">导出</button>
+        <button class="btn ghost import-btn" @click="fileInput?.click()">导入</button>
+        <input ref="fileInput" type="file" accept="application/json" class="sr-only" @change="onFile" />
+      </div>
+    </div>
+  </header>
+</template>
+
+<style scoped>
+.trainer {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--paper);
+  border-bottom: 3px solid var(--ink);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-height: 68px;
+  padding-block: 10px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.ball {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid var(--ink);
+  background: linear-gradient(to bottom, var(--red) 0 45%, var(--ink) 45% 55%, #fff 55% 100%);
+  position: relative;
+  flex: none;
+}
+
+.ball::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--ink);
+  transform: translate(-50%, -50%);
+}
+
+.brand-text {
+  display: grid;
+  line-height: 1.15;
+}
+
+.brand-text strong {
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.brand-text small {
+  font-size: 10.5px;
+  color: var(--dim);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+}
+
+.stat {
+  display: grid;
+  line-height: 1.2;
+}
+
+.stat b {
+  font-size: 17px;
+}
+
+.stat b.lit {
+  color: var(--red);
+}
+
+.stat span {
+  font-size: 10px;
+  color: var(--dim);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.progress {
+  position: relative;
+  width: 130px;
+  height: 16px;
+  border: 2.5px solid var(--ink);
+  border-radius: 4px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(to bottom, #ffe27a 0 45%, var(--gold) 45% 100%);
+  transition: width 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.progress-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+@media (max-width: 980px) {
+  .stats .stat:nth-child(3),
+  .progress {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .brand-text small,
+  .stats {
+    display: none;
+  }
+
+  .actions .import-btn {
+    display: none;
+  }
+
+  .bar {
+    justify-content: space-between;
+  }
+}
+</style>
