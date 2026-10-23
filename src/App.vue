@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AuthView from './views/AuthView.vue'
 import TrainerBar from './components/TrainerBar.vue'
@@ -9,6 +9,7 @@ import ImportDialog from './components/ImportDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
 import AccountDialog from './components/AccountDialog.vue'
 import ProfileDialog from './components/ProfileDialog.vue'
+import OnboardingDialog from './components/OnboardingDialog.vue'
 import { useAuthStore } from './stores/auth'
 import { usePapersStore } from './stores/papers'
 import { useUiStore } from './stores/ui'
@@ -22,6 +23,9 @@ const ui = useUiStore()
 let lastLevel: number | null = null
 const hydrated = ref(false)
 const levelUp = ref<{ level: number; title: string } | null>(null)
+const showOnboarding = computed(
+  () => Boolean(auth.user && (ui.onboarding || !auth.user.onboardedAt)),
+)
 let levelTimer: number | undefined
 
 function playLevelChime() {
@@ -82,6 +86,11 @@ watch(
   { immediate: true },
 )
 
+async function finishOnboarding() {
+  ui.closeOnboarding()
+  if (auth.user && !auth.user.onboardedAt) await auth.completeOnboarding()
+}
+
 onMounted(async () => {
   await auth.fetchMe()
   const params = new URLSearchParams(window.location.search)
@@ -122,6 +131,8 @@ watch(
         <component :is="Component" />
       </Transition>
     </RouterView>
+
+    <OnboardingDialog v-if="showOnboarding" @close="finishOnboarding" />
 
     <div v-if="levelUp" class="levelup" @click="levelUp = null">
       <div class="levelup-card">

@@ -68,6 +68,7 @@ export interface AuthUser {
   avatarId: string
   isAdmin: boolean
   createdAt: string
+  onboardedAt: string | null
 }
 
 export interface LeaderboardEntry {

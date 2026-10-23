@@ -76,6 +76,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function completeOnboarding() {
+    try {
+      user.value = await api.completeOnboarding()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async function updateProfile(patch: { name?: string; avatarId?: string }) {
     try {
       user.value = await api.updateMe(patch)
@@ -100,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     updateProfile,
+    completeOnboarding,
     changePassword,
     deleteAccount,
   }

@@ -123,6 +123,14 @@ export const api = {
     await request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' })
   },
 
+  async completeOnboarding(): Promise<AuthUser> {
+    const data = await request<{ user: AuthUser }>('/api/auth/onboarded', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+    return data.user
+  },
+
   async me(): Promise<AuthUser | null> {
     try {
       const data = await request<{ user: AuthUser }>('/api/auth/me')

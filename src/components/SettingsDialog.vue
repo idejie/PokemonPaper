@@ -69,6 +69,11 @@ function toggleDexEntries(event: Event) {
   prefs.setDexEntries((event.target as HTMLInputElement).checked)
 }
 
+function replayOnboarding() {
+  ui.closeSettings()
+  ui.openOnboarding()
+}
+
 const form = reactive({ ...settings.config })
 const imageForm = reactive({ ...settings.image })
 const showKey = ref(false)
@@ -289,6 +294,9 @@ onBeforeUnmount(() => {
           <input type="checkbox" :checked="prefs.dexEntries" @change="toggleDexEntries" />
           {{ t('显示图鉴描述') }}
         </label>
+        <button type="button" class="btn sm ghost guide-btn" @click="replayOnboarding">
+          {{ t('重看新手导引') }}
+        </button>
 
         <div class="divider" />
 
@@ -449,6 +457,10 @@ onBeforeUnmount(() => {
 }
 
 .dex-toggle {
+  margin-top: 8px;
+}
+
+.guide-btn {
   margin-top: 8px;
 }
 

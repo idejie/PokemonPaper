@@ -50,6 +50,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🏅 **Gyms** | 12 gyms by arXiv field with 4 tiers (Bronze / Silver / Gold / Platinum); a strip on the dex shows levels and filters by field |
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
 | 🖼️ **Share card** | Render a 640×900 PNG card (sprite, level, moves, QR); preview it, then download or copy. Scan the QR under Import to add the paper |
+| 🧭 **First-run tour** | Five-step onboarding for new accounts; replay it any time from Settings |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
 | 🎨 **AI artwork** | Generate per-paper artwork, or batch up to 60 with a progress bar; cached in `data/sprites/`, falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
@@ -445,6 +446,7 @@ piece of content once; unliking removes the row.
 - [x] Party of six
 - [x] Monthly gym leaders
 - [x] Breeding from 1–5 papers with a user direction
+- [x] First-run onboarding tour
 - [x] Paper egg queue
 - [x] Batch artwork with progress
 - [x] Share-card preview and QR scan import
@@ -494,6 +496,7 @@ MIT © idejie
 | 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，分青铜 / 白银 / 黄金 / 铂金 4 级；主页有道馆条，显示等级并可筛选 |
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
 | 🖼️ **分享卡** | 生成 640×900 论文卡（精灵、等级、招式、二维码）；先预览，再下载或复制。二维码可在导入里扫描 |
+| 🧭 **新手导引** | 新注册账号自动展示 5 步导览；之后可在设置里重看 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
 | 🎨 **AI 插画** | 单篇生成，或批量生成最多 60 篇（带进度条）；缓存到 `data/sprites/`，未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
@@ -982,6 +985,7 @@ interface Like {
 - [x] 六人队伍
 - [x] 每月道馆馆主
 - [x] 论文培育（1–5 篇 + 自定义方向）
+- [x] 新用户 5 步导引
 - [x] 论文蛋队列
 - [x] 批量插画（进度条）
 - [x] 分享卡预览与扫码导入

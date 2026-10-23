@@ -58,7 +58,8 @@ db.exec(`
     password_hash TEXT NOT NULL,
     avatar_id     TEXT NOT NULL DEFAULT 'red-cap',
     created_at    TEXT NOT NULL,
-    last_login_at TEXT
+    last_login_at TEXT,
+    onboarded_at  TEXT
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -209,6 +210,13 @@ for (const [name, ddl] of [
   } catch {
     /* already exists */
   }
+}
+
+// existing accounts predate onboarding: mark them as already seen, only new registrations see it
+const existingUserColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name)
+if (!existingUserColumns.includes('onboarded_at')) {
+  db.exec('ALTER TABLE users ADD COLUMN onboarded_at TEXT')
+  db.exec('UPDATE users SET onboarded_at = created_at')
 }
 
 // 老库升级：没有任何管理员时，把最早注册的用户提升为管理员
@@ -566,6 +574,7 @@ function publicUser(row) {
     avatarId: row.avatar_id || 'red-cap',
     isAdmin: Boolean(row.is_admin),
     createdAt: row.created_at,
+    onboardedAt: row.onboarded_at ?? null,
   }
 }
 
@@ -1645,6 +1654,15 @@ async function api(req, res, url) {
   if (!user) return sendJSON(res, 401, { error: '请先登录' })
 
   /* --------------------------------------------------------- account */
+
+  if (pathname === '/api/auth/onboarded' && method === 'POST') {
+    db.prepare('UPDATE users SET onboarded_at = ? WHERE id = ?').run(
+      new Date().toISOString(),
+      user.id,
+    )
+    const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)
+    return sendJSON(res, 200, { user: publicUser(fresh) })
+  }
 
   if (pathname === '/api/auth/password' && method === 'POST') {
     const body = await readBody(req)
