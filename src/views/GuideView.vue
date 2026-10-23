@@ -189,7 +189,12 @@ onMounted(async () => {
         </div>
       </section>
 
-      <RouterLink to="/" class="back">← {{ t('返回图鉴') }}</RouterLink>
+      <div class="guide-links">
+        <RouterLink to="/" class="back">← {{ t('返回图鉴') }}</RouterLink>
+        <a class="back" href="https://github.com/idejie/PokemonPaper" target="_blank" rel="noreferrer">
+          GitHub ↗
+        </a>
+      </div>
     </div>
   </div>
 </template>
@@ -509,6 +514,13 @@ td:last-child {
   border: 1.5px solid var(--ink);
   border-radius: 999px;
   padding: 0 6px;
+}
+
+.guide-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .back {

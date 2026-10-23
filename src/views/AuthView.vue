@@ -185,6 +185,11 @@ async function submit() {
           {{ t('本站目前是邀请制，注册需要管理员发的邀请码。') }}
         </p>
         <p class="foot">{{ t('数据存在这台机器的 SQLite，不会上传到任何地方。') }}</p>
+        <p class="foot">
+          <a class="repo" href="https://github.com/idejie/PokemonPaper" target="_blank" rel="noreferrer">
+            GitHub · idejie/PokemonPaper
+          </a>
+        </p>
       </div>
     </div>
   </div>
@@ -325,6 +330,12 @@ async function submit() {
   font-weight: 800;
   font-size: 12.5px;
   padding: 0;
+  text-decoration: underline;
+}
+
+.repo {
+  color: var(--ink);
+  font-weight: 800;
   text-decoration: underline;
 }
 
