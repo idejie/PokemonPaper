@@ -118,6 +118,10 @@ export const usePapersStore = defineStore('papers', () => {
     return next
   }
 
+  function clear() {
+    items.value = []
+  }
+
   function byId(id: string): Paper | undefined {
     return items.value.find((p) => p.id === id)
   }
@@ -143,6 +147,7 @@ export const usePapersStore = defineStore('papers', () => {
     ensurePdf,
     syncMetrics,
     markRead,
+    clear,
     byId,
     byArxiv,
     notify,

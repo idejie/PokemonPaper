@@ -4,6 +4,7 @@ import { defineStore } from 'pinia'
 export const useUiStore = defineStore('ui', () => {
   const settingsOpen = ref(false)
   const importOpen = ref(false)
+  const avatarOpen = ref(false)
 
   function openSettings() {
     settingsOpen.value = true
@@ -17,10 +18,19 @@ export const useUiStore = defineStore('ui', () => {
   function closeImport() {
     importOpen.value = false
   }
+  function openAvatar() {
+    avatarOpen.value = true
+  }
+  function closeAvatar() {
+    avatarOpen.value = false
+  }
 
   return {
     settingsOpen,
     importOpen,
+    avatarOpen,
+    openAvatar,
+    closeAvatar,
     openSettings,
     closeSettings,
     openImport,

@@ -61,6 +61,14 @@ export interface Explain {
   actions: string[]
 }
 
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  avatarId: string
+  createdAt: string
+}
+
 export type ScholarProvider = 'off' | 'serpapi' | 'serper'
 
 export interface LlmConfig {

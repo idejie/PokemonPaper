@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import AvatarSvg from './AvatarSvg.vue'
+import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
 import { api } from '../core/api'
 
 const store = usePapersStore()
 const ui = useUiStore()
+const auth = useAuthStore()
+
+async function logout() {
+  await auth.logout()
+}
 const busy = ref(false)
 
 async function exportJson() {
@@ -48,10 +55,13 @@ async function exportJson() {
           <b class="mono lit">{{ store.readCount }}</b>
           <span>已点亮</span>
         </div>
-        <div class="stat">
-          <b class="mono">Lv.{{ store.level }}</b>
-          <span>训练家</span>
-        </div>
+        <button class="trainer-chip" type="button" title="更换头像" @click="ui.openAvatar()">
+          <span class="avatar"><AvatarSvg :id="auth.user?.avatarId || 'red-cap'" /></span>
+          <span class="meta">
+            <b class="mono">Lv.{{ store.level }}</b>
+            <small>{{ auth.user?.name }}</small>
+          </span>
+        </button>
         <div class="progress" :title="`完成度 ${store.progress}%`">
           <div class="progress-fill" :style="{ width: store.progress + '%' }" />
           <span class="progress-label mono">{{ store.progress }}%</span>
@@ -62,6 +72,7 @@ async function exportJson() {
         <RouterLink to="/new" class="btn">＋ 登记论文</RouterLink>
         <button class="btn ghost import-btn" @click="ui.openImport()">导入</button>
         <button class="btn ghost" :disabled="busy" @click="exportJson">导出</button>
+        <button class="btn ghost" title="退出登录" @click="logout">退出</button>
         <button class="btn icon" title="模型设置" aria-label="模型设置" @click="ui.openSettings()">
           ⚙
         </button>
@@ -187,6 +198,52 @@ async function exportJson() {
   color: var(--ink);
 }
 
+.trainer-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  padding: 2px 10px 2px 2px;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 0.1s ease;
+}
+
+.trainer-chip:hover {
+  transform: translate(-1px, -1px);
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  background: #f7ecd2;
+  flex: none;
+}
+
+.meta {
+  display: grid;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.meta b {
+  font-size: 12px;
+}
+
+.meta small {
+  font-size: 9.5px;
+  color: var(--dim);
+  font-weight: 700;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .btn.icon {
   padding: 7px 9px;
   font-size: 14px;
@@ -201,7 +258,7 @@ async function exportJson() {
 }
 
 @media (max-width: 980px) {
-  .stats .stat:nth-child(3),
+  .stats .trainer-chip .meta,
   .progress {
     display: none;
   }

@@ -1,4 +1,4 @@
-import type { ArxivItem, Explain, LlmConfig, Paper, PaperInput } from './types'
+import type { ArxivItem, AuthUser, Explain, LlmConfig, Paper, PaperInput } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -19,6 +19,43 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  async register(input: { email: string; password: string; name?: string }): Promise<AuthUser> {
+    const data = await request<{ user: AuthUser }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    return data.user
+  },
+
+  async login(input: { email: string; password: string }): Promise<AuthUser> {
+    const data = await request<{ user: AuthUser }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    return data.user
+  },
+
+  async logout(): Promise<void> {
+    await request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' })
+  },
+
+  async me(): Promise<AuthUser | null> {
+    try {
+      const data = await request<{ user: AuthUser }>('/api/auth/me')
+      return data.user
+    } catch {
+      return null
+    }
+  },
+
+  async updateMe(patch: { name?: string; avatarId?: string }): Promise<AuthUser> {
+    const data = await request<{ user: AuthUser }>('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+    return data.user
+  },
+
   async list(): Promise<Paper[]> {
     const data = await request<{ papers: Paper[] }>('/api/papers')
     return data.papers

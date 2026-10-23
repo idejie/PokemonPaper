@@ -33,6 +33,7 @@
 | | |
 |---|---|
 | 🧬 **确定性精灵** | 32×32 像素，5 种体型（两足/四足/团子/鸟/幽灵），同一 arXiv 号永远生成同一只 |
+| 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
@@ -61,6 +62,18 @@ buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
 ### 3. 游戏状态是阅读状态
 
 没有签到、没有连击、没有虚拟货币。点亮只有一条路径：你真的把它读完了。未读的剪影和已读的全彩之间，只差一个诚实的点击。
+
+## 账号
+
+- 邮箱 + 密码注册，密码用 `scrypt`（随机 salt）哈希后存库，明文不落盘
+- 登录后发一个 `HttpOnly; SameSite=Lax` 的会话 Cookie，30 天有效
+- 每个账号的论文、笔记、PDF 完全隔离：所有查询都带 `user_id`
+- 同一邮箱连续输错 5 次，锁 60 秒
+- 顶栏右侧是训练家头像，点开可以换头像和昵称
+
+![登录](docs/login.png)
+
+> 这是单机自托管服务：没有邮箱验证、没有找回密码、没有 OAuth。放在公网请套 HTTPS 反代。
 
 ## 导入论文
 
@@ -147,6 +160,8 @@ pnpm dev
 
 打开 <http://127.0.0.1:5173>（Vite 会把 `/api` 代理到 8787）。
 
+第一次打开会看到登录页，点「注册」建一个账号。**第一个注册的账号会接管仓库里自带的示例论文**，之后注册的账号从空图鉴开始。
+
 生产模式：
 
 ```bash
@@ -197,13 +212,21 @@ src/
     ToastHost.vue    # 提示
   views/
     DexView.vue      # 图鉴网格 + 搜索筛选
+    AuthView.vue     # 登录 / 注册
+  core/
+    avatar.ts        # 8 个训练家头像（像素拼装）
 ```
 
 ## API
 
 | 方法 | 路径 | 作用 |
 |---|---|---|
-| `GET` | `/api/papers` | 列表 |
+| `POST` | `/api/auth/register` | 注册（邮箱 + 密码 ≥ 8 位） |
+| `POST` | `/api/auth/login` | 登录 |
+| `POST` | `/api/auth/logout` | 登出 |
+| `GET` | `/api/auth/me` | 当前用户 |
+| `PATCH` | `/api/auth/me` | 改昵称 / 头像 |
+| `GET` | `/api/papers` | 当前用户的列表 |
 | `POST` | `/api/papers` | 新建（`title` 必填，`arxiv` 唯一） |
 | `PATCH` | `/api/papers/:id` | 局部更新（状态、笔记、评分…） |
 | `DELETE` | `/api/papers/:id` | 删除 |
@@ -219,6 +242,15 @@ src/
 ## 数据模型
 
 ```ts
+interface User {
+  id: string
+  email: string
+  name: string
+  avatarId: string      // 8 个预设头像之一
+  passwordHash: string  // scrypt$salt$hash
+  createdAt: string
+}
+
 interface Paper {
   id: string
   arxiv: string          // 编号，唯一，同时是精灵种子
@@ -241,6 +273,7 @@ interface Paper {
   url: string
   addedAt: string
   readAt: string | null
+  userId: string        // 归属账号，所有查询按它隔离
 }
 ```
 
@@ -251,6 +284,7 @@ interface Paper {
 - [x] PDF 本地化与 Range 流式阅读
 - [x] AI 速读卡（OpenAI 兼容，预设 DeepSeek 等）
 - [x] 论文等级：开源 + star + 引用量
+- [ ] 改密码 / 找回密码
 - [ ] 指标定时刷新（现在要手点）
 - [ ] 批量下载缺失 PDF（后台队列 + 进度）
 - [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
@@ -260,7 +294,8 @@ interface Paper {
 
 ## 已知限制
 
-- 单用户、单机，没有登录
+- 没有邮箱验证、找回密码、改密码和 OAuth
+- 会话存在 SQLite，多实例部署需要共享数据库
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
 - 批量下载 PDF 还没做，目前是一篇一篇点
 - star 来自 GitHub，有分钟级延迟；引用量有几天到几周的滞后

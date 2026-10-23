@@ -1,6 +1,6 @@
 import { createServer } from 'node:http'
 import { DatabaseSync } from 'node:sqlite'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
@@ -43,6 +43,27 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_papers_status ON papers(status);
 `)
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    name          TEXT NOT NULL DEFAULT '',
+    password_hash TEXT NOT NULL,
+    avatar_id     TEXT NOT NULL DEFAULT 'red-cap',
+    created_at    TEXT NOT NULL,
+    last_login_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+`)
+
 const paperColumns = db.prepare('PRAGMA table_info(papers)').all().map((c) => c.name)
 for (const [name, ddl] of [
   ['abstract', "TEXT NOT NULL DEFAULT ''"],
@@ -52,6 +73,7 @@ for (const [name, ddl] of [
   ['stars', "INTEGER NOT NULL DEFAULT 0"],
   ['citations', "INTEGER NOT NULL DEFAULT 0"],
   ['metrics_at', "TEXT"],
+  ['user_id', "TEXT"],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -185,6 +207,110 @@ async function readBody(req, limit = 1_000_000) {
   }
   if (!chunks.length) return {}
   return JSON.parse(Buffer.concat(chunks).toString('utf8'))
+}
+
+
+/* ----------------------------------------------------------------- auth */
+
+const SESSION_DAYS = 30
+const loginFailures = new Map()
+
+function hashPassword(password) {
+  const salt = randomBytes(16)
+  const key = scryptSync(password, salt, 64)
+  return `scrypt$${salt.toString('hex')}$${key.toString('hex')}`
+}
+
+function verifyPassword(password, stored) {
+  const [scheme, saltHex, hashHex] = String(stored || '').split('$')
+  if (scheme !== 'scrypt' || !saltHex || !hashHex) return false
+  const key = scryptSync(password, Buffer.from(saltHex, 'hex'), 64)
+  const expected = Buffer.from(hashHex, 'hex')
+  return key.length === expected.length && timingSafeEqual(key, expected)
+}
+
+function parseCookies(req) {
+  const header = req.headers.cookie || ''
+  const out = {}
+  for (const part of header.split(';')) {
+    const index = part.indexOf('=')
+    if (index < 0) continue
+    out[part.slice(0, index).trim()] = decodeURIComponent(part.slice(index + 1).trim())
+  }
+  return out
+}
+
+function publicUser(row) {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name || row.email.split('@')[0],
+    avatarId: row.avatar_id || 'red-cap',
+    createdAt: row.created_at,
+  }
+}
+
+function createSession(userId) {
+  const token = randomBytes(32).toString('base64url')
+  const now = new Date()
+  const expires = new Date(now.getTime() + SESSION_DAYS * 86400000)
+  db.prepare(
+    'INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
+  ).run(token, userId, now.toISOString(), expires.toISOString())
+  return { token, expires }
+}
+
+function setSessionCookie(res, token, expires) {
+  res.setHeader(
+    'set-cookie',
+    `pp_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(
+      (expires.getTime() - Date.now()) / 1000,
+    )}`,
+  )
+}
+
+function clearSessionCookie(res) {
+  res.setHeader('set-cookie', 'pp_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
+}
+
+function currentUser(req) {
+  const token = parseCookies(req).pp_session
+  if (!token) return null
+  const session = db.prepare('SELECT * FROM sessions WHERE token = ?').get(token)
+  if (!session) return null
+  if (new Date(session.expires_at).getTime() < Date.now()) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+    return null
+  }
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(session.user_id)
+  return user ?? null
+}
+
+function validateCredentials(email, password) {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email || ''))) {
+    return '邮箱格式不对'
+  }
+  if (String(password || '').length < 8) {
+    return '密码至少 8 位'
+  }
+  return ''
+}
+
+function tooManyAttempts(email) {
+  const entry = loginFailures.get(email)
+  if (!entry) return false
+  if (entry.until < Date.now()) {
+    loginFailures.delete(email)
+    return false
+  }
+  return entry.count >= 5
+}
+
+function recordFailure(email) {
+  const entry = loginFailures.get(email) ?? { count: 0, until: 0 }
+  entry.count += 1
+  entry.until = Date.now() + 60000
+  loginFailures.set(email, entry)
 }
 
 function pick(body) {
@@ -657,10 +783,10 @@ async function fetchCitations(arxiv, title, scholar) {
   }
 }
 
-function upsert(paper) {
+function upsert(paper, userId) {
   const now = new Date().toISOString()
   const existing = paper.arxiv
-    ? db.prepare('SELECT id FROM papers WHERE arxiv = ?').get(paper.arxiv)
+    ? db.prepare('SELECT id FROM papers WHERE arxiv = ? AND user_id = ?').get(paper.arxiv, userId)
     : null
 
   if (existing) {
@@ -681,8 +807,8 @@ function upsert(paper) {
   const status = paper.status ?? 'unread'
   const readAt = status === 'read' ? paper.readAt || now : null
   db.prepare(`
-    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, citations, url, added_at, read_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, citations, url, added_at, read_at, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     paper.arxiv || null,
@@ -703,6 +829,7 @@ function upsert(paper) {
     paper.url ?? (paper.arxiv ? `https://arxiv.org/abs/${paper.arxiv}` : ''),
     now,
     readAt,
+    userId ?? null,
   )
   return rowToPaper(db.prepare('SELECT * FROM papers WHERE id = ?').get(id))
 }
@@ -712,8 +839,90 @@ async function api(req, res, url) {
   const method = req.method || 'GET'
 
   if (pathname === '/api/health') return sendJSON(res, 200, { ok: true })
+
+  /* ------------------------------------------------------------ auth */
+
+  if (pathname === '/api/auth/register' && method === 'POST') {
+    const body = await readBody(req)
+    const email = String(body.email || '').trim().toLowerCase()
+    const password = String(body.password || '')
+    const name = String(body.name || '').trim().slice(0, 40)
+    const invalid = validateCredentials(email, password)
+    if (invalid) return sendJSON(res, 400, { error: invalid })
+    if (db.prepare('SELECT id FROM users WHERE email = ?').get(email)) {
+      return sendJSON(res, 409, { error: '这个邮箱已经注册过了' })
+    }
+
+    const id = randomUUID()
+    db.prepare(
+      'INSERT INTO users (id, email, name, password_hash, avatar_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(id, email, name, hashPassword(password), 'red-cap', new Date().toISOString())
+
+    // 第一个注册的用户接管迁移前遗留的无主论文
+    const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n
+    if (userCount === 1) {
+      db.prepare('UPDATE papers SET user_id = ? WHERE user_id IS NULL').run(id)
+    }
+
+    const { token, expires } = createSession(id)
+    setSessionCookie(res, token, expires)
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+    return sendJSON(res, 201, { user: publicUser(row) })
+  }
+
+  if (pathname === '/api/auth/login' && method === 'POST') {
+    const body = await readBody(req)
+    const email = String(body.email || '').trim().toLowerCase()
+    const password = String(body.password || '')
+    if (tooManyAttempts(email)) {
+      return sendJSON(res, 429, { error: '尝试太频繁，等一分钟再试' })
+    }
+    const row = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
+    if (!row || !verifyPassword(password, row.password_hash)) {
+      recordFailure(email)
+      return sendJSON(res, 401, { error: '邮箱或密码不对' })
+    }
+    loginFailures.delete(email)
+    db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(
+      new Date().toISOString(),
+      row.id,
+    )
+    const { token, expires } = createSession(row.id)
+    setSessionCookie(res, token, expires)
+    return sendJSON(res, 200, { user: publicUser(row) })
+  }
+
+  if (pathname === '/api/auth/logout' && method === 'POST') {
+    const token = parseCookies(req).pp_session
+    if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+    clearSessionCookie(res)
+    return sendJSON(res, 200, { ok: true })
+  }
+
+  if (pathname === '/api/auth/me') {
+    const me = currentUser(req)
+    if (method === 'GET') {
+      if (!me) return sendJSON(res, 401, { error: 'not logged in' })
+      return sendJSON(res, 200, { user: publicUser(me) })
+    }
+    if (method === 'PATCH') {
+      if (!me) return sendJSON(res, 401, { error: 'not logged in' })
+      const body = await readBody(req)
+      const name = body.name === undefined ? me.name : String(body.name).trim().slice(0, 40)
+      const avatarId =
+        body.avatarId === undefined ? me.avatar_id : String(body.avatarId).trim().slice(0, 40)
+      db.prepare('UPDATE users SET name = ?, avatar_id = ? WHERE id = ?').run(name, avatarId, me.id)
+      const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(me.id)
+      return sendJSON(res, 200, { user: publicUser(fresh) })
+    }
+  }
+
+  const user = currentUser(req)
+  if (!user) return sendJSON(res, 401, { error: '请先登录' })
+
+
   if (pathname === '/api/papers' && method === 'GET') {
-    const rows = db.prepare('SELECT * FROM papers ORDER BY arxiv DESC').all()
+    const rows = db.prepare('SELECT * FROM papers WHERE user_id = ? ORDER BY arxiv DESC').all(user.id)
     return sendJSON(res, 200, { papers: rows.map(rowToPaper) })
   }
   if (pathname === '/api/papers' && method === 'POST') {
@@ -722,14 +931,16 @@ async function api(req, res, url) {
       return sendJSON(res, 400, { error: 'title is required' })
     }
     if (body.arxiv) {
-      const dup = db.prepare('SELECT id FROM papers WHERE arxiv = ?').get(String(body.arxiv))
+      const dup = db
+        .prepare('SELECT id FROM papers WHERE arxiv = ? AND user_id = ?')
+        .get(String(body.arxiv), user.id)
       if (dup) return sendJSON(res, 409, { error: `arXiv ${body.arxiv} 已在图鉴中` })
     }
-    const paper = upsert({ ...body, id: randomUUID() })
+    const paper = upsert({ ...body, id: randomUUID() }, user.id)
     return sendJSON(res, 201, { paper })
   }
   if (pathname === '/api/export' && method === 'GET') {
-    const rows = db.prepare('SELECT * FROM papers ORDER BY arxiv ASC').all()
+    const rows = db.prepare('SELECT * FROM papers WHERE user_id = ? ORDER BY arxiv ASC').all(user.id)
     return sendJSON(res, 200, { exportedAt: new Date().toISOString(), papers: rows.map(rowToPaper) })
   }
   if (pathname === '/api/import' && method === 'POST') {
@@ -738,7 +949,7 @@ async function api(req, res, url) {
     let count = 0
     for (const entry of list) {
       if (!entry || !entry.title) continue
-      upsert(entry)
+      upsert(entry, user.id)
       count += 1
     }
     return sendJSON(res, 200, { imported: count })
@@ -767,7 +978,9 @@ async function api(req, res, url) {
 
   const metricsMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/metrics$/)
   if (metricsMatch && method === 'POST') {
-    const row = db.prepare('SELECT * FROM papers WHERE id = ?').get(metricsMatch[1])
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(metricsMatch[1], user.id)
     if (!row) return sendJSON(res, 404, { error: 'not found' })
 
     const body = await readBody(req).catch(() => ({}))
@@ -816,7 +1029,9 @@ async function api(req, res, url) {
 
   const pdfMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/pdf$/)
   if (pdfMatch) {
-    const row = db.prepare('SELECT * FROM papers WHERE id = ?').get(pdfMatch[1])
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(pdfMatch[1], user.id)
     if (!row) return sendJSON(res, 404, { error: 'not found' })
 
     if (method === 'POST') {
@@ -835,7 +1050,7 @@ async function api(req, res, url) {
   const match = pathname.match(/^\/api\/papers\/([\w-]+)$/)
   if (match) {
     const id = match[1]
-    const row = db.prepare('SELECT * FROM papers WHERE id = ?').get(id)
+    const row = db.prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?').get(id, user.id)
     if (!row) return sendJSON(res, 404, { error: 'not found' })
 
     if (method === 'GET') return sendJSON(res, 200, { paper: rowToPaper(row) })
@@ -848,9 +1063,10 @@ async function api(req, res, url) {
       const keys = Object.keys(patch)
       if (keys.length) {
         const sets = keys.map((k) => `${k} = ?`).join(', ')
-        db.prepare(`UPDATE papers SET ${sets} WHERE id = ?`).run(
+        db.prepare(`UPDATE papers SET ${sets} WHERE id = ? AND user_id = ?`).run(
           ...keys.map((k) => patch[k]),
           id,
+          user.id,
         )
       }
       const fresh = db.prepare('SELECT * FROM papers WHERE id = ?').get(id)
@@ -858,7 +1074,7 @@ async function api(req, res, url) {
     }
 
     if (method === 'DELETE') {
-      db.prepare('DELETE FROM papers WHERE id = ?').run(id)
+      db.prepare('DELETE FROM papers WHERE id = ? AND user_id = ?').run(id, user.id)
       return sendJSON(res, 200, { ok: true })
     }
   }
