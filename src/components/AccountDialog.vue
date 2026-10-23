@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AvatarSvg from './AvatarSvg.vue'
-import { AVATARS } from '../core/avatar'
+import { AVATARS, decodeAvatar, encodeAvatar, randomAvatarSpec } from '../core/avatar'
+import type { AvatarPreset } from '../core/avatar'
 import { api } from '../core/api'
 import { useAuthStore } from '../stores/auth'
 import { usePapersStore } from '../stores/papers'
@@ -16,6 +17,16 @@ const ui = useUiStore()
 const router = useRouter()
 
 const selected = ref(auth.user?.avatarId ?? AVATARS[0].id)
+const customSpec = ref<AvatarPreset>(
+  (auth.user?.avatarId && decodeAvatar(auth.user.avatarId)) || randomAvatarSpec(),
+)
+const customId = computed(() => encodeAvatar(customSpec.value))
+const isCustom = computed(() => selected.value.startsWith('c1.'))
+
+function rollAvatar() {
+  customSpec.value = randomAvatarSpec()
+  if (isCustom.value) selected.value = customId.value
+}
 const name = ref(auth.user?.name ?? '')
 const savingProfile = ref(false)
 
@@ -208,6 +219,20 @@ onBeforeUnmount(() => {
               <span class="pic"><AvatarSvg :id="item.id" /></span>
               <span class="name">{{ t(item.name) }}</span>
             </button>
+
+            <button
+              type="button"
+              class="option"
+              :class="{ on: isCustom }"
+              @click="selected = customId"
+            >
+              <span class="pic"><AvatarSvg :id="customId" /></span>
+              <span class="name">{{ t('随机组合') }}</span>
+            </button>
+          </div>
+
+          <div class="avatar-actions">
+            <button type="button" class="mini" @click="rollAvatar">🎲 {{ t('再摇一次') }}</button>
           </div>
           <div class="row">
             <label class="field grow">
@@ -407,6 +432,12 @@ onBeforeUnmount(() => {
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0.04em;
+}
+
+.avatar-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px 0 8px;
 }
 
 .grid {

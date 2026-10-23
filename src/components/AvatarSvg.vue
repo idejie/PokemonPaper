@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { AVATARS, AVATAR_SIZE, buildAvatar } from '../core/avatar'
+import { AVATARS, AVATAR_SIZE, buildAvatar, decodeAvatar } from '../core/avatar'
 
 const props = defineProps<{ id: string }>()
 
 const rects = computed(() => {
-  const preset = AVATARS.find((item) => item.id === props.id) ?? AVATARS[0]
+  const preset = AVATARS.find((item) => item.id === props.id) ?? decodeAvatar(props.id) ?? AVATARS[0]
   return buildAvatar(preset)
 })
 </script>

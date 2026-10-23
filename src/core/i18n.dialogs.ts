@@ -257,4 +257,6 @@ export const dialogsDict: Record<string, string> = {
   '紫帽训练家': 'Purple-beanie trainer',
   '橙帽少女': 'Orange-cap girl',
   '青帽旅人': 'Teal-straw traveler',
+  '随机组合': 'Random mix',
+  '再摇一次': 'Roll again',
 }

@@ -97,6 +97,17 @@ export const AVATARS: AvatarPreset[] = [
     glasses: false,
   },
   {
+    id: 'hood',
+    name: '兜帽夜行者',
+    skin: '#c98f63',
+    hair: '#2b2420',
+    shirt: '#3a3350',
+    hat: 'hood',
+    hairStyle: 'short',
+    hatColor: '#4b4269',
+    glasses: false,
+  },
+  {
     id: 'pink-long',
     name: '粉发少女',
     skin: '#f7d3b0',
@@ -395,4 +406,69 @@ export function buildAvatar(preset: AvatarPreset): AvatarRect[] {
 
   cache.set(preset.id, rects)
   return rects
+}
+
+
+/* --------------------------------------------------------- combinations */
+
+export const AVATAR_TRAITS = {
+  skins: ['#f7d3b0', '#f0c39a', '#e8b98c', '#d9a273', '#c98f63', '#8d5a3b'],
+  hairColors: ['#241b16', '#3b2a20', '#6b4423', '#8d8175', '#cfd3d8', '#e6c87a', '#e58fb1', '#7b5cc4'],
+  shirts: ['#3b5ba7', '#e3350d', '#4ea93b', '#7b5cc4', '#2bb3c0', '#f0a03a', '#3a3350', '#fffdf4'],
+  hats: ['none', 'cap', 'beanie', 'straw', 'hood'] as const,
+  hatColors: ['#e3350d', '#3b5ba7', '#4ea93b', '#7b5cc4', '#f0a03a', '#2bb3c0', '#e6c87a', '#3a3350'],
+  hairStyles: ['short', 'long', 'bun'] as const,
+}
+
+/** 独立抽取每个部件，组合空间 6·8·8·5·8·3·2 = 92160 */
+export function randomAvatarSpec(): AvatarPreset {
+  const pick = <T,>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)]
+  const hat = pick(AVATAR_TRAITS.hats)
+  return {
+    id: 'custom',
+    name: '随机组合',
+    skin: pick(AVATAR_TRAITS.skins),
+    hair: pick(AVATAR_TRAITS.hairColors),
+    shirt: pick(AVATAR_TRAITS.shirts),
+    hat,
+    hairStyle: pick(AVATAR_TRAITS.hairStyles),
+    hatColor: hat === 'none' ? pick(AVATAR_TRAITS.shirts) : pick(AVATAR_TRAITS.hatColors),
+    glasses: Math.random() < 0.45,
+  }
+}
+
+/** 把组合压成 c1.<7 位 16 进制>，长度 10，方便存进 avatar_id */
+export function encodeAvatar(spec: AvatarPreset): string {
+  const index = (list: readonly string[], value: string) => {
+    const i = list.indexOf(value)
+    return (i < 0 ? 0 : i).toString(16)
+  }
+  const digits = [
+    index(AVATAR_TRAITS.skins, spec.skin),
+    index(AVATAR_TRAITS.hairColors, spec.hair),
+    index(AVATAR_TRAITS.shirts, spec.shirt),
+    index([...AVATAR_TRAITS.hats], spec.hat),
+    index(AVATAR_TRAITS.hatColors, spec.hatColor),
+    index([...AVATAR_TRAITS.hairStyles], spec.hairStyle),
+    spec.glasses ? '1' : '0',
+  ].join('')
+  return `c1.${digits}`
+}
+
+export function decodeAvatar(id: string): AvatarPreset | null {
+  if (!id?.startsWith('c1.') || id.length !== 10) return null
+  const digits = id.slice(3).split('').map((d) => parseInt(d, 16))
+  if (digits.some((n) => Number.isNaN(n))) return null
+  const [skin, hair, shirt, hat, hatColor, hairStyle, glasses] = digits
+  return {
+    id,
+    name: '随机组合',
+    skin: AVATAR_TRAITS.skins[skin] ?? AVATAR_TRAITS.skins[0],
+    hair: AVATAR_TRAITS.hairColors[hair] ?? AVATAR_TRAITS.hairColors[0],
+    shirt: AVATAR_TRAITS.shirts[shirt] ?? AVATAR_TRAITS.shirts[0],
+    hat: AVATAR_TRAITS.hats[hat] ?? 'none',
+    hatColor: AVATAR_TRAITS.hatColors[hatColor] ?? AVATAR_TRAITS.hatColors[0],
+    hairStyle: AVATAR_TRAITS.hairStyles[hairStyle] ?? 'short',
+    glasses: Boolean(glasses),
+  }
 }
