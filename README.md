@@ -95,6 +95,25 @@ pnpm start        # serves dist/ and the API on :8787
 
 Requirements: Node 22.5+ (for `node:sqlite`), pnpm.
 
+### Deploy for a small team
+
+```bash
+HOST=0.0.0.0 PORT=8787 COOKIE_SECURE=1 pnpm start
+```
+
+- `HOST` defaults to `127.0.0.1`; use `0.0.0.0` when a reverse proxy sits in front
+- Terminate TLS with Caddy or Nginx, e.g.:
+
+```
+papers.example.com {
+  reverse_proxy 127.0.0.1:8787
+}
+```
+
+- Set `COOKIE_SECURE=1` once the public URL is HTTPS
+- Registration is invite-only by default: the first account is the admin and can generate codes under Settings
+- SQLite is a single file, so run exactly one instance and back up `data/`
+
 ## Usage
 
 1. **Add a paper** — paste an arXiv ID / URL, or fill the form; metadata can be fetched from arXiv
@@ -151,6 +170,33 @@ All endpoints except `/api/health` and auth require a session cookie.
 | `POST` | `/api/arxiv/preview` | Fetch arXiv metadata |
 | `POST` | `/api/arxiv/search` | Search arXiv by keywords |
 | `POST` | `/api/explain` | Generate an AI paper card |
+
+## Limits
+
+- Scanned PDFs have no text layer: no text selection, and summaries fall back to the abstract
+- In-PDF search matches per text-layer span; phrases split across spans may be missed
+
+- Token usage and model costs are yours; keys never leave the browser except to the endpoint you configure
+- GitHub star counts come from the GitHub API / HTML and may lag by minutes
+
+## Roadmap
+
+- [x] Deterministic sprites, three states
+- [x] Multi-user accounts, invites, admin
+- [x] arXiv import + BibTeX + AI paper cards
+- [x] PDF reader with highlights and comments
+- [x] Cross-page annotations, edited as one group
+- [x] Search inside PDFs
+- [x] Trainer levels, titles, badges
+- [x] Bilingual UI (zh / en)
+- [x] Statistics: categories, years, venues
+- [x] Deploy for multiple users: `HOST` binding, reverse proxy / HTTPS guide
+- [ ] Batch download of missing PDFs (background queue + progress)
+- [ ] Annotation list panel (grouped by page, click to jump)
+- [ ] Scheduled metric refresh (stars / categories)
+- [ ] Export AI summaries to Markdown / standalone HTML
+- [ ] Password reset by email (needs SMTP)
+- [ ] Level-up animation (card bounce, XP bar, sound)
 
 ## Limits
 
@@ -432,6 +478,25 @@ pnpm start     # http://127.0.0.1:8787
 > 如果 `pnpm install` 报 `ERR_PNPM_IGNORED_BUILDS: esbuild`，执行一次
 > `pnpm approve-builds --all` 再装。
 
+### 小团队部署
+
+```bash
+HOST=0.0.0.0 PORT=8787 COOKIE_SECURE=1 pnpm start
+```
+
+- `HOST` 默认 `127.0.0.1`；要让别人访问就改成 `0.0.0.0`，前面挂反向代理
+- 用 Caddy 或 Nginx 终止 TLS，例如：
+
+```
+papers.example.com {
+  reverse_proxy 127.0.0.1:8787
+}
+```
+
+- 公网是 HTTPS 时设 `COOKIE_SECURE=1`
+- 注册默认邀请制：第一个账号是管理员，在「设置」里生成邀请码
+- SQLite 是单文件，只能跑一个实例，记得备份 `data/`
+
 ## 数据
 
 - 默认库：`data/pokemonpaper.db`，首次启动自动建表并写入两条示例
@@ -566,18 +631,20 @@ interface Paper {
 - [x] 改密码
 - [x] 管理员 + 邀请码
 - [x] 注销账号与数据导出
-- [ ] 邮件找回密码
-- [ ] 指标定时刷新（现在要手点）
-- [ ] 批量下载缺失 PDF（后台队列 + 进度）
-- [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 - [x] 训练家等级（XP / 称号 / 徽章）
 - [x] 卡片与列表两种布局
 - [x] PDF 阅读器（渲染 + 高亮 + 批注）
-- [ ] 跨页选择与标注列表
-- [ ] PDF 内搜索
-- [ ] 统计页：按分类、年份、会议分布
-- [ ] 解读导出为 Markdown / 独立 HTML 精读页
-- [ ] 多人共用（当前是单机单用户）
+- [x] 跨页选择，按组编辑与删除
+- [x] PDF 内搜索
+- [x] 统计页：按分类、年份、会议分布
+- [x] 多用户账号（邀请制，数据按用户隔离）
+- [x] 对外部署：`HOST` 绑定 + 反向代理 / HTTPS 说明
+- [ ] 批量下载缺失 PDF（后台队列 + 进度）
+- [ ] 标注列表（按页聚合，点击跳转）
+- [ ] 指标定时刷新（star / 分类）
+- [ ] 解读导出为 Markdown / 独立 HTML
+- [ ] 邮件找回密码（需要 SMTP）
+- [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 
 ## 已知限制
 
@@ -589,9 +656,7 @@ interface Paper {
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 扫描版 PDF 没有文字层，无法选中标注，总结也只能靠摘要
 - PDF 内搜索按文本层片段匹配，跨片段的短语可能漏
-- 跨页选择暂不支持，一次标注请在同一页内
 - 精灵生成器是模板式的，形状会有重复，但配色和细节组合足够区分
-- 未做全文检索，只搜已录入的字段
 
 ## License
 

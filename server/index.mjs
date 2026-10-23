@@ -13,6 +13,9 @@ const DATA_DIR = join(ROOT, 'data')
 const PDF_DIR = join(DATA_DIR, 'pdfs')
 const DB_PATH = process.env.POKEMONPAPER_DB || join(DATA_DIR, 'pokemonpaper.db')
 const PORT = Number(process.env.PORT || 8787)
+const HOST = process.env.HOST || '127.0.0.1'
+// 反向代理终止 TLS 时设 COOKIE_SECURE=1，让 Cookie 只在 HTTPS 下发送
+const COOKIE_SECURE = process.env.COOKIE_SECURE === '1' ? '; Secure' : ''
 
 mkdirSync(DATA_DIR, { recursive: true })
 mkdirSync(PDF_DIR, { recursive: true })
@@ -372,14 +375,17 @@ function createSession(userId) {
 function setSessionCookie(res, token, expires) {
   res.setHeader(
     'set-cookie',
-    `pp_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(
+    `pp_session=${token}; Path=/; HttpOnly; SameSite=Lax${COOKIE_SECURE}; Max-Age=${Math.floor(
       (expires.getTime() - Date.now()) / 1000,
     )}`,
   )
 }
 
 function clearSessionCookie(res) {
-  res.setHeader('set-cookie', 'pp_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
+  res.setHeader(
+    'set-cookie',
+    `pp_session=; Path=/; HttpOnly; SameSite=Lax${COOKIE_SECURE}; Max-Age=0`,
+  )
 }
 
 function currentUser(req) {
@@ -1484,8 +1490,8 @@ const server = createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`PokemonPaper API  http://127.0.0.1:${PORT}`)
+server.listen(PORT, HOST, () => {
+  console.log(`PokemonPaper API  http://${HOST}:${PORT}`)
   console.log(`SQLite        ${DB_PATH}`)
 
   // 老数据没有分类：启动后后台去 arXiv 补一轮，不阻塞请求
