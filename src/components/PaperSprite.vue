@@ -11,8 +11,9 @@ const props = withDefaults(
     spriteUrl?: string | null
     status?: PaperStatus
     notes?: string
+    shiny?: boolean
   }>(),
-  { locked: false, spriteUrl: null, status: undefined, notes: '' },
+  { locked: false, spriteUrl: null, status: undefined, notes: '', shiny: false },
 )
 
 const stage = computed(() => {
@@ -41,7 +42,7 @@ const showImage = computed(() => Boolean(props.spriteUrl) && !props.locked && !f
     alt=""
     @error="failed = true"
   />
-  <SpriteSvg v-else :seed="seed" :category="category" :locked="locked" :stage="stage" />
+  <SpriteSvg v-else :seed="seed" :category="category" :locked="locked" :stage="stage" :shiny="shiny" />
 </template>
 
 <style scoped>

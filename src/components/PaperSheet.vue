@@ -15,6 +15,7 @@ import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import { t, locale } from '../core/i18n'
 import { downloadShareCard } from '../core/shareCard'
 import { playCry } from '../core/cry'
+import { SHINY_LABEL, shinyOf } from '../core/shiny'
 import { bondOf, bondStats, recordVisit, type BondInfo } from '../core/bond'
 import type { Explain, Paper, PaperStatus } from '../core/types'
 
@@ -49,6 +50,9 @@ const pdfBusy = ref(false)
 const spriteBusy = ref(false)
 const cardBusy = ref(false)
 const bond = ref<BondInfo | null>(null)
+const shinyInfo = computed(() =>
+  shinyOf({ arxiv: form.arxiv, venue: form.venue, stars: form.stars, year: form.year }),
+)
 const stageName = computed(() => {
   if (form.status === 'unread') return '幼体'
   if (form.status === 'reading') return '成长体'
@@ -362,7 +366,7 @@ onBeforeUnmount(() => {
         <div class="main">
           <aside class="preview">
             <div class="stage" :class="{ dim: form.status === 'unread', lit: form.status === 'read' }">
-              <PaperSprite :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" :sprite-url="paper?.spriteUrl ?? null" :status="form.status" :notes="form.notes" />
+              <PaperSprite :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" :sprite-url="paper?.spriteUrl ?? null" :status="form.status" :notes="form.notes" :shiny="shinyInfo.shiny" />
             </div>
             <button
               type="button"
@@ -380,7 +384,16 @@ onBeforeUnmount(() => {
             >
               {{ cardBusy ? t('生成中…') : t('分享卡片') }}
             </button>
-            <p class="stage-name">{{ t(stageName) }}</p>
+            <p class="stage-name">
+              <span>{{ t(stageName) }}</span>
+              <span
+                v-if="shinyInfo.shiny"
+                class="shiny-tag"
+                :title="shinyInfo.reason ? t(SHINY_LABEL[shinyInfo.reason]) : ''"
+              >
+                ✦ {{ t('异色') }}
+              </span>
+            </p>
             <div v-if="bond" class="bond">
               <div class="bond-top">
                 <span class="mono dim">{{ t('羁绊') }} {{ bond.score }}</span>

@@ -260,4 +260,10 @@ export const pagesDict: Record<string, string> = {
   '陌生': 'Stranger',
   '熟悉': 'Familiar',
   '亲密': 'Close',
+  '异色': 'Shiny',
+  '异色精灵': 'Shiny sprite',
+  '高引': 'High stars',
+  '顶会 / 顶刊': 'Top venue',
+  '十年经典': 'Decade classic',
+  '1/64 概率': '1/64 chance',
 }

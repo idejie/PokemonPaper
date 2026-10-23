@@ -6,12 +6,14 @@ import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
 import { t } from '../core/i18n'
+import { shinyOf } from '../core/shiny'
 
 const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
 
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const locked = computed(() => props.paper.status === 'unread')
+const shiny = computed(() => shinyOf(props.paper))
 const lv = computed(() => paperLevel(props.paper))
 const catColor = computed(() => categoryChipColor(props.paper.primaryCategory))
 function openDetail() {
@@ -39,13 +41,14 @@ const statusText = computed(() => {
     @keydown.enter="openDetail"
   >
     <div class="pic">
-      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" :status="paper.status" :notes="paper.notes" />
+      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" :status="paper.status" :notes="paper.notes" :shiny="shiny.shiny" />
     </div>
 
     <div class="main">
       <div class="title">{{ paper.title }}</div>
       <div class="meta">
         <span class="mono">No.{{ paper.arxiv || '—' }}</span>
+        <span v-if="shiny.shiny" class="shiny-tag" :title="t('异色精灵')">✦</span>
         <span v-if="paper.authors" class="authors">{{ paper.authors }}</span>
         <span v-if="paper.venue || paper.year" class="mono venue">
           {{ paper.venue }}{{ paper.year ? ` · ${paper.year}` : '' }}

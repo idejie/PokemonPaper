@@ -5,12 +5,14 @@ import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
 import { t } from '../core/i18n'
+import { shinyOf } from '../core/shiny'
 import PaperSprite from './PaperSprite.vue'
 
 const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
 
 const locked = computed(() => props.paper.status === 'unread')
+const shiny = computed(() => shinyOf(props.paper))
 const justLit = ref(false)
 
 watch(
@@ -62,13 +64,14 @@ function readFull() {
         <i class="dot" :class="paper.status" :title="statusText" />
         {{ paper.arxiv || '—' }}
       </span>
+      <span v-if="shiny.shiny" class="shiny-tag" :title="t('异色精灵')">✦</span>
       <span class="lv mono" :style="{ background: TIER_COLORS[lv.tier] }" :title="levelTitle">
         Lv.{{ lv.level }}
       </span>
     </div>
 
     <div class="sprite-box">
-      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" :status="paper.status" :notes="paper.notes" />
+      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" :status="paper.status" :notes="paper.notes" :shiny="shiny.shiny" />
       <span v-if="!locked" class="spark" aria-hidden="true">✦</span>
     </div>
 

@@ -332,3 +332,19 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+
+.shiny-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 0 5px;
+  border: 1.5px solid #a86b12;
+  border-radius: 999px;
+  background: #ffe6a3;
+  color: #7a4b00;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.7;
+}

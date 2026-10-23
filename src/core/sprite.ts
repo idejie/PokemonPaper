@@ -804,8 +804,14 @@ function colorFor(v: number, palette: SpritePalette, locked: boolean): string {
   }
 }
 
-export function buildSprite(seed: string, category: string, locked = false, stage = 3): SpriteRect[] {
-  const key = `${seed}|${category}|${locked ? 1 : 0}|${stage}`
+export function buildSprite(
+  seed: string,
+  category: string,
+  locked = false,
+  stage = 3,
+  shiny = false,
+): SpriteRect[] {
+  const key = `${seed}|${category}|${locked ? 1 : 0}|${stage}|${shiny ? 1 : 0}`
   const hit = cache.get(key)
   if (hit) return hit
 
@@ -843,7 +849,9 @@ export function buildSprite(seed: string, category: string, locked = false, stag
   outline(g)
   if (!locked) groundShadow(g, anatomy)
 
-  const palette = paletteVariant(paletteForCategory(category), seed)
+  const palette = shiny && !locked
+    ? { base: '#f2b93e', light: '#ffe6a3', dark: '#a86b12', accent: '#e85f8a' }
+    : paletteVariant(paletteForCategory(category), seed)
   const rects: SpriteRect[] = []
 
   for (let y = 0; y < S; y += 1) {
