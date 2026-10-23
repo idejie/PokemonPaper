@@ -146,6 +146,17 @@ export const api = {
     return data.papers
   },
 
+  async generateSprite(
+    id: string,
+    config: { baseUrl: string; apiKey: string; model: string },
+  ): Promise<string> {
+    const data = await request<{ spriteUrl: string }>(`/api/papers/${id}/sprite`, {
+      method: 'POST',
+      body: JSON.stringify({ config }),
+    })
+    return data.spriteUrl
+  },
+
   async startPdfBackfill(): Promise<PdfJob> {
     const data = await request<{ job: PdfJob }>('/api/papers/download-missing', {
       method: 'POST',

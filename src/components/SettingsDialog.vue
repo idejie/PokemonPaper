@@ -13,6 +13,7 @@ const store = usePapersStore()
 const ui = useUiStore()
 
 const form = reactive({ ...settings.config })
+const imageForm = reactive({ ...settings.image })
 const showKey = ref(false)
 const pdfJob = ref<PdfJob | null>(null)
 let pdfTimer: number | undefined
@@ -62,6 +63,11 @@ function save() {
     return
   }
   settings.save({ ...form, baseUrl: form.baseUrl.trim(), model: form.model.trim() })
+  settings.saveImage({
+    ...imageForm,
+    baseUrl: imageForm.baseUrl.trim(),
+    model: imageForm.model.trim(),
+  })
   store.notify(t('模型设置已保存到本地'))
   ui.closeSettings()
 }
@@ -155,6 +161,31 @@ onBeforeUnmount(() => {
           {{ t('没有 Key？') }}
           <a :href="provider.keyUrl" target="_blank" rel="noreferrer">{{ t('去 {name} 申请 →', { name: t(provider.name) }) }}</a>
         </p>
+
+        <div class="divider" />
+
+        <h3 class="block-title">{{ t('插画生成') }}</h3>
+        <p class="lead">
+          {{ t('用图像模型为每篇论文生成插画，按张计费；不填则继续用程序精灵。') }}
+        </p>
+        <label class="field">
+          <span>{{ t('图像接口') }}</span>
+          <input v-model="imageForm.baseUrl" class="input mono" placeholder="https://api.openai.com/v1" />
+        </label>
+        <label class="field">
+          <span>{{ t('图像模型') }}</span>
+          <input v-model="imageForm.model" class="input mono" placeholder="gpt-image-1" />
+        </label>
+        <label class="field">
+          <span>{{ t('图像 API Key') }}</span>
+          <input
+            v-model="imageForm.apiKey"
+            class="input mono"
+            type="password"
+            placeholder="sk-..."
+            autocomplete="off"
+          />
+        </label>
 
         <div class="divider" />
 

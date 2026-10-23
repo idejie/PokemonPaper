@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import SpriteSvg from './SpriteSvg.vue'
+import PaperSprite from './PaperSprite.vue'
 import { api } from '../core/api'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
@@ -39,6 +39,7 @@ const form = reactive({
 const saving = ref(false)
 const fetching = ref(false)
 const pdfBusy = ref(false)
+const spriteBusy = ref(false)
 const explaining = ref(false)
 const syncing = ref(false)
 
@@ -216,6 +217,28 @@ async function syncMetrics() {
   }
 }
 
+async function generateArtwork() {
+  if (!props.id) {
+    store.notify(t('先保存这篇论文'))
+    return
+  }
+  if (!settings.imageReady) {
+    store.notify(t('先在设置里配置图像模型'))
+    ui.openSettings()
+    return
+  }
+  spriteBusy.value = true
+  try {
+    await api.generateSprite(props.id, settings.image)
+    await store.load()
+    store.notify(t('插画已生成'))
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('生成失败'))
+  } finally {
+    spriteBusy.value = false
+  }
+}
+
 async function generateExplain() {
   if (!settings.ready) {
     ui.openSettings()
@@ -283,8 +306,16 @@ onBeforeUnmount(() => {
         <div class="main">
           <aside class="preview">
             <div class="stage" :class="{ dim: form.status === 'unread', lit: form.status === 'read' }">
-              <SpriteSvg :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" />
+              <PaperSprite :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" :sprite-url="paper?.spriteUrl ?? null" />
             </div>
+            <button
+              type="button"
+              class="btn sm art-btn"
+              :disabled="spriteBusy || !props.id || !settings.imageReady"
+              @click="generateArtwork"
+            >
+              {{ spriteBusy ? t('生成中…') : paper?.spriteUrl ? t('重新生成插画') : t('生成插画') }}
+            </button>
 
             <div class="preview-meta">
               <span class="type-chip" :style="{ background: catColor }">
@@ -651,6 +682,11 @@ onBeforeUnmount(() => {
   opacity: 0.7;
 }
 
+.art-btn {
+  width: 100%;
+  margin-top: 6px;
+}
+
 .preview-meta {
   display: flex;
   align-items: center;
@@ -981,7 +1017,12 @@ onBeforeUnmount(() => {
     grid-area: stage;
   }
 
-  .preview-meta {
+  .art-btn {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.preview-meta {
     grid-area: meta;
   }
 

@@ -259,4 +259,13 @@ export const dialogsDict: Record<string, string> = {
   '青帽旅人': 'Teal-straw traveler',
   '随机组合': 'Random mix',
   '再摇一次': 'Roll again',
+  '插画生成': 'Artwork generation',
+  '用图像模型为每篇论文生成插画，按张计费；不填则继续用程序精灵。': 'Generate artwork per paper with an image model (billed per image). Leave blank to keep the procedural sprite.',
+  '图像接口': 'Image endpoint',
+  '图像模型': 'Image model',
+  '图像 API Key': 'Image API key',
+  '生成插画': 'Generate artwork',
+  '重新生成插画': 'Regenerate artwork',
+  '插画已生成': 'Artwork generated',
+  '先在设置里配置图像模型': 'Configure an image model in settings first',
 }

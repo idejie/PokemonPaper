@@ -11,6 +11,7 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const DIST = join(ROOT, 'dist')
 const DATA_DIR = join(ROOT, 'data')
 const PDF_DIR = join(DATA_DIR, 'pdfs')
+const SPRITE_DIR = join(DATA_DIR, 'sprites')
 const DB_PATH = process.env.POKEMONPAPER_DB || join(DATA_DIR, 'pokemonpaper.db')
 const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || '127.0.0.1'
@@ -20,6 +21,7 @@ const PUBLIC_URL = process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`
 
 mkdirSync(DATA_DIR, { recursive: true })
 mkdirSync(PDF_DIR, { recursive: true })
+mkdirSync(SPRITE_DIR, { recursive: true })
 
 /* ------------------------------------------------------------------ db */
 
@@ -226,7 +228,87 @@ function rowToPaper(row) {
     url: row.url ?? '',
     addedAt: row.added_at,
     readAt: row.read_at ?? null,
+    spriteUrl: (() => {
+      if (!row.arxiv) return null
+      const file = join(SPRITE_DIR, `${row.arxiv}.png`)
+      try {
+        if (!existsSync(file)) return null
+        return `/api/sprites/${row.arxiv}.png?v=${Math.floor(statSync(file).mtimeMs)}`
+      } catch {
+        return null
+      }
+    })(),
   }
+}
+
+const SPRITE_COLORS = {
+  blue: ['#8fb4f5', '#5f8ee8', '#3f66b8'],
+  teal: ['#7fd6da', '#3fb3b8', '#2a8286'],
+  purple: ['#c9a9f2', '#a97fe0', '#7b57b3'],
+  indigo: ['#a488ea', '#7b5ad1', '#553aa3'],
+  rose: ['#f2a3b8', '#e0708f', '#b04a67'],
+  gold: ['#f5d479', '#e0b23f', '#b3862a'],
+  green: ['#9ad989', '#6fbe57', '#4a8f3a'],
+  steel: ['#c4d2df', '#9fb0c2', '#6f8093'],
+  crimson: ['#f0927c', '#d9644a', '#a8432d'],
+  slate: ['#b4bccd', '#8c94a8', '#626a7d'],
+}
+
+function spriteColors(code) {
+  if (code.startsWith('cs.RO')) return SPRITE_COLORS.blue
+  if (code.startsWith('cs.CV')) return SPRITE_COLORS.teal
+  if (code.startsWith('cs.LG')) return SPRITE_COLORS.purple
+  if (code.startsWith('cs.AI')) return SPRITE_COLORS.indigo
+  if (code.startsWith('cs.CL')) return SPRITE_COLORS.rose
+  if (code.startsWith('stat.')) return SPRITE_COLORS.purple
+  if (code.startsWith('eess.')) return SPRITE_COLORS.gold
+  if (code.startsWith('q-bio.')) return SPRITE_COLORS.green
+  if (code.startsWith('hep-') || code.startsWith('nucl-')) return SPRITE_COLORS.crimson
+  if (code.startsWith('astro-ph.') || code.startsWith('quant-ph')) return SPRITE_COLORS.indigo
+  return SPRITE_COLORS.steel
+}
+
+function spritePrompt(row) {
+  const colors = spriteColors(row.primary_category || '')
+  const title = String(row.title || '').slice(0, 140)
+  return [
+    `A cute chibi creature mascot inspired by the arXiv paper "${title}".`,
+    'Style: polished 3D game character illustration, soft vinyl toy look, thick white outer keyline, warm rim light, big expressive eyes, friendly smile, dynamic full-body pose, centered, plain cream background, no text, no logos.',
+    `Palette: ${colors[0]}, ${colors[1]}, ${colors[2]}.`,
+  ].join(' ')
+}
+
+async function generateSpriteArtwork(config, prompt) {
+  const base = String(config.baseUrl || '').trim().replace(/\/+$/, '')
+  const key = String(config.apiKey || '').trim()
+  if (!base || !key) throw new HttpError(400, '先在设置里填图像接口和 Key')
+  const res = await fetch(`${base}/images/generations`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: config.model || 'gpt-image-1',
+      prompt,
+      n: 1,
+      size: '1024x1024',
+    }),
+    signal: AbortSignal.timeout(180000),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new HttpError(502, `图像接口返回 ${res.status}${text ? `：${text.slice(0, 160)}` : ''}`)
+  }
+  const data = await res.json().catch(() => null)
+  const item = data?.data?.[0]
+  let buffer = null
+  if (item?.b64_json) {
+    buffer = Buffer.from(item.b64_json, 'base64')
+  } else if (item?.url) {
+    const image = await fetch(item.url, { signal: AbortSignal.timeout(120000) })
+    if (!image.ok) throw new HttpError(502, `下载生成图失败：${image.status}`)
+    buffer = Buffer.from(await image.arrayBuffer())
+  }
+  if (!buffer || buffer.length < 1024) throw new HttpError(502, '图像接口没有返回有效图片')
+  return buffer
 }
 
 function seedIfEmpty() {
@@ -1554,6 +1636,55 @@ async function api(req, res, url) {
       db.prepare('DELETE FROM annotations WHERE id = ?').run(row.id)
       return sendJSON(res, 200, { ok: true })
     }
+  }
+
+  if (pathname === '/api/sprites/generate' && method === 'POST') {
+    const body = await readBody(req)
+    const config = body.config || {}
+    const rows = db
+      .prepare(
+        "SELECT * FROM papers WHERE user_id = ? AND arxiv != '' ORDER BY added_at DESC LIMIT 60",
+      )
+      .all(user.id)
+    let generated = 0
+    let failed = 0
+    for (const row of rows) {
+      const file = join(SPRITE_DIR, `${row.arxiv}.png`)
+      if (existsSync(file)) continue
+      try {
+        const buffer = await generateSpriteArtwork(config, spritePrompt(row))
+        writeFileSync(file, buffer)
+        generated += 1
+      } catch {
+        failed += 1
+      }
+      await new Promise((resolve) => setTimeout(resolve, 600))
+    }
+    return sendJSON(res, 200, { generated, failed })
+  }
+
+  const spriteMatch = pathname.match(/^\/api\/sprites\/([\d.]+)\.png$/)
+  if (spriteMatch && method === 'GET') {
+    const file = join(SPRITE_DIR, `${spriteMatch[1]}.png`)
+    if (!existsSync(file)) return sendJSON(res, 404, { error: '还没有生成插画' })
+    res.setHeader('content-type', 'image/png')
+    res.setHeader('cache-control', 'public, max-age=3600')
+    return createReadStream(file).pipe(res)
+  }
+
+  const spriteGen = pathname.match(/^\/api\/papers\/([\w-]+)\/sprite$/)
+  if (spriteGen && method === 'POST') {
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(spriteGen[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+    if (!row.arxiv) return sendJSON(res, 400, { error: '这篇没有 arXiv 编号' })
+    const body = await readBody(req)
+    const buffer = await generateSpriteArtwork(body.config || {}, spritePrompt(row))
+    writeFileSync(join(SPRITE_DIR, `${row.arxiv}.png`), buffer)
+    return sendJSON(res, 200, {
+      spriteUrl: `/api/sprites/${row.arxiv}.png?v=${Date.now()}`,
+    })
   }
 
   const textMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/text$/)

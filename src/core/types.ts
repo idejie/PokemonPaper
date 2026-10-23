@@ -19,6 +19,7 @@ export interface Paper {
   metricsAt: string | null
   summary: string
   summaryAt: string | null
+  spriteUrl: string | null
   hasFullText: boolean
   fullTextChars: number
   primaryCategory: string

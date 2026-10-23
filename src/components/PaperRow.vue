@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import SpriteSvg from './SpriteSvg.vue'
+import PaperSprite from './PaperSprite.vue'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
@@ -39,7 +39,7 @@ const statusText = computed(() => {
     @keydown.enter="openDetail"
   >
     <div class="pic">
-      <SpriteSvg :seed="seed" :category="paper.primaryCategory" :locked="locked" />
+      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" />
     </div>
 
     <div class="main">

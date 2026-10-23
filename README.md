@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user, 16 pixel avatars; scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
@@ -95,6 +96,16 @@ pnpm start        # serves dist/ and the API on :8787
 ```
 
 Requirements: Node 22.5+ (for `node:sqlite`), pnpm.
+
+### AI artwork (optional)
+
+Open Settings → Artwork generation, fill an OpenAI-compatible image endpoint, model and key
+(e.g. `https://api.openai.com/v1`, `gpt-image-1`), then click **Generate artwork** on a paper.
+
+- Images are cached by arXiv ID in `data/sprites/`; generating the same paper again is free
+- Unread papers still show the silhouette, so generated artwork never spoils an unread paper
+- Without generation the deterministic procedural sprite is used
+- Billing is per image and depends on your provider
 
 ### Deploy for a small team
 
@@ -248,6 +259,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个像素头像可选；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
@@ -481,6 +493,16 @@ pnpm start     # http://127.0.0.1:8787
 
 > 如果 `pnpm install` 报 `ERR_PNPM_IGNORED_BUILDS: esbuild`，执行一次
 > `pnpm approve-builds --all` 再装。
+
+### AI 插画（可选）
+
+「设置 → 插画生成」里填 OpenAI 兼容的图像接口、模型和 Key（例如 `https://api.openai.com/v1`、`gpt-image-1`），
+然后在论文详情里点「生成插画」。
+
+- 图片按 arXiv 号缓存在 `data/sprites/`，同一篇重复生成不再扣费
+- 未点亮的论文仍显示剪影，不会提前剧透
+- 不生成时继续用程序精灵兜底
+- 按张计费，价格取决于服务商
 
 ### 小团队部署
 

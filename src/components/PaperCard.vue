@@ -5,7 +5,7 @@ import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { categoryChipColor } from '../core/palette'
 import { t } from '../core/i18n'
-import SpriteSvg from './SpriteSvg.vue'
+import PaperSprite from './PaperSprite.vue'
 
 const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
@@ -68,7 +68,7 @@ function readFull() {
     </div>
 
     <div class="sprite-box">
-      <SpriteSvg :seed="seed" :category="paper.primaryCategory" :locked="locked" />
+      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" />
       <span v-if="!locked" class="spark" aria-hidden="true">✦</span>
     </div>
 
