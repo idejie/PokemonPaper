@@ -150,6 +150,16 @@ export const api = {
     })
   },
 
+  async gymLeaders(): Promise<{
+    month: string
+    gyms: Record<
+      string,
+      { userId: string; name: string; avatarId: string; count: number }
+    >
+  }> {
+    return request('/api/gym-leaders')
+  },
+
   async party(): Promise<PartyMember[]> {
     const data = await request<{ party: PartyMember[] }>('/api/party')
     return data.party

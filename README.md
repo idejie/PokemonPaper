@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 👑 **Gym leaders** | Monthly crown for the top reader of each gym, based on this month's finished papers |
 | 🧑‍🤝‍🧑 **Party of six** | Pin up to six papers; they show as sprites on your profile and your leaderboard row |
 | 🤝 **Trading** | Send a paper with its notes to another account by email; their copy starts unread |
 | ⚔️ **Move set** | Four deterministic moves per paper from title / tags / abstract keywords, shown on cards, details and the share card |
@@ -260,6 +261,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Deterministic move sets
 - [x] Paper trading between accounts
 - [x] Party of six
+- [x] Monthly gym leaders
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -290,6 +292,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 👑 **道馆馆主** | 每个道馆按本月已读篇数评选馆主，展示在 Guide 页 |
 | 🧑‍🤝‍🧑 **六人队伍** | 选最多 6 篇论文组队，展示在训练家档案和天梯行 |
 | 🤝 **论文交换** | 按邮箱把论文连同笔记交换给另一个账号，对方从“未读”开始 |
 | ⚔️ **招式表** | 从标题 / 标签 / 摘要抽取 4 个确定性招式，展示在卡片、详情和分享卡 |
@@ -776,6 +779,7 @@ interface Like {
 - [x] 确定性招式表
 - [x] 论文交换
 - [x] 六人队伍
+- [x] 每月道馆馆主
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

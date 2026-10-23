@@ -831,6 +831,68 @@ function levelForXp(xp) {
   return level
 }
 
+const GYM_PREFIXES = [
+  ['cs', ['cs.']],
+  ['math', ['math.']],
+  ['stat', ['stat.']],
+  ['eess', ['eess.']],
+  ['q-bio', ['q-bio.']],
+  ['q-fin', ['q-fin.']],
+  ['econ', ['econ.']],
+  ['astro-ph', ['astro-ph.']],
+  ['cond-mat', ['cond-mat.']],
+  ['hep', ['hep-']],
+  ['quant-ph', ['quant-ph']],
+  ['physics', ['physics.', 'gr-qc', 'nlin.', 'math-ph', 'nucl-']],
+]
+
+function gymIdFor(category) {
+  if (!category) return null
+  for (const [id, prefixes] of GYM_PREFIXES) {
+    if (prefixes.some((prefix) => category === prefix || category.startsWith(prefix))) return id
+  }
+  return null
+}
+
+function gymLeaders() {
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+  const rows = db
+    .prepare(
+      `SELECT p.primary_category, p.categories, p.user_id, u.name, u.avatar_id
+         FROM papers p JOIN users u ON u.id = p.user_id
+        WHERE p.status = 'read' AND p.read_at >= ?`,
+    )
+    .all(monthStart.toISOString())
+  const tally = new Map()
+  for (const row of rows) {
+    const gyms = new Set()
+    for (const category of [row.primary_category, ...String(row.categories || '').split(',')]) {
+      const id = gymIdFor((category || '').trim())
+      if (id) gyms.add(id)
+    }
+    for (const gym of gyms) {
+      if (!tally.has(gym)) tally.set(gym, new Map())
+      const byUser = tally.get(gym)
+      const entry = byUser.get(row.user_id) ?? {
+        userId: row.user_id,
+        name: row.name || row.user_id.slice(0, 6),
+        avatarId: row.avatar_id,
+        count: 0,
+      }
+      entry.count += 1
+      byUser.set(row.user_id, entry)
+    }
+  }
+  const leaders = {}
+  for (const [gym, byUser] of tally.entries()) {
+    const best = [...byUser.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))[0]
+    if (best) leaders[gym] = best
+  }
+  return { month: todayKey().slice(0, 7), gyms: leaders }
+}
+
 function partyFor(userId) {
   return db
     .prepare(
@@ -2003,6 +2065,10 @@ async function api(req, res, url) {
       )
       return sendJSON(res, 200, { text, chars: text.length, pages })
     }
+  }
+
+  if (pathname === '/api/gym-leaders' && method === 'GET') {
+    return sendJSON(res, 200, gymLeaders())
   }
 
   if (pathname === '/api/party') {

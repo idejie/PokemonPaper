@@ -39,7 +39,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
       Useful for reading groups. `M`
 - [x] **Party of six** — pin six papers as your party, shown on profile and
       leaderboard; display only, no combat stats. `S`
-- [ ] **Gym leaders** — monthly crown for the top reader in each category. `M`
+- [x] **Gym leaders** — monthly crown for the top reader in each category. `M`
 
 ## D. Reading tools
 

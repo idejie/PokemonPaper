@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { TITLES, xpForLevel } from '../core/progress'
 import { t } from '../core/i18n'
+import { api } from '../core/api'
 import { gymStatus } from '../core/gyms'
 import { usePapersStore } from '../stores/papers'
 
@@ -20,12 +21,26 @@ const milestones = [2, 5, 10, 20, 35, 50].map((level) => ({
   xp: xpForLevel(level),
 }))
 
+const leaders = ref<Record<string, { name: string; count: number }>>({})
+const leaderMonth = ref('')
+
+async function loadLeaders() {
+  try {
+    const data = await api.gymLeaders()
+    leaders.value = data.gyms
+    leaderMonth.value = data.month
+  } catch {
+    /* offline: keep the section usable without leaders */
+  }
+}
+
 const badges = computed(() => store.xp.badges)
 const titles = computed(() => [...TITLES].reverse())
 const currentTitle = computed(() => store.xp.title)
 
 onMounted(async () => {
   if (!store.items.length) await store.load()
+  void loadLeaders()
 })
 </script>
 
@@ -150,11 +165,20 @@ onMounted(async () => {
       <section class="block">
         <h2><span class="num mono">06</span>{{ t('道馆') }}</h2>
         <p>{{ t('每个 arXiv 大类是一座道馆：读满 3 篇、其中 1 篇有笔记，就能拿到徽章。') }}</p>
-        <p class="dim mono">{{ t('已获得 {n} / {m}', { n: gymEarned, m: gyms.length }) }}</p>
+        <p class="dim mono">
+          {{ t('已获得 {n} / {m}', { n: gymEarned, m: gyms.length }) }}
+          <template v-if="leaderMonth"> · {{ t('本月馆主') }} {{ leaderMonth }}</template>
+        </p>
         <div class="gyms">
           <div v-for="gym in gyms" :key="gym.id" class="gym-row" :class="{ on: gym.earned }">
             <span class="gym-icon">{{ gym.icon }}</span>
-            <b>{{ t(gym.name) }}</b>
+            <span class="gym-info">
+              <b>{{ t(gym.name) }}</b>
+              <small v-if="leaders[gym.id]" class="gym-lead">
+                👑 {{ leaders[gym.id].name }} · {{ t('{n} 篇', { n: leaders[gym.id].count }) }}
+              </small>
+              <small v-else class="gym-lead empty">{{ t('暂无馆主') }}</small>
+            </span>
             <span class="gym-progress mono">{{ gym.readCount }}/{{ gym.read }} · {{ gym.noteCount }}/{{ gym.notes }}</span>
             <span class="gym-state">{{ gym.earned ? t('已获得') : t('未获得') }}</span>
           </div>
@@ -450,6 +474,22 @@ td:last-child {
 
 .gym-icon {
   font-size: 16px;
+}
+
+.gym-info {
+  display: grid;
+  gap: 1px;
+}
+
+.gym-lead {
+  color: #8a5a00;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.gym-lead.empty {
+  color: var(--dim);
+  font-weight: 600;
 }
 
 .gym-progress {

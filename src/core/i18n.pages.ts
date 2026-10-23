@@ -284,4 +284,7 @@ export const pagesDict: Record<string, string> = {
   '已加入队伍': 'Joined the party',
   '已移出队伍': 'Left the party',
   '队伍更新失败': 'Could not update party',
+  '本月馆主': 'Gym leaders this month',
+  '暂无馆主': 'No leader yet',
+  '{n} 篇': '{n} papers',
 }
