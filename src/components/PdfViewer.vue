@@ -54,7 +54,7 @@ const annotations = ref<Annotation[]>([])
 const selection = ref<{ page: number; rects: Rect[]; quote: string } | null>(null)
 const editing = ref<Annotation | null>(null)
 const draft = ref('')
-const publicFlag = ref(false)
+const publicFlag = ref(true)
 const viewing = ref<Annotation | null>(null)
 
 const canvasRefs = new Map<number, HTMLCanvasElement>()
@@ -212,7 +212,7 @@ function onMouseUp(event: MouseEvent) {
 function cancelSelection() {
   selection.value = null
   draft.value = ''
-  publicFlag.value = false
+  publicFlag.value = true
   window.getSelection()?.removeAllRanges()
 }
 
@@ -273,7 +273,7 @@ async function saveAnnotation() {
   )
   editing.value = null
   draft.value = ''
-  publicFlag.value = false
+  publicFlag.value = true
   store.notify(t('批注已保存'))
 }
 
@@ -284,7 +284,7 @@ async function removeAnnotation() {
   annotations.value = annotations.value.filter((item) => item.id !== id)
   editing.value = null
   draft.value = ''
-  publicFlag.value = false
+  publicFlag.value = true
   store.notify(t('已删除标注'))
 }
 

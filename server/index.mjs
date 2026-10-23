@@ -97,7 +97,7 @@ const annotationColumns = db.prepare('PRAGMA table_info(annotations)').all().map
 for (const [name, ddl] of [
   ['page', 'INTEGER NOT NULL DEFAULT 0'],
   ['rects', "TEXT NOT NULL DEFAULT '[]'"],
-  ['is_public', 'INTEGER NOT NULL DEFAULT 0'],
+  ['is_public', 'INTEGER NOT NULL DEFAULT 1'],
 ]) {
   if (!annotationColumns.includes(name)) {
     db.exec(`ALTER TABLE annotations ADD COLUMN ${name} ${ddl}`)
@@ -1271,7 +1271,7 @@ async function api(req, res, url) {
         String(body.quote || '').slice(0, 2000),
         color,
         String(body.comment || '').slice(0, 4000),
-        body.isPublic ? 1 : 0,
+        body.isPublic === false ? 0 : 1,
         new Date().toISOString(),
       )
       return sendJSON(res, 201, { id })
