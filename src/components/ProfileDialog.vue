@@ -73,6 +73,7 @@ onBeforeUnmount(() => {
           <div class="stat"><b class="mono">{{ progress.stats.openSource }}</b><span>{{ t('开源') }}</span></div>
           <div class="stat"><b class="mono">{{ progress.stats.explained }}</b><span>{{ t('AI 解读') }}</span></div>
           <div class="stat"><b class="mono">{{ progress.stats.withPdf }}</b><span>{{ t('本地 PDF') }}</span></div>
+          <div class="stat"><b class="mono">{{ store.likesReceived }}</b><span>{{ t('获赞') }}</span></div>
         </div>
 
         <div class="badges">
@@ -252,7 +253,7 @@ onBeforeUnmount(() => {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 

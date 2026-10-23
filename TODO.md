@@ -5,7 +5,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
 
 ## Next up
 
-- [ ] **Share card PNG** — export a paper as a card image (sprite, level, type,
+- [x] **Share card PNG** — export a paper as a card image (sprite, level, type,
       moves, trainer) for X / 朋友圈. Reuses existing data; best growth loop. `S`
 - [ ] **Three-stage evolution** — unread → reading → read is only the first arc;
       add annotated / reproduced stages and a real juvenile–adult–final sprite
@@ -55,7 +55,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
       guide page; current `docs/*.png` predate these features. `S`
 - [ ] **Batch artwork UI** — `POST /api/sprites/generate` exists, but the UI only
       has the per-paper button; add a batch action with progress. `S`
-- [ ] **Likes in profile** — show "likes received" in the trainer profile, not
+- [x] **Likes in profile** — show "likes received" in the trainer profile, not
       just on the leaderboard. `S`
 - [ ] **English README parity** — the Chinese section still has the data model,
       account section and more screenshots than the English one. `S`

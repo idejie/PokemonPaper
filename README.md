@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🖼️ **Share card** | Export a paper as a 640×900 PNG card with its sprite, level, category and trainer |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
 | 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
@@ -237,6 +238,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] 16 avatars plus 92k random combinations
 - [x] Leaderboard (level / XP / reads / summaries / likes)
 - [x] Extruded 3D sprite rendering and lit-sprite idle animation
+- [x] Shareable paper card PNG
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -267,6 +269,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🖼️ **分享卡** | 一键导出论文卡 PNG（精灵、等级、分类、训练家），适合发推 / 朋友圈 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
 | 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
@@ -730,6 +733,7 @@ interface Like {
 - [x] 16 个头像 + 9 万种随机组合
 - [x] 天梯：等级 / XP / 已读 / 总结 / 获赞
 - [x] 精灵挤出立体渲染与点亮待机动画
+- [x] 论文分享卡 PNG 导出
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

@@ -6,11 +6,13 @@ import { api } from '../core/api'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
+import { useAuthStore } from '../stores/auth'
 import { categoryChipColor } from '../core/palette'
 import { TIER_COLORS, paperLevel } from '../core/level'
 import { ARXIV_CATEGORIES } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
-import { t } from '../core/i18n'
+import { t, locale } from '../core/i18n'
+import { downloadShareCard } from '../core/shareCard'
 import type { Explain, Paper, PaperStatus } from '../core/types'
 
 const props = defineProps<{ id?: string }>()
@@ -18,6 +20,7 @@ const router = useRouter()
 const store = usePapersStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
+const auth = useAuthStore()
 
 const currentYear = new Date().getFullYear()
 const form = reactive({
@@ -40,6 +43,7 @@ const saving = ref(false)
 const fetching = ref(false)
 const pdfBusy = ref(false)
 const spriteBusy = ref(false)
+const cardBusy = ref(false)
 const explaining = ref(false)
 const syncing = ref(false)
 
@@ -217,6 +221,27 @@ async function syncMetrics() {
   }
 }
 
+async function shareCard() {
+  if (!paper.value) {
+    store.notify(t('先保存这篇论文'))
+    return
+  }
+  cardBusy.value = true
+  try {
+    await downloadShareCard({
+      paper: paper.value,
+      trainer: auth.user?.name || 'Trainer',
+      avatarId: auth.user?.avatarId || 'red-cap',
+      locale: locale.value,
+    })
+    store.notify(t('卡片已下载'))
+  } catch {
+    store.notify(t('生成卡片失败'))
+  } finally {
+    cardBusy.value = false
+  }
+}
+
 async function generateArtwork() {
   if (!props.id) {
     store.notify(t('先保存这篇论文'))
@@ -315,6 +340,14 @@ onBeforeUnmount(() => {
               @click="generateArtwork"
             >
               {{ spriteBusy ? t('生成中…') : paper?.spriteUrl ? t('重新生成插画') : t('生成插画') }}
+            </button>
+            <button
+              type="button"
+              class="btn sm ghost art-btn"
+              :disabled="cardBusy || !props.id"
+              @click="shareCard"
+            >
+              {{ cardBusy ? t('生成中…') : t('分享卡片') }}
             </button>
 
             <div class="preview-meta">

@@ -268,4 +268,7 @@ export const dialogsDict: Record<string, string> = {
   '重新生成插画': 'Regenerate artwork',
   '插画已生成': 'Artwork generated',
   '先在设置里配置图像模型': 'Configure an image model in settings first',
+  '分享卡片': 'Share card',
+  '卡片已下载': 'Card downloaded',
+  '生成卡片失败': 'Could not render card',
 }

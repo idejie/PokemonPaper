@@ -22,6 +22,7 @@ export const usePapersStore = defineStore('papers', () => {
   const readCount = computed(() => items.value.filter((p) => p.status === 'read').length)
   const readingCount = computed(() => items.value.filter((p) => p.status === 'reading').length)
   const bonusXp = ref(0)
+  const likesReceived = computed(() => bonusXp.value)
   const xp = computed(() => computeProgress(items.value, bonusXp.value))
   const level = computed(() => xp.value.level)
   const progress = computed(() =>
@@ -159,6 +160,7 @@ export const usePapersStore = defineStore('papers', () => {
     toast,
     total,
     xp,
+    likesReceived,
     readCount,
     readingCount,
     level,
