@@ -242,4 +242,6 @@ export const dialogsDict: Record<string, string> = {
   '按标题和摘要搜索 arXiv，最多返回 30 条。支持 ti: / au: / abs: 前缀。': 'Search arXiv by title and abstract, up to 30 results. Supports ti: / au: / abs: prefixes.',
   '没有找到相关论文': 'No papers found',
   '搜索失败': 'Search failed',
+  '排除已收录': 'Hide papers already in my library',
+  '这些结果都已在库里了': 'All of these are already in your library',
 }

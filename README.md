@@ -39,7 +39,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🧬 **Deterministic sprites** | 32×32 pixels, 5 body types (biped / quadruped / blob / bird / ghost); the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user; scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
-| 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import |
+| 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
 | 🎖️ **Trainer levels** | XP from paper level, reading, and notes; 6 titles, 8 badges |
@@ -197,7 +197,7 @@ MIT © idejie
 | 🧬 **确定性精灵** | 32×32 像素，5 种体型（两足/四足/团子/鸟/幽灵），同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
-| 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入 |
+| 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
 | 🎖️ **训练家等级** | 论文等级 + 阅读 + 笔记决定 XP；6 个称号、8 枚徽章 |

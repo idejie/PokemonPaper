@@ -28,9 +28,12 @@ const ui = useUiStore()
 const tab = ref<Tab>('arxiv')
 const raw = ref('')
 const query = ref('')
+const searchAll = ref<Draft[]>([])
+const hideOwned = ref(true)
 const items = ref<Draft[]>([])
 const loading = ref(false)
 const searching = ref(false)
+const allOwned = ref(false)
 const importing = ref(false)
 const error = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -53,7 +56,15 @@ function exists(draft: Draft): boolean {
 
 function reset() {
   items.value = []
+  searchAll.value = []
+  allOwned.value = false
   error.value = ''
+}
+
+function applySearchFilter() {
+  const next = hideOwned.value ? searchAll.value.filter((item) => !exists(item)) : searchAll.value
+  items.value = next
+  allOwned.value = searchAll.value.length > 0 && next.length === 0
 }
 
 function switchTab(next: Tab) {
@@ -88,7 +99,7 @@ async function loadSearch() {
       error.value = t('没有找到相关论文')
       return
     }
-    items.value = found.map((item) => {
+    const drafts = found.map((item) => {
       const primaryCategory = item.primaryCategory || item.category || ''
       return makeDraft({
         arxiv: item.arxiv,
@@ -100,6 +111,8 @@ async function loadSearch() {
         primaryCategory,
       })
     })
+    searchAll.value = drafts
+    applySearchFilter()
   } catch (err) {
     error.value = err instanceof Error ? err.message : t('搜索失败')
   } finally {
@@ -305,9 +318,16 @@ onBeforeUnmount(() => {
               {{ searching ? t('搜索中…') : t('搜索') }}
             </button>
           </div>
-          <p class="hint">
-            {{ t('按标题和摘要搜索 arXiv，最多返回 30 条。支持 ti: / au: / abs: 前缀。') }}
-          </p>
+          <div class="search-foot">
+            <p class="hint">
+              {{ t('按标题和摘要搜索 arXiv，最多返回 30 条。支持 ti: / au: / abs: 前缀。') }}
+            </p>
+            <label class="filter">
+              <input v-model="hideOwned" type="checkbox" @change="applySearchFilter" />
+              {{ t('排除已收录') }}
+            </label>
+          </div>
+          <p v-if="allOwned" class="hint">{{ t('这些结果都已在库里了') }}</p>
         </template>
 
         <template v-else-if="tab === 'bibtex'">
@@ -476,6 +496,24 @@ onBeforeUnmount(() => {
 
 .search-row .input {
   flex: 1;
+}
+
+.search-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .row {
