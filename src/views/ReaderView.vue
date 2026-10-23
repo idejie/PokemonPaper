@@ -22,9 +22,9 @@ const summarizing = ref(false)
 
 const paper = computed(() => store.byId(props.id))
 const lv = computed(() => (paper.value ? paperLevel(paper.value) : null))
-const typeDef = computed(() => (paper.value ? TYPES[paper.value.type] ?? TYPES.normal : TYPES.normal))
+const typeDef = computed(() => (paper.value ? TYPES[paper.value.type] ?? TYPES.steel : TYPES.steel))
 const typeColor = computed(() =>
-  paper.value ? TYPE_COLORS[paper.value.type] ?? TYPE_COLORS.normal : TYPE_COLORS.normal,
+  paper.value ? TYPE_COLORS[paper.value.type] ?? TYPE_COLORS.steel : TYPE_COLORS.steel,
 )
 const summary = computed(() => paper.value?.summary ?? '')
 const summaryDate = computed(() => {

@@ -8,7 +8,6 @@ export interface TypeDef {
 }
 
 export const TYPES: Record<TypeKey, TypeDef> = {
-  normal: { cn: '普通', base: '#c2b49a', light: '#e0d5c0', dark: '#94876f' },
   fire: { cn: '火', base: '#ef7a52', light: '#ffa587', dark: '#bf4f2c' },
   water: { cn: '水', base: '#5f8ee8', light: '#8fb4f5', dark: '#3f66b8' },
   grass: { cn: '草', base: '#6fbe57', light: '#9ad989', dark: '#4a8f3a' },
@@ -23,7 +22,6 @@ export const TYPES: Record<TypeKey, TypeDef> = {
 export const TYPE_KEYS = Object.keys(TYPES) as TypeKey[]
 
 export const TYPE_COLORS: Record<TypeKey, string> = {
-  normal: '#8d8175',
   fire: '#d95f3b',
   water: '#3f66b8',
   grass: '#4a8f3a',
@@ -41,7 +39,7 @@ const RULES: Array<[RegExp, TypeKey]> = [
   [/\bcs\.cv\b/i, 'water'],
   [/\bcs\.lg\b/i, 'psychic'],
   [/\bcs\.ai\b/i, 'dragon'],
-  [/\bcs\.cl\b/i, 'normal'],
+  [/\bcs\.cl\b/i, 'psychic'],
   [/\bcs\.ma\b/i, 'ghost'],
   [/\beess\b/i, 'electric'],
   [/\bcs\.ne\b|\bcs\.ds\b/i, 'dark'],
@@ -53,7 +51,7 @@ const RULES: Array<[RegExp, TypeKey]> = [
   [/video|vision|visual|image|vlm/i, 'water'],
   [/large|foundation|scaling|llm|transformer/i, 'dragon'],
   [/benchmark|evaluation|dataset|data engine/i, 'dark'],
-  [/imitation|behavior cloning|dagger|policy/i, 'normal'],
+  [/imitation|behavior cloning|dagger|policy/i, 'steel'],
   [/efficien|compute|gpu|throughput/i, 'electric'],
   [/manipulation|grasp|dexterous|robot arm/i, 'grass'],
 ]
@@ -63,5 +61,5 @@ export function guessType(...parts: Array<string | undefined | null>): TypeKey {
   for (const [re, type] of RULES) {
     if (re.test(text)) return type
   }
-  return 'normal'
+  return 'steel'
 }

@@ -25,7 +25,7 @@ const form = reactive({
   authors: '',
   venue: '',
   year: currentYear as number | null,
-  type: 'normal' as TypeKey,
+  type: 'steel' as TypeKey,
   status: 'unread' as PaperStatus,
   rating: 0,
   tags: '',
@@ -47,8 +47,8 @@ const creating = computed(() => !props.id)
 const paper = computed(() => (props.id ? store.byId(props.id) : undefined))
 const missing = computed(() => !creating.value && !store.loading && !paper.value)
 const seed = computed(() => form.arxiv || form.title || 'pokemonpaper-new')
-const typeDef = computed(() => TYPES[form.type] ?? TYPES.normal)
-const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.normal)
+const typeDef = computed(() => TYPES[form.type] ?? TYPES.steel)
+const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.steel)
 
 const level = computed(() => paperLevel({ codeUrl: form.codeUrl, stars: form.stars }))
 

@@ -31,7 +31,7 @@ db.exec(`
     authors    TEXT NOT NULL DEFAULT '',
     venue      TEXT NOT NULL DEFAULT '',
     year       INTEGER,
-    type       TEXT NOT NULL DEFAULT 'normal',
+    type       TEXT NOT NULL DEFAULT 'steel',
     status     TEXT NOT NULL DEFAULT 'unread',
     rating     INTEGER NOT NULL DEFAULT 0,
     tags       TEXT NOT NULL DEFAULT '',
@@ -108,6 +108,7 @@ if (!userColumns.includes('is_admin')) {
   db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0')
 }
 db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('registration', 'open')").run()
+db.prepare("UPDATE papers SET type = 'steel' WHERE type = 'normal'").run()
 
 // 老库升级：把 papers.arxiv 的全局 UNIQUE 换成 (user_id, arxiv) 的部分唯一索引
 const papersSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='papers'").get()
@@ -194,7 +195,7 @@ function rowToPaper(row) {
     authors: row.authors ?? '',
     venue: row.venue ?? '',
     year: row.year ?? null,
-    type: row.type ?? 'normal',
+    type: row.type ?? 'steel',
     status: row.status ?? 'unread',
     rating: row.rating ?? 0,
     tags: row.tags ?? '',
@@ -817,7 +818,7 @@ function upsert(paper, userId) {
     paper.authors ?? '',
     paper.venue ?? '',
     paper.year ?? null,
-    paper.type ?? 'normal',
+    paper.type ?? 'steel',
     status,
     paper.rating ?? 0,
     paper.tags ?? '',

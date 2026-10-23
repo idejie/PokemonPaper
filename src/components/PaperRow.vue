@@ -12,8 +12,8 @@ const router = useRouter()
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const locked = computed(() => props.paper.status === 'unread')
 const lv = computed(() => paperLevel(props.paper))
-const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.normal)
-const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.normal)
+const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.steel)
+const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.steel)
 function openDetail() {
   void router.push(`/p/${props.paper.id}`)
 }

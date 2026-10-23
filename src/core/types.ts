@@ -1,7 +1,6 @@
 export type PaperStatus = 'unread' | 'reading' | 'read'
 
 export type TypeKey =
-  | 'normal'
   | 'fire'
   | 'water'
   | 'grass'

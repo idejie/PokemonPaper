@@ -509,7 +509,7 @@ function groundShadow(g: Grid, a: Anatomy) {
 const cache = new Map<string, SpriteRect[]>()
 
 function paletteOf(type: TypeKey): Palette {
-  const def = TYPES[type] ?? TYPES.normal
+  const def = TYPES[type] ?? TYPES.steel
   return {
     base: def.base,
     light: def.light,

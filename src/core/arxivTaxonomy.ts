@@ -175,7 +175,7 @@ const CODE_TYPES: Record<string, TypeKey> = {
   'cs.CV': 'water',
   'cs.LG': 'psychic',
   'cs.AI': 'dragon',
-  'cs.CL': 'normal',
+  'cs.CL': 'psychic',
   'cs.MA': 'ghost',
   'cs.NE': 'dark',
   'cs.DS': 'dark',
@@ -183,8 +183,8 @@ const CODE_TYPES: Record<string, TypeKey> = {
   'cs.DB': 'steel',
   'cs.GR': 'water',
   'cs.SD': 'water',
-  'cs.IR': 'normal',
-  'cs.HC': 'normal',
+  'cs.IR': 'steel',
+  'cs.HC': 'steel',
   'cs.ET': 'electric',
   'cs.IT': 'electric',
   'stat.ML': 'psychic',
@@ -192,7 +192,7 @@ const CODE_TYPES: Record<string, TypeKey> = {
   'eess.AS': 'water',
   'eess.IV': 'water',
   'eess.SP': 'electric',
-  'math.OC': 'normal',
+  'math.OC': 'steel',
 }
 
 /** 剩下的按一级归档兜底 */
@@ -200,9 +200,9 @@ const PREFIX_TYPES: Array<[string, TypeKey]> = [
   ['cs.', 'steel'],
   ['stat.', 'psychic'],
   ['eess.', 'electric'],
-  ['math.', 'normal'],
-  ['econ.', 'normal'],
-  ['q-fin.', 'dark'],
+  ['math.', 'steel'],
+  ['econ.', 'steel'],
+  ['q-fin.', 'steel'],
   ['q-bio.', 'grass'],
   ['astro-ph.', 'dragon'],
   ['cond-mat.', 'steel'],
@@ -225,5 +225,6 @@ export function typeForCategory(code: string | undefined | null): TypeKey | null
   for (const [prefix, type] of PREFIX_TYPES) {
     if (code.startsWith(prefix)) return type
   }
-  return null
+  // 没有收录的类目也给一个正经属性，不留「普通」
+  return 'steel'
 }

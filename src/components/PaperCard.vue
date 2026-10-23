@@ -10,8 +10,8 @@ const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
 
 const locked = computed(() => props.paper.status === 'unread')
-const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.normal)
-const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.normal)
+const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.steel)
+const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.steel)
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const lv = computed(() => paperLevel(props.paper))
 const statusText = computed(() => {
@@ -22,7 +22,7 @@ const statusText = computed(() => {
 const levelTitle = computed(() =>
   props.paper.codeUrl
     ? `${lv.value.tier} · 开源 · ${props.paper.stars.toLocaleString()} star`
-    : '普通 · 未开源',
+    : '常见 · 未开源',
 )
 
 function openDetail() {
