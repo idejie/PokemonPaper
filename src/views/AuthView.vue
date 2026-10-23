@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
 import { useAuthStore } from '../stores/auth'
 import { t } from '../core/i18n'
+import { api } from '../core/api'
 
 const auth = useAuthStore()
 const mode = ref<'login' | 'register'>('login')
@@ -10,6 +11,28 @@ const email = ref('')
 const password = ref('')
 const name = ref('')
 const invite = ref('')
+const forgot = ref(false)
+const forgotEmail = ref('')
+const forgotMsg = ref('')
+const forgotBusy = ref(false)
+
+async function sendReset() {
+  const target = (forgotEmail.value || email.value).trim()
+  if (!target) {
+    auth.error = t('先填邮箱')
+    return
+  }
+  forgotBusy.value = true
+  auth.error = ''
+  try {
+    await api.forgotPassword(target)
+    forgotMsg.value = t('如果邮箱存在，重置邮件已发送；没配置邮件服务时请联系管理员生成链接。')
+  } catch (err) {
+    auth.error = err instanceof Error ? err.message : t('发送失败')
+  } finally {
+    forgotBusy.value = false
+  }
+}
 
 const title = computed(() =>
   mode.value === 'login' ? t('欢迎回来，训练家') : t('登记一位新训练家'),
@@ -117,6 +140,39 @@ async function submit() {
             {{ auth.busy ? t('处理中…') : action }}
           </button>
         </form>
+
+        <div v-if="mode === 'login'" class="forgot">
+          <button
+            v-if="!forgot"
+            type="button"
+            class="link"
+            @click="forgot = true; forgotEmail = email"
+          >
+            {{ t('忘记密码？') }}
+          </button>
+          <template v-else>
+            <div class="forgot-row">
+              <input
+                v-model="forgotEmail"
+                class="input"
+                type="email"
+                :placeholder="t('注册邮箱')"
+              />
+              <button
+                class="btn sm"
+                type="button"
+                :disabled="forgotBusy"
+                @click="sendReset"
+              >
+                {{ forgotBusy ? t('发送中…') : t('发送重置链接') }}
+              </button>
+            </div>
+            <p v-if="forgotMsg" class="hint">{{ forgotMsg }}</p>
+            <button type="button" class="link" @click="forgot = false">
+              {{ t('返回登录') }}
+            </button>
+          </template>
+        </div>
 
         <p class="hint">
           {{ mode === 'login' ? t('还没有账号？') : t('已经有账号了？') }}

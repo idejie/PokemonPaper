@@ -111,6 +111,8 @@ papers.example.com {
 ```
 
 - Set `COOKIE_SECURE=1` once the public URL is HTTPS
+- `PUBLIC_URL` is used in password-reset links; set it to your public origin
+- Optional email: `RESEND_API_KEY` + `MAIL_FROM`; without it, the admin can generate reset links in the account panel (and they are printed to the server log)
 - Registration is invite-only by default: the first account is the admin and can generate codes under Settings
 - SQLite is a single file, so run exactly one instance and back up `data/`
 
@@ -195,7 +197,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Annotation list panel (grouped by page, click to jump)
 - [ ] Scheduled metric refresh (stars / categories)
 - [x] Export AI summaries to Markdown
-- [ ] Password reset by email (needs SMTP)
+- [x] Password reset (email via Resend, or admin-generated link)
 - [x] Level-up animation (card bounce, XP bar, sound)
 
 ## Limits
@@ -494,6 +496,8 @@ papers.example.com {
 ```
 
 - 公网是 HTTPS 时设 `COOKIE_SECURE=1`
+- `PUBLIC_URL` 用于拼接密码重置链接，设成公网地址
+- 可选邮件：`RESEND_API_KEY` + `MAIL_FROM`；不配也能用，管理员在账号面板生成重置链接（同时打印到服务端日志）
 - 注册默认邀请制：第一个账号是管理员，在「设置」里生成邀请码
 - SQLite 是单文件，只能跑一个实例，记得备份 `data/`
 
@@ -643,7 +647,7 @@ interface Paper {
 - [x] 标注列表（按页聚合，点击跳转）
 - [ ] 指标定时刷新（star / 分类）
 - [x] 解读导出为 Markdown
-- [ ] 邮件找回密码（需要 SMTP）
+- [x] 密码重置（Resend 邮件或管理员生成链接）
 - [x] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 
 ## 已知限制

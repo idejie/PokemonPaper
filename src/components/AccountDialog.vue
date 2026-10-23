@@ -26,6 +26,26 @@ const pwBusy = ref(false)
 const pwMsg = ref('')
 
 const adminMode = ref<'open' | 'invite'>(auth.config.registration)
+const resetEmail = ref('')
+const resetUrl = ref('')
+const resetBusy = ref(false)
+
+async function makeResetLink() {
+  if (!resetEmail.value.trim()) {
+    store.notify(t('先填邮箱'))
+    return
+  }
+  resetBusy.value = true
+  try {
+    resetUrl.value = await api.adminResetLink(resetEmail.value.trim())
+    await navigator.clipboard.writeText(resetUrl.value).catch(() => {})
+    store.notify(t('重置链接已生成并复制'))
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : t('生成失败'))
+  } finally {
+    resetBusy.value = false
+  }
+}
 const invites = ref<Invite[]>([])
 const inviteBusy = ref(false)
 
@@ -256,6 +276,20 @@ onBeforeUnmount(() => {
               </button>
             </li>
           </ul>
+
+          <h3 class="block-title">{{ t('密码重置') }}</h3>
+          <div class="invite-row">
+            <input
+              v-model="resetEmail"
+              class="input"
+              type="email"
+              :placeholder="t('用户邮箱')"
+            />
+            <button type="button" class="btn" :disabled="resetBusy" @click="makeResetLink">
+              {{ resetBusy ? t('生成中…') : t('生成重置链接') }}
+            </button>
+          </div>
+          <p v-if="resetUrl" class="hint mono reset-url">{{ resetUrl }}</p>
           <p v-else class="hint">{{ t('还没有邀请码。切成邀请制后，生成一个发给同事。') }}</p>
         </section>
 
@@ -445,6 +479,11 @@ onBeforeUnmount(() => {
 
 .label {
   font-size: 12.5px;
+}
+
+.reset-url {
+  word-break: break-all;
+  font-size: 10px;
 }
 
 .invites {

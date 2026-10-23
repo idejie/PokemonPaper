@@ -72,6 +72,28 @@ export const api = {
     await request<{ ok: boolean }>(`/api/admin/invites/${code}`, { method: 'DELETE' })
   },
 
+  async forgotPassword(email: string): Promise<void> {
+    await request<{ ok: boolean }>('/api/auth/forgot', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    await request<{ ok: boolean }>('/api/auth/reset', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    })
+  },
+
+  async adminResetLink(email: string): Promise<string> {
+    const data = await request<{ url: string }>('/api/admin/reset-link', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    })
+    return data.url
+  },
+
   async register(input: {
     email: string
     password: string

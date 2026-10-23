@@ -1,6 +1,6 @@
 import { createServer } from 'node:http'
 import { DatabaseSync } from 'node:sqlite'
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto'
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, resolve, sep } from 'node:path'
@@ -16,6 +16,7 @@ const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || '127.0.0.1'
 // 反向代理终止 TLS 时设 COOKIE_SECURE=1，让 Cookie 只在 HTTPS 下发送
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1' ? '; Secure' : ''
+const PUBLIC_URL = process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`
 
 mkdirSync(DATA_DIR, { recursive: true })
 mkdirSync(PDF_DIR, { recursive: true })
@@ -66,6 +67,13 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at    TEXT
+  );
 
   CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
@@ -324,6 +332,38 @@ function setSetting(key, value) {
 
 function newInviteCode() {
   return randomBytes(4).toString('hex').toUpperCase()
+}
+
+function tokenHash(token) {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function createResetLink(userId) {
+  const token = randomBytes(32).toString('base64url')
+  const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString()
+  db.prepare(
+    'INSERT INTO password_resets (token_hash, user_id, expires_at, used_at) VALUES (?, ?, ?, NULL)',
+  ).run(tokenHash(token), userId, expires)
+  return `${PUBLIC_URL}/reset?token=${token}`
+}
+
+async function sendResetEmail(email, link) {
+  const key = process.env.RESEND_API_KEY
+  const from = process.env.MAIL_FROM
+  if (!key || !from) return false
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      from,
+      to: email,
+      subject: 'Reset your PokemonPaper password',
+      html: `<p>This link expires in 30 minutes:</p><p><a href="${link}">${link}</a></p>`,
+    }),
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!res.ok) throw new Error(`mail service returned ${res.status}`)
+  return true
 }
 
 function hashPassword(password) {
@@ -1012,6 +1052,49 @@ async function api(req, res, url) {
     return sendJSON(res, 201, { user: publicUser(row) })
   }
 
+  if (pathname === '/api/auth/forgot' && method === 'POST') {
+    const body = await readBody(req)
+    const email = String(body.email || '').trim().toLowerCase()
+    const row = email ? db.prepare('SELECT * FROM users WHERE lower(email) = ?').get(email) : null
+    if (row) {
+      const link = createResetLink(row.id)
+      try {
+        const sent = await sendResetEmail(email, link)
+        if (!sent) console.log(`[paperdex] reset link for ${email}: ${link}`)
+      } catch (error) {
+        console.warn('[paperdex] reset mail failed:', error?.message || error)
+        console.log(`[paperdex] reset link for ${email}: ${link}`)
+      }
+    }
+    // 不泄露邮箱是否存在
+    return sendJSON(res, 200, { ok: true })
+  }
+
+  if (pathname === '/api/auth/reset' && method === 'POST') {
+    const body = await readBody(req)
+    const token = String(body.token || '')
+    const password = String(body.password || '')
+    if (password.length < 8) return sendJSON(res, 400, { error: '密码至少 8 位' })
+    const row = token
+      ? db
+          .prepare('SELECT * FROM password_resets WHERE token_hash = ? AND used_at IS NULL')
+          .get(tokenHash(token))
+      : null
+    if (!row || row.expires_at < new Date().toISOString()) {
+      return sendJSON(res, 400, { error: '重置链接无效或已过期' })
+    }
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
+      hashPassword(password),
+      row.user_id,
+    )
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.user_id)
+    db.prepare('UPDATE password_resets SET used_at = ? WHERE token_hash = ?').run(
+      new Date().toISOString(),
+      row.token_hash,
+    )
+    return sendJSON(res, 200, { ok: true })
+  }
+
   if (pathname === '/api/auth/login' && method === 'POST') {
     const body = await readBody(req)
     const email = String(body.email || '').trim().toLowerCase()
@@ -1108,6 +1191,14 @@ async function api(req, res, url) {
         setSetting('registration', mode)
         return sendJSON(res, 200, { registration: mode })
       }
+    }
+
+    if (pathname === '/api/admin/reset-link' && method === 'POST') {
+      const body = await readBody(req)
+      const email = String(body.email || '').trim().toLowerCase()
+      const row = db.prepare('SELECT * FROM users WHERE lower(email) = ?').get(email)
+      if (!row) return sendJSON(res, 404, { error: '没有这个用户' })
+      return sendJSON(res, 200, { url: createResetLink(row.id) })
     }
 
     if (pathname === '/api/admin/invites') {

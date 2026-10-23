@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AuthView from './views/AuthView.vue'
 import TrainerBar from './components/TrainerBar.vue'
 import LocaleToggle from './components/LocaleToggle.vue'
@@ -14,6 +15,7 @@ import { useUiStore } from './stores/ui'
 import { t } from './core/i18n'
 
 const auth = useAuthStore()
+const route = useRoute()
 const store = usePapersStore()
 const ui = useUiStore()
 
@@ -109,7 +111,8 @@ watch(
 
   <template v-else-if="!auth.user">
     <div class="locale-fixed"><LocaleToggle /></div>
-    <AuthView />
+    <RouterView v-if="route.name === 'reset'" />
+    <AuthView v-else />
   </template>
 
   <template v-else>
