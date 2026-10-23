@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🗺️ **Regional dex** | Publication years are regions; finish every paper from a year to complete that region |
 | ✨ **Shiny variants** | High stars, top venues, decade-old classics and 1/64 hashes get a gold palette, sparkles and a shiny tag |
 | 🔊 **8-bit cries** | Every arXiv ID has a deterministic 3–5 note WebAudio cry, played when it lights up; can be muted in settings |
 | ❤️ **Bond** | Notes, revisits and reading time build a 0–100 bond (stored locally); tiers light up hearts on the detail sheet |
@@ -250,6 +251,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Bond from notes, revisits and reading time
 - [x] Deterministic 8-bit cries
 - [x] Shiny sprite variants
+- [x] Regional dex by publication year
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -280,6 +282,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🗺️ **地区图鉴** | 按发表年份划分地区，完成某年的全部论文即点亮该地区 |
 | ✨ **异色精灵** | 高 star、顶会/顶刊、十年经典或 1/64 哈希命中，获得金色配色、粒子和 ✦ 标记 |
 | 🔊 **8-bit 叫声** | 每个 arXiv 号确定性生成 3–5 个音符的 WebAudio 叫声，点亮时播放，可在设置里关闭 |
 | ❤️ **羁绊** | 笔记、复访和阅读时长累积 0–100 羁绊（本地记录），等级点亮详情页爱心 |
@@ -756,6 +759,7 @@ interface Like {
 - [x] 羁绊值（笔记 / 复访 / 阅读时长）
 - [x] 确定性 8-bit 叫声
 - [x] 异色精灵（高引 / 顶会 / 经典 / 1/64）
+- [x] 地区图鉴（按年份）
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

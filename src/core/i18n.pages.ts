@@ -266,4 +266,10 @@ export const pagesDict: Record<string, string> = {
   '顶会 / 顶刊': 'Top venue',
   '十年经典': 'Decade classic',
   '1/64 概率': '1/64 chance',
+  '地区图鉴': 'Regional dex',
+  '按发表年份划分地区，一个年份的论文全部读完后，地区完成度变成 100%。': 'Regions are publication years: finish every paper from a year to complete it.',
+  '{done} / {total} 个地区完成': '{done} / {total} regions complete',
+  '未知年份': 'Unknown year',
+  '完成': 'Complete',
+  '已点亮 {read} / {total}': 'Lit {read} / {total}',
 }

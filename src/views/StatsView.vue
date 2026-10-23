@@ -14,6 +14,14 @@ interface Row {
   color?: string
 }
 
+interface Region {
+  year: number | null
+  total: number
+  read: number
+  percent: number
+  done: boolean
+}
+
 function countBy(papers: Paper[], pick: (paper: Paper) => string | null): Row[] {
   const map = new Map<string, number>()
   for (const paper of papers) {
@@ -34,6 +42,32 @@ const notes = computed(() => papers.value.filter((paper) => paper.notes.trim()).
 const readRate = computed(() =>
   total.value ? Math.round((read.value / total.value) * 100) : 0,
 )
+
+const regions = computed<Region[]>(() => {
+  const map = new Map<number | null, { total: number; read: number }>()
+  for (const paper of papers.value) {
+    const key = paper.year ?? null
+    const entry = map.get(key) ?? { total: 0, read: 0 }
+    entry.total += 1
+    if (paper.status === 'read') entry.read += 1
+    map.set(key, entry)
+  }
+  return [...map.entries()]
+    .map(([year, entry]) => ({
+      year,
+      total: entry.total,
+      read: entry.read,
+      percent: entry.total ? Math.round((entry.read / entry.total) * 100) : 0,
+      done: entry.total > 0 && entry.read === entry.total,
+    }))
+    .sort((a, b) => {
+      if (a.year === null) return 1
+      if (b.year === null) return -1
+      return b.year - a.year
+    })
+})
+
+const regionsDone = computed(() => regions.value.filter((region) => region.done).length)
 
 const categories = computed<Row[]>(() =>
   countBy(papers.value, (paper) => paper.primaryCategory || null).map((row) => ({
@@ -166,6 +200,31 @@ onMounted(async () => {
         </div>
       </section>
 
+      <section class="block">
+        <h2><span class="num mono">05</span>{{ t('地区图鉴') }}</h2>
+        <p>
+          {{ t('按发表年份划分地区，一个年份的论文全部读完后，地区完成度变成 100%。') }}
+          <b class="mono">{{ t('{done} / {total} 个地区完成', { done: regionsDone, total: regions.length }) }}</b>
+        </p>
+        <div class="regions">
+          <div
+            v-for="region in regions"
+            :key="region.year ?? 'unknown'"
+            class="region"
+            :class="{ done: region.done }"
+          >
+            <div class="region-top">
+              <b class="mono">{{ region.year ?? t('未知年份') }}</b>
+              <span class="mono">{{ region.done ? t('完成') : `${region.read}/${region.total}` }}</span>
+            </div>
+            <div class="region-bar">
+              <div class="region-fill" :style="{ width: region.percent + '%' }" />
+            </div>
+            <small>{{ t('已点亮 {read} / {total}', { read: region.read, total: region.total }) }}</small>
+          </div>
+        </div>
+      </section>
+
       <RouterLink to="/" class="back">← {{ t('返回图鉴') }}</RouterLink>
     </div>
   </div>
@@ -235,6 +294,58 @@ onMounted(async () => {
   border-top: 2px dashed var(--line);
   padding: 26px 0 8px;
   max-width: 860px;
+}
+
+.regions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+.region {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 2px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+
+.region.done {
+  border-color: var(--ink);
+  background: #fff4cf;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.region-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.region-bar {
+  height: 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.region-fill {
+  height: 100%;
+  background: var(--ink);
+  transition: width 0.3s ease;
+}
+
+.region.done .region-fill {
+  background: #e0a81f;
+}
+
+.region small {
+  color: var(--muted);
+  font-size: 9px;
 }
 
 .block h2 {
