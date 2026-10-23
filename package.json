@@ -1,7 +1,7 @@
 {
   "name": "pokemonpaper",
   "private": true,
-  "version": "0.40.0",
+  "version": "0.41.0",
   "type": "module",
   "description": "PokemonPaper — 论文图鉴：多用户、每篇论文一只精灵，读完点亮。arXiv 导入、PDF 本地化、AI 速读卡。",
   "scripts": {

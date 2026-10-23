@@ -51,7 +51,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
 
 ## E. Docs & UI gaps
 
-- [ ] **New screenshots** — AI artwork, leaderboard likes column, stats page and
+- [x] **New screenshots** — AI artwork, leaderboard likes column, stats page and
       guide page; current `docs/*.png` predate these features. `S`
 - [x] **Batch artwork UI** — `POST /api/sprites/generate` exists, but the UI only
       has the per-paper button; add a batch action with progress. `S`

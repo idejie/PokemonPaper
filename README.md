@@ -74,6 +74,17 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 💾 **Portable** | One-click JSON export, merge-import by arXiv ID |
 | 🌐 **Bilingual UI** | Chinese and English, switchable in the header |
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/leaderboard.png" width="49%" alt="Leaderboard">
+  <img src="docs/stats.png" width="49%" alt="Statistics">
+</p>
+<p align="center">
+  <img src="docs/guide.png" width="49%" alt="Gyms and monthly leaders">
+  <img src="docs/artwork.png" width="49%" alt="AI artwork and batch generation">
+</p>
+
 ## Three design decisions
 
 ### 1. The number is the identity
@@ -334,6 +345,17 @@ MIT © idejie
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
 | 💾 **可迁移** | 一键导出 JSON，按 arXiv 号合并导入 |
 | 🌐 **中英双语** | 界面中英文切换，选择记在本地 |
+
+## 界面截图
+
+<p align="center">
+  <img src="docs/leaderboard.png" width="49%" alt="天梯">
+  <img src="docs/stats.png" width="49%" alt="统计">
+</p>
+<p align="center">
+  <img src="docs/guide.png" width="49%" alt="道馆与本月馆主">
+  <img src="docs/artwork.png" width="49%" alt="AI 插画与批量生成">
+</p>
 
 ## 三个设计决定
 
