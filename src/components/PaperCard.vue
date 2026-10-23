@@ -207,6 +207,34 @@ function readFull() {
 
 .is-read .sprite-box {
   box-shadow: inset 0 0 0 2px rgba(255, 203, 5, 0.7);
+  animation: lit-glow 3.2s ease-in-out infinite;
+}
+
+.is-read .sprite-box :deep(svg) {
+  animation: idle-float 3.4s ease-in-out infinite;
+}
+
+@keyframes idle-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-2px) rotate(-1.2deg);
+  }
+  70% {
+    transform: translateY(-1px) rotate(1deg);
+  }
+}
+
+@keyframes lit-glow {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: drop-shadow(0 0 5px rgba(255, 203, 5, 0.55));
+  }
 }
 
 .card:hover .sprite-box :deep(svg) {

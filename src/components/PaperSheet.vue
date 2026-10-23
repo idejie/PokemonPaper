@@ -282,7 +282,7 @@ onBeforeUnmount(() => {
       <div v-else class="sheet-body">
         <div class="main">
           <aside class="preview">
-            <div class="stage" :class="{ dim: form.status === 'unread' }">
+            <div class="stage" :class="{ dim: form.status === 'unread', lit: form.status === 'read' }">
               <SpriteSvg :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" />
             </div>
 
@@ -618,6 +618,23 @@ onBeforeUnmount(() => {
   align-content: start;
 }
 
+.stage.lit :deep(svg) {
+  animation: idle-float 3.4s ease-in-out infinite;
+}
+
+@keyframes idle-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-3px) rotate(-1.2deg);
+  }
+  70% {
+    transform: translateY(-1px) rotate(1deg);
+  }
+}
+
 .stage {
   aspect-ratio: 1;
   border: 3px solid var(--ink);
@@ -943,7 +960,24 @@ onBeforeUnmount(() => {
     gap: 8px 14px;
   }
 
-  .stage {
+  .stage.lit :deep(svg) {
+  animation: idle-float 3.4s ease-in-out infinite;
+}
+
+@keyframes idle-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-3px) rotate(-1.2deg);
+  }
+  70% {
+    transform: translateY(-1px) rotate(1deg);
+  }
+}
+
+.stage {
     grid-area: stage;
   }
 

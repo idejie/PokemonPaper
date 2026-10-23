@@ -249,4 +249,12 @@ export const dialogsDict: Record<string, string> = {
   '{n} 篇待下载': '{n} to download',
   '批量下载': 'Download all',
   '批量下载完成：成功 {done} 篇，失败 {failed} 篇': 'Batch download finished: {done} succeeded, {failed} failed',
+  '粉发少女': 'Pink-haired girl',
+  '银发学者': 'Silver-haired scholar',
+  '金发研究员': 'Blonde researcher',
+  '深肤运动员': 'Dark-skinned athlete',
+  '森林兜帽': 'Forest hood',
+  '紫帽训练家': 'Purple-beanie trainer',
+  '橙帽少女': 'Orange-cap girl',
+  '青帽旅人': 'Teal-straw traveler',
 }

@@ -1,4 +1,4 @@
-import { paletteForCategory, type SpritePalette } from './palette'
+import { paletteForCategory, paletteVariant, type SpritePalette } from './palette'
 
 export interface SpriteRect {
   x: number
@@ -118,9 +118,37 @@ function triangle(g: Grid, ax: number, ay: number, bx: number, by: number, cx: n
   }
 }
 
+function rect(g: Grid, x: number, y: number, w: number, h: number, v = BODY) {
+  for (let yy = y; yy < y + h; yy += 1) {
+    for (let xx = x; xx < x + w; xx += 1) {
+      px(g, xx, yy, v)
+    }
+  }
+}
+
+function bodyEllipse(g: Grid, cx: number, cy: number, rx: number, ry: number, v: number) {
+  for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y += 1) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x += 1) {
+      const dx = (x - cx) / rx
+      const dy = (y - cy) / ry
+      if (dx * dx + dy * dy <= 1 && at(g, x, y) === BODY) px(g, x, y, v)
+    }
+  }
+}
+
 /* ------------------------------------------------------------ archetypes */
 
-type Archetype = 'biped' | 'quadruped' | 'blob' | 'bird' | 'ghost'
+type Archetype =
+  | 'biped'
+  | 'quadruped'
+  | 'blob'
+  | 'bird'
+  | 'ghost'
+  | 'insect'
+  | 'serpent'
+  | 'fish'
+  | 'mech'
+  | 'plant'
 
 interface Anatomy {
   kind: Archetype
@@ -379,11 +407,171 @@ function drawGhost(g: Grid): Anatomy {
   }
 }
 
+function drawInsect(g: Grid, rnd: () => number): Anatomy {
+  const cx = 16
+  const headCy = 12.2
+  const headR = 4.5
+  const bodyCy = 20
+
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < 3; i += 1) {
+      const y = 15.8 + i * 3.3
+      capsule(g, cx + s * 4.4, y, cx + s * 9.2, y + (i - 1) * 2.1, 0.9)
+      ellipse(g, cx + s * 9.6, y + (i - 1) * 2.1, 1.7, 1.3)
+    }
+  }
+
+  if (rnd() < 0.55) {
+    for (const s of [-1, 1]) ellipse(g, cx + s * 6.6, bodyCy - 1.4, 2.7, 4.0)
+  }
+
+  ellipse(g, cx, bodyCy, 5.4, 4.4)
+  ellipse(g, cx, bodyCy - 3.2, 4.4, 3.1)
+  ellipse(g, cx, headCy, headR, headR * 0.92)
+
+  for (const s of [-1, 1]) {
+    capsule(g, cx + s * 1.6, headCy - headR * 0.9, cx + s * 4.0, headCy - headR - 3.2, 0.8)
+    ellipse(g, cx + s * 4.4, headCy - headR - 3.8, 1.4, 1.4)
+  }
+
+  return {
+    kind: 'insect',
+    cx,
+    headCy,
+    headR,
+    bodyCy,
+    bodyR: 4.4,
+    top: headCy - headR - 5,
+    bottom: 28,
+    left: cx - 11,
+    right: cx + 11,
+    face: 'front',
+    eyeY: headCy,
+  }
+}
+
+function drawSerpent(g: Grid, rnd: () => number): Anatomy {
+  ellipse(g, 17, 25, 8.2, 3.0)
+  ellipse(g, 12, 26.6, 6.6, 2.1)
+  ellipse(g, 21, 27, 5.2, 1.7)
+  capsule(g, 22.5, 23.5, 20, 15.5, 2.1)
+  ellipse(g, 19, 11.6, 4.8, 4.3)
+
+  if (rnd() < 0.5) {
+    for (let i = 0; i < 3; i += 1) {
+      ellipse(g, 21 + i * 1.6, 22.4 + i * 1.2, 1.6, 1.2)
+    }
+  }
+
+  return {
+    kind: 'serpent',
+    cx: 19,
+    headCy: 11.6,
+    headR: 4.5,
+    bodyCy: 23,
+    bodyR: 3.2,
+    top: 6.8,
+    bottom: 29,
+    left: 6,
+    right: 27,
+    face: 'front',
+    eyeY: 11.8,
+  }
+}
+
+function drawFish(g: Grid, rnd: () => number): Anatomy {
+  const cx = 16
+  const cy = 19
+
+  triangle(g, cx - 7, cy, cx - 13, cy - 4, cx - 13, cy + 4)
+  triangle(g, cx - 1, cy - 5.6, cx - 6, cy - 9, cx - 3, cy - 4)
+  ellipse(g, cx, cy, 8.8, 6.0)
+  ellipse(g, cx + 6.4, cy - 1.4, 2.0, 3.0)
+
+  if (rnd() < 0.5) {
+    for (let i = 0; i < 3; i += 1) {
+      ellipse(g, cx + 1 + i * 2, cy - 2, 0.9, 0.9)
+    }
+  }
+
+  return {
+    kind: 'fish',
+    cx: 9.6,
+    headCy: 18.2,
+    headR: 5.2,
+    bodyCy: 19,
+    bodyR: 6,
+    top: 13,
+    bottom: 27,
+    left: 3,
+    right: 24,
+    face: 'side',
+    eyeY: 17.8,
+  }
+}
+
+function drawMech(g: Grid, rnd: () => number): Anatomy {
+  rect(g, 8, 16, 16, 7)
+  rect(g, 11, 8, 10, 8)
+  rect(g, 5, 17, 3, 7)
+  rect(g, 24, 17, 3, 7)
+  rect(g, 10, 23, 5, 4)
+  rect(g, 17, 23, 5, 4)
+  rect(g, 14, 15, 4, 2)
+
+  capsule(g, 21, 8, 24, 4, 0.8)
+  ellipse(g, 24.4, 3.6, 1.3, 1.3)
+  if (rnd() < 0.5) rect(g, 3, 19, 3, 2)
+
+  return {
+    kind: 'mech',
+    cx: 16,
+    headCy: 12,
+    headR: 5,
+    bodyCy: 19.5,
+    bodyR: 4,
+    top: 8,
+    bottom: 27,
+    left: 5,
+    right: 27,
+    face: 'front',
+    eyeY: 12,
+  }
+}
+
+function drawPlant(g: Grid, rnd: () => number): Anatomy {
+  const cx = 16
+  ellipse(g, cx, 21.5, 7.2, 5.8)
+  ellipse(g, cx, 12.5, 5.2, 5.0)
+
+  capsule(g, cx, 8.4, cx, 4.8, 0.9)
+  triangle(g, cx, 7.2, 10.5, 3.8, 12.5, 8.2)
+  triangle(g, cx, 7.2, 21.5, 3.8, 19.5, 8.2)
+  if (rnd() < 0.5) ellipse(g, cx + 6.6, 19, 2.4, 3.2)
+
+  return {
+    kind: 'plant',
+    cx,
+    headCy: 12.5,
+    headR: 5,
+    bodyCy: 21.5,
+    bodyR: 5.8,
+    top: 3,
+    bottom: 28,
+    left: 8,
+    right: 24,
+    face: 'front',
+    eyeY: 12.6,
+  }
+}
+
 /* ------------------------------------------------------------------ face */
 
 const EYE_ROUND = ['.oo.', 'oooo', 'oowo', '.oo.']
 const EYE_SLEEPY = ['....', 'oooo', 'oowo', '....']
 const EYE_ANGRY = ['oo..', 'ooo.', 'oowo', '.oo.']
+const EYE_SPARK = ['.o.', 'oWo', 'ooo']
+const EYE_WIDE = ['oooo', 'owwo', 'oooo']
 
 function drawEyeMask(g: Grid, x: number, y: number, mask: string[], mirror: boolean) {
   for (let row = 0; row < mask.length; row += 1) {
@@ -397,8 +585,17 @@ function drawEyeMask(g: Grid, x: number, y: number, mask: string[], mirror: bool
 }
 
 function drawFace(g: Grid, a: Anatomy, rnd: () => number) {
-  const style = Math.floor(rnd() * 3)
-  const mask = style === 0 ? EYE_ROUND : style === 1 ? EYE_SLEEPY : EYE_ANGRY
+  const style = Math.floor(rnd() * 5)
+  const mask =
+    style === 0
+      ? EYE_ROUND
+      : style === 1
+        ? EYE_SLEEPY
+        : style === 2
+          ? EYE_ANGRY
+          : style === 3
+            ? EYE_SPARK
+            : EYE_WIDE
   const eyeY = Math.round(a.eyeY)
 
   if (a.face === 'front') {
@@ -434,6 +631,65 @@ function drawFace(g: Grid, a: Anatomy, rnd: () => number) {
   }
 }
 
+function drawAccessory(g: Grid, a: Anatomy, rnd: () => number) {
+  let kind = Math.floor(rnd() * 8)
+  if (a.face !== 'front' && (kind === 2 || kind === 7)) kind = 0
+  const top = Math.round(a.headCy - a.headR)
+  const cx = Math.round(a.cx)
+
+  if (kind === 1) {
+    // 帽子
+    for (let x = -5; x <= 5; x += 1) {
+      for (let y = -1; y <= 1; y += 1) px(g, cx + x, top + y - 1, ACCENT)
+    }
+    for (let x = -1; x <= 7; x += 1) px(g, cx + x, top + 1, ACCENT)
+  } else if (kind === 2) {
+    // 王冠
+    triangle(g, cx - 5, top, cx - 2, top - 4, cx - 1, top)
+    triangle(g, cx - 1, top, cx + 1, top - 5, cx + 3, top)
+    triangle(g, cx + 4, top, cx + 6, top - 3, cx + 7, top)
+  } else if (kind === 3) {
+    // 独角
+    triangle(g, cx - 1.5, top, cx + 1.5, top, cx + 0.5, top - 6)
+  } else if (kind === 4) {
+    // 触角
+    for (const s of [-1, 1]) {
+      capsule(g, cx + s * 2, top, cx + s * 4.6, top - 4.4, 0.7)
+      ellipse(g, cx + s * 5, top - 5, 1.4, 1.4)
+    }
+  } else if (kind === 5) {
+    // 光环
+    for (let i = 0; i < 16; i += 1) {
+      const angle = (i / 16) * Math.PI * 2
+      px(g, cx + Math.cos(angle) * 5, top - 4 + Math.sin(angle) * 1.6, ACCENT)
+    }
+  } else if (kind === 6) {
+    // 围巾
+    const y = Math.round(a.headCy + a.headR + 1)
+    for (let x = -Math.round(a.headR * 0.9); x <= Math.round(a.headR * 0.9); x += 1) {
+      px(g, cx + x, y, ACCENT)
+      px(g, cx + x, y + 1, ACCENT)
+    }
+    px(g, cx + Math.round(a.headR * 0.7), y + 3, ACCENT)
+  } else if (kind === 7) {
+    // 眼镜
+    const eyeY = Math.round(a.eyeY)
+    const dx = Math.round(a.headR * 0.45) + 1
+    for (const s of [-1, 1]) {
+      const x0 = cx + s * dx - 3
+      for (let x = 0; x < 5; x += 1) {
+        px(g, x0 + x, eyeY - 2, EDGE)
+        px(g, x0 + x, eyeY + 2, EDGE)
+      }
+      for (let y = -1; y <= 1; y += 1) {
+        px(g, x0, eyeY + y, EDGE)
+        px(g, x0 + 4, eyeY + y, EDGE)
+      }
+    }
+    px(g, cx, eyeY, EDGE)
+  }
+}
+
 /* --------------------------------------------------------------- shading */
 
 function shade(g: Grid, a: Anatomy, rnd: () => number) {
@@ -463,6 +719,29 @@ function shade(g: Grid, a: Anatomy, rnd: () => number) {
       else if (u > 0.86) v = DARK
       g[y * S + x] = v
     }
+  }
+
+  const pattern = Math.floor(rnd() * 4)
+  if (pattern === 1) {
+    for (const dy of [-2, 1, 4]) {
+      const y = Math.round(a.bodyCy + dy)
+      for (let x = 0; x < S; x += 1) {
+        if (at(g, x, y) === BODY) px(g, x, y, DARK)
+      }
+    }
+  } else if (pattern === 2) {
+    for (let i = 0; i < 6; i += 1) {
+      const x = Math.round(a.cx + (rnd() - 0.5) * (a.right - a.left) * 0.6)
+      const y = Math.round(a.bodyCy + (rnd() - 0.5) * a.bodyR * 1.2)
+      if (at(g, x, y) === BODY) {
+        px(g, x, y, DARK)
+        px(g, x + 1, y, DARK)
+        px(g, x, y + 1, DARK)
+      }
+    }
+  } else if (pattern === 3) {
+    const x = Math.round(a.cx + (rnd() < 0.5 ? -1 : 1) * a.bodyR * 0.45)
+    bodyEllipse(g, x, a.bodyCy + 1, 2.6, 2.0, LIGHT)
   }
 }
 
@@ -530,7 +809,18 @@ export function buildSprite(seed: string, category: string, locked = false): Spr
 
   const rnd = makeRng(hashStr(seed || 'anonymous'))
   const g = grid()
-  const archetypes: Archetype[] = ['biped', 'quadruped', 'blob', 'bird', 'ghost']
+  const archetypes: Archetype[] = [
+    'biped',
+    'quadruped',
+    'blob',
+    'bird',
+    'ghost',
+    'insect',
+    'serpent',
+    'fish',
+    'mech',
+    'plant',
+  ]
   const kind = archetypes[Math.floor(rnd() * archetypes.length)]
 
   let anatomy: Anatomy
@@ -538,14 +828,20 @@ export function buildSprite(seed: string, category: string, locked = false): Spr
   else if (kind === 'quadruped') anatomy = drawQuadruped(g, rnd)
   else if (kind === 'blob') anatomy = drawBlob(g, rnd)
   else if (kind === 'bird') anatomy = drawBird(g, rnd)
-  else anatomy = drawGhost(g)
+  else if (kind === 'ghost') anatomy = drawGhost(g)
+  else if (kind === 'insect') anatomy = drawInsect(g, rnd)
+  else if (kind === 'serpent') anatomy = drawSerpent(g, rnd)
+  else if (kind === 'fish') anatomy = drawFish(g, rnd)
+  else if (kind === 'mech') anatomy = drawMech(g, rnd)
+  else anatomy = drawPlant(g, rnd)
 
   shade(g, anatomy, rnd)
   drawFace(g, anatomy, rnd)
+  drawAccessory(g, anatomy, rnd)
   outline(g)
   if (!locked) groundShadow(g, anatomy)
 
-  const palette = paletteForCategory(category)
+  const palette = paletteVariant(paletteForCategory(category), seed)
   const rects: SpriteRect[] = []
 
   for (let y = 0; y < S; y += 1) {

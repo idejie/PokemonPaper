@@ -75,3 +75,78 @@ export function categoryChipColor(code: string | undefined | null): string {
   const palette = paletteForCategory(code)
   return palette.dark
 }
+
+
+/* ------------------------------------------------------------ variation */
+
+function hashSeed(input: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const value = hex.replace('#', '')
+  return [
+    parseInt(value.slice(0, 2), 16) / 255,
+    parseInt(value.slice(2, 4), 16) / 255,
+    parseInt(value.slice(4, 6), 16) / 255,
+  ]
+}
+
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  if (max === min) return [0, 0, l]
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h = 0
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0)
+  else if (max === g) h = (b - r) / d + 2
+  else h = (r - g) / d + 4
+  return [h / 6, s, l]
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const hue = ((h % 1) + 1) % 1
+  const sat = Math.min(1, Math.max(0, s))
+  const lig = Math.min(1, Math.max(0, l))
+  const q = lig < 0.5 ? lig * (1 + sat) : lig + sat - lig * sat
+  const p = 2 * lig - q
+  const channel = (t: number) => {
+    let value = t
+    if (value < 0) value += 1
+    if (value > 1) value -= 1
+    if (value < 1 / 6) return p + (q - p) * 6 * value
+    if (value < 1 / 2) return q
+    if (value < 2 / 3) return p + (q - p) * (2 / 3 - value) * 6
+    return p
+  }
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0')
+  return `#${toHex(channel(hue + 1 / 3))}${toHex(channel(hue))}${toHex(channel(hue - 1 / 3))}`
+}
+
+/** 同一分类内，按 arXiv 号做 ±10° 色相与少量明度偏移，避免千篇一律 */
+export function paletteVariant(palette: SpritePalette, seed: string): SpritePalette {
+  const h = hashSeed(seed || 'anonymous')
+  const shift = ((h % 21) - 10) / 360
+  const satDelta = (((h >> 8) % 9) - 4) / 100
+  const lightDelta = (((h >> 16) % 9) - 4) / 100
+
+  const shiftColor = (hex: string, extraLight = 0): string => {
+    const [r, g, b] = hexToRgb(hex)
+    const [hue, sat, light] = rgbToHsl(r, g, b)
+    return hslToHex(hue + shift, sat + satDelta, light + lightDelta + extraLight)
+  }
+
+  return {
+    base: shiftColor(palette.base),
+    light: shiftColor(palette.light, 0.03),
+    dark: shiftColor(palette.dark, -0.03),
+    accent: shiftColor(palette.accent, 0.02),
+  }
+}

@@ -36,8 +36,8 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
-| 🧬 **Deterministic sprites** | 32×32 pixels, 5 body types (biped / quadruped / blob / bird / ghost); the same arXiv ID always yields the same sprite |
-| 👤 **Multi-user** | Register / log in, one dex per user; scrypt password hashing, HttpOnly session cookie |
+| 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types (biped / quadruped / blob / bird / ghost / insect / serpent / fish / mech / plant) with random headwear, glasses, scarves, patterns and hue shifts; the same arXiv ID always yields the same sprite |
+| 👤 **Multi-user** | Register / log in, one dex per user, 16 pixel avatars; scrypt password hashing, HttpOnly session cookie |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX and JSON backups too |
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
@@ -67,7 +67,7 @@ An arXiv ID carries time (`2610` = October 2026). It is the business key, the so
 ### 2. Sprites must be reproducible
 
 ```ts
-buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]
+buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 10 archetypes + accessories
 ```
 
 An FNV-1a hash plus mulberry32 produces a deterministic rect list. No images, no asset pipeline — the sprite is computed from the ID. Locked sprites reuse the same geometry with a grey palette.
@@ -248,8 +248,8 @@ MIT © idejie
 
 | | |
 |---|---|
-| 🧬 **确定性精灵** | 32×32 像素，5 种体型（两足/四足/团子/鸟/幽灵），同一 arXiv 号永远生成同一只 |
-| 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；密码 scrypt 哈希，会话存 HttpOnly Cookie |
+| 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移，同一 arXiv 号永远生成同一只 |
+| 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个像素头像可选；密码 scrypt 哈希，会话存 HttpOnly Cookie |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
@@ -279,7 +279,7 @@ arXiv 号自带时间信息（`2610` = 2026 年 10 月），既是业务主键�
 ### 2. 精灵必须可复现
 
 ```ts
-buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]
+buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]  // 10 archetypes + accessories
 ```
 
 输入一个字符串，输出 32×32 的矩形数组。只用 FNV-1a hash + mulberry32，**没有 `Math.random()`**。所以 `2610.28480` 在任何机器上都是同一只。

@@ -97,14 +97,91 @@ export const AVATARS: AvatarPreset[] = [
     glasses: false,
   },
   {
-    id: 'hood',
-    name: '兜帽夜行者',
-    skin: '#c98f63',
+    id: 'pink-long',
+    name: '粉发少女',
+    skin: '#f7d3b0',
+    hair: '#e58fb1',
+    shirt: '#fffdf4',
+    hat: 'none',
+    hairStyle: 'long',
+    hatColor: '#e58fb1',
+    glasses: false,
+  },
+  {
+    id: 'silver-glasses',
+    name: '银发学者',
+    skin: '#e8b98c',
+    hair: '#cfd3d8',
+    shirt: '#3b5ba7',
+    hat: 'none',
+    hairStyle: 'short',
+    hatColor: '#3b5ba7',
+    glasses: true,
+  },
+  {
+    id: 'blond-bun',
+    name: '金发研究员',
+    skin: '#f0c39a',
+    hair: '#e6c87a',
+    shirt: '#4ea93b',
+    hat: 'none',
+    hairStyle: 'bun',
+    hatColor: '#4ea93b',
+    glasses: true,
+  },
+  {
+    id: 'dark-athlete',
+    name: '深肤运动员',
+    skin: '#8d5a3b',
+    hair: '#241b16',
+    shirt: '#e3350d',
+    hat: 'none',
+    hairStyle: 'short',
+    hatColor: '#e3350d',
+    glasses: false,
+  },
+  {
+    id: 'forest-hood',
+    name: '森林兜帽',
+    skin: '#d9a273',
     hair: '#2b2420',
-    shirt: '#3a3350',
+    shirt: '#2f6b3a',
     hat: 'hood',
     hairStyle: 'short',
-    hatColor: '#4b4269',
+    hatColor: '#3f8a4f',
+    glasses: false,
+  },
+  {
+    id: 'purple-beanie',
+    name: '紫帽训练家',
+    skin: '#f0c39a',
+    hair: '#6b4423',
+    shirt: '#7b5cc4',
+    hat: 'beanie',
+    hairStyle: 'bun',
+    hatColor: '#7b5cc4',
+    glasses: false,
+  },
+  {
+    id: 'orange-cap',
+    name: '橙帽少女',
+    skin: '#f7d3b0',
+    hair: '#241b16',
+    shirt: '#f0a03a',
+    hat: 'cap',
+    hairStyle: 'long',
+    hatColor: '#e07a1f',
+    glasses: false,
+  },
+  {
+    id: 'teal-straw',
+    name: '青帽旅人',
+    skin: '#c98f63',
+    hair: '#3b2a20',
+    shirt: '#2bb3c0',
+    hat: 'straw',
+    hairStyle: 'short',
+    hatColor: '#8fd3d9',
     glasses: false,
   },
 ]
@@ -223,8 +300,9 @@ function drawHat(g: Grid, preset: AvatarPreset) {
     rect(g, 4.2, 7.4, 19.8, 8.8, HAT)
     rect(g, 5.6, 8.2, 18.4, 8.8, SHADE_HAT)
   } else if (preset.hat === 'hood') {
-    // 兜帽内圈阴影
+    // 兜帽：先铺一圈帽檐，再把脸露出来
     ellipse(g, 12, 10, 5.6, 6, SHADE_HAT)
+    ellipse(g, 12, 10.4, 4.2, 4.6, SKIN)
   }
 }
 

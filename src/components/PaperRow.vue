@@ -85,6 +85,20 @@ const statusText = computed(() => {
   border-bottom: none;
 }
 
+.is-read .pic :deep(svg) {
+  animation: idle-float 3.6s ease-in-out infinite;
+}
+
+@keyframes idle-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
 .row:hover,
 .row:focus-visible {
   background: var(--panel-2);
