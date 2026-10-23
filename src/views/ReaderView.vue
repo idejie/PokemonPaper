@@ -20,6 +20,7 @@ const ui = useUiStore()
 type Tab = 'abstract' | 'pdf' | 'summary'
 const tab = ref<Tab>(route.query.tab === 'pdf' ? 'pdf' : 'abstract')
 const summarizing = ref(false)
+const pdfBusy = ref(false)
 
 const paper = computed(() => store.byId(props.id))
 const lv = computed(() => (paper.value ? paperLevel(paper.value) : null))
@@ -29,6 +30,17 @@ const summaryDate = computed(() => {
   const raw = paper.value?.summaryAt
   return raw ? new Date(raw).toLocaleDateString('zh-CN') : ''
 })
+
+async function downloadPdf() {
+  if (!paper.value || pdfBusy.value) return
+  pdfBusy.value = true
+  try {
+    const updated = await store.ensurePdf(paper.value.id)
+    if (updated) window.open(api.pdfUrl(paper.value.id), '_blank')
+  } finally {
+    pdfBusy.value = false
+  }
+}
 
 async function generateSummary() {
   if (!settings.ready) {
@@ -86,15 +98,9 @@ onMounted(async () => {
         </span>
         <span class="spacer" />
         <RouterLink v-if="paper" :to="`/p/${paper.id}`" class="link">{{ t('详情') }}</RouterLink>
-        <a
-          v-if="paper"
-          :href="`/api/papers/${paper.id}/pdf`"
-          target="_blank"
-          rel="noreferrer"
-          class="link"
-        >
-          {{ t('下载 PDF ↗') }}
-        </a>
+        <button v-if="paper" type="button" class="link" :disabled="pdfBusy" @click="downloadPdf">
+          {{ pdfBusy ? t('准备中…') : t('下载 PDF ↗') }}
+        </button>
       </div>
 
       <div v-if="!paper" class="missing">

@@ -32,6 +32,22 @@ const pages = ref<number[]>([])
 const scale = ref(1.4)
 const loading = ref(true)
 const progress = ref(0)
+const stage = ref<'download' | 'render'>('download')
+const waitSeconds = ref(0)
+let waitTimer: number | undefined
+
+function startWait() {
+  waitSeconds.value = 0
+  window.clearInterval(waitTimer)
+  waitTimer = window.setInterval(() => {
+    waitSeconds.value += 1
+  }, 1000)
+}
+
+function stopWait() {
+  window.clearInterval(waitTimer)
+  waitTimer = undefined
+}
 const error = ref('')
 
 const annotations = ref<Annotation[]>([])
@@ -103,14 +119,20 @@ async function renderPage(pageNumber: number) {
 async function boot() {
   loading.value = true
   error.value = ''
+  stage.value = 'download'
+  startWait()
   try {
     // 本地没有就现下，避免阅读器直接 404
-    await fetch(`/api/papers/${props.paperId}/pdf`, {
+    const res = await fetch(`/api/papers/${props.paperId}/pdf`, {
       method: 'POST',
       credentials: 'same-origin',
-    }).then((res) => {
-      if (!res.ok) throw new Error(res.status === 401 ? t('请先登录') : t('PDF 下载失败'))
     })
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      throw new Error(data?.error || (res.status === 401 ? t('请先登录') : t('PDF 下载失败')))
+    }
+    stopWait()
+    stage.value = 'render'
 
     task = pdfjs.getDocument({
       url: `/api/papers/${props.paperId}/pdf`,
@@ -134,6 +156,7 @@ async function boot() {
   } catch (err) {
     error.value = err instanceof Error ? err.message : t('PDF 加载失败')
   } finally {
+    stopWait()
     loading.value = false
   }
 }
@@ -252,6 +275,7 @@ async function removeAnnotation() {
 onMounted(boot)
 
 onBeforeUnmount(() => {
+  stopWait()
   void task?.destroy()
   task = null
   doc = null
@@ -272,9 +296,11 @@ onBeforeUnmount(() => {
     <div v-if="loading" class="loading">
       <span class="spin" />
       {{
-        progress
-          ? t('渲染 {current}/{total} 页…', { current: progress, total: pages.length })
-          : t('正在打开 PDF…')
+        stage === 'download'
+          ? `${t('正在从 arXiv 下载 PDF…')}${waitSeconds ? ` ${waitSeconds}s` : ''}`
+          : progress
+            ? t('渲染 {current}/{total} 页…', { current: progress, total: pages.length })
+            : t('正在打开 PDF…')
       }}
     </div>
 

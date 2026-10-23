@@ -1349,7 +1349,7 @@ async function api(req, res, url) {
 
   const pdfMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/pdf$/)
   if (pdfMatch) {
-    const row = db
+    let row = db
       .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
       .get(pdfMatch[1], user.id)
     if (!row) return sendJSON(res, 404, { error: 'not found' })
@@ -1360,7 +1360,18 @@ async function api(req, res, url) {
     }
 
     if (method === 'GET') {
-      if (!row.pdf_path) return sendJSON(res, 404, { error: 'PDF 还没下载' })
+      // 直接打开链接时本地可能还没有文件：先下载再流式返回
+      if (!row.pdf_path || !existsSync(join(PDF_DIR, row.pdf_path))) {
+        try {
+          await ensurePdf(row)
+        } catch (error) {
+          return sendJSON(res, error.statusCode || 502, {
+            error: error?.message || 'PDF 下载失败',
+          })
+        }
+        row = db.prepare('SELECT * FROM papers WHERE id = ?').get(pdfMatch[1])
+        if (!row.pdf_path) return sendJSON(res, 502, { error: 'PDF 下载后仍不可用' })
+      }
       const file = join(PDF_DIR, row.pdf_path)
       if (!existsSync(file)) return sendJSON(res, 404, { error: '本地 PDF 丢失，重新下载' })
       return streamPdf(req, res, file)

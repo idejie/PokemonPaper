@@ -164,4 +164,6 @@ export const pagesDict: Record<string, string> = {
   '徽章只看收集与阅读行为，不给经验。': 'Badges track collecting and reading; they grant no XP.',
   '等级说明': 'Level guide',
   '查看完整等级说明 →': 'See the full level guide →',
+  '准备中…': 'Preparing…',
+  '正在从 arXiv 下载 PDF…': 'Downloading PDF from arXiv…',
 }
