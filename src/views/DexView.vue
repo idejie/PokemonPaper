@@ -7,6 +7,8 @@ import { usePrefsStore } from '../stores/prefs'
 import { useRouter } from 'vue-router'
 import { paperLevel } from '../core/level'
 import { t } from '../core/i18n'
+import { api } from '../core/api'
+import type { DailyPick } from '../core/types'
 
 const store = usePapersStore()
 const router = useRouter()
@@ -15,6 +17,7 @@ const query = ref('')
 const filter = ref<'all' | 'read' | 'reading' | 'unread'>('all')
 const sort = ref<'arxiv' | 'added' | 'rating' | 'level'>('arxiv')
 const searchInput = ref<HTMLInputElement | null>(null)
+const daily = ref<DailyPick | null>(null)
 
 const counts = computed(() => ({
   all: store.items.length,
@@ -61,6 +64,14 @@ function pickRandom() {
   void router.push(`/p/${paper.id}`)
 }
 
+async function loadDaily() {
+  daily.value = await api.daily().catch(() => null)
+}
+
+function openDaily() {
+  if (daily.value?.paper) void router.push(`/p/${daily.value.paper.id}`)
+}
+
 function onKeydown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
   const typing = target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
@@ -70,12 +81,33 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-onMounted(() => document.addEventListener('keydown', onKeydown))
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  void loadDaily()
+})
 onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
   <div class="wrap page">
+    <section v-if="daily?.paper" class="wild" :class="{ caught: daily.claimed }">
+      <span class="wild-tag">🌿 {{ t('今日野生论文') }}</span>
+      <RouterLink class="wild-title" :to="`/p/${daily.paper.id}`">
+        {{ daily.paper.title }}
+      </RouterLink>
+      <span class="wild-reward">
+        {{
+          daily.claimed
+            ? t('已捕获 +{xp} XP', { xp: daily.bonusXp })
+            : t('今日读完双倍 XP（+{xp}）', { xp: daily.reward })
+        }}
+      </span>
+      <span class="spacer" />
+      <button type="button" class="btn sm" @click="openDaily">
+        {{ daily.claimed ? t('查看') : t('去读') }}
+      </button>
+    </section>
+
     <div class="toolbar">
       <div class="search">
         <span class="search-icon" aria-hidden="true">🔍</span>
@@ -180,6 +212,60 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 <style scoped>
 .page {
   padding-bottom: 60px;
+}
+
+.wild {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 11px;
+  margin-bottom: 10px;
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.wild.caught {
+  opacity: 0.72;
+}
+
+.wild-tag {
+  flex: none;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: #dfe8c9;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.wild-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.wild-reward {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.wild .spacer {
+  flex: 1;
+}
+
+@media (max-width: 720px) {
+  .wild-reward {
+    display: none;
+  }
 }
 
 .toolbar {

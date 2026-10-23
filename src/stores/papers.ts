@@ -21,8 +21,9 @@ export const usePapersStore = defineStore('papers', () => {
   const total = computed(() => items.value.length)
   const readCount = computed(() => items.value.filter((p) => p.status === 'read').length)
   const readingCount = computed(() => items.value.filter((p) => p.status === 'reading').length)
-  const bonusXp = ref(0)
-  const likesReceived = computed(() => bonusXp.value)
+  const likesReceived = ref(0)
+  const dailyXp = ref(0)
+  const bonusXp = computed(() => likesReceived.value + dailyXp.value)
   const xp = computed(() => computeProgress(items.value, bonusXp.value))
   const level = computed(() => xp.value.level)
   const progress = computed(() =>
@@ -44,12 +45,13 @@ export const usePapersStore = defineStore('papers', () => {
     loading.value = true
     error.value = ''
     try {
-      const [list, likes] = await Promise.all([
+      const [list, bonus] = await Promise.all([
         api.list(),
-        api.likesReceived().catch(() => 0),
+        api.progressBonus().catch(() => ({ likes: 0, daily: 0, total: 0 })),
       ])
       items.value = list
-      bonusXp.value = likes
+      likesReceived.value = bonus.likes
+      dailyXp.value = bonus.daily
     } catch (err) {
       error.value =
         err instanceof Error && err.message
@@ -142,7 +144,8 @@ export const usePapersStore = defineStore('papers', () => {
 
   function clear() {
     items.value = []
-    bonusXp.value = 0
+    likesReceived.value = 0
+    dailyXp.value = 0
   }
 
   function byId(id: string): Paper | undefined {
@@ -161,6 +164,7 @@ export const usePapersStore = defineStore('papers', () => {
     total,
     xp,
     likesReceived,
+    dailyXp,
     readCount,
     readingCount,
     level,

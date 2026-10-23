@@ -1,5 +1,6 @@
 import type {
   Annotation,
+  DailyPick,
   ArxivItem,
   AuthUser,
   Explain,
@@ -148,9 +149,12 @@ export const api = {
     })
   },
 
-  async likesReceived(): Promise<number> {
-    const data = await request<{ likes: number }>('/api/likes/received')
-    return data.likes
+  async progressBonus(): Promise<{ likes: number; daily: number; total: number }> {
+    return request<{ likes: number; daily: number; total: number }>('/api/progress/bonus')
+  },
+
+  async daily(): Promise<DailyPick> {
+    return request<DailyPick>('/api/daily')
   },
 
   async publicSummaries(paperId: string): Promise<PublicSummary[]> {

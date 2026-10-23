@@ -90,6 +90,14 @@ export interface PublicSummary {
   likedByMe: boolean
 }
 
+export interface DailyPick {
+  date: string
+  paper: Paper | null
+  claimed: boolean
+  bonusXp: number
+  reward: number
+}
+
 export interface PdfJob {
   running: boolean
   total: number

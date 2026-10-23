@@ -36,6 +36,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 
 | | |
 |---|---|
+| 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
 | 🖼️ **Share card** | Export a paper as a 640×900 PNG card with its sprite, level, category and trainer |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
 | 🎨 **AI artwork** | Generate per-paper artwork with an image model, cached in `data/sprites/`; falls back to the procedural sprite; key stays in the browser |
@@ -240,6 +241,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Extruded 3D sprite rendering and lit-sprite idle animation
 - [x] Shareable paper card PNG
 - [x] Four-stage sprite evolution (hatchling → bond form)
+- [x] Daily wild paper with double XP
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -270,6 +272,7 @@ MIT © idejie
 
 | | |
 |---|---|
+| 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
 | 🖼️ **分享卡** | 一键导出论文卡 PNG（精灵、等级、分类、训练家），适合发推 / 朋友圈 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |
 | 🎨 **AI 插画** | 用图像模型为单篇论文生成插画，缓存到 `data/sprites/`；未生成时回退程序精灵；Key 存浏览器 |
@@ -736,6 +739,7 @@ interface Like {
 - [x] 精灵挤出立体渲染与点亮待机动画
 - [x] 论文分享卡 PNG 导出
 - [x] 四段精灵进化（幼体 → 羁绊形态）
+- [x] 每日野生论文 + 双倍 XP
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

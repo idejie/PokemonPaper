@@ -70,6 +70,15 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+  CREATE TABLE IF NOT EXISTS daily_picks (
+    user_id    TEXT NOT NULL,
+    date       TEXT NOT NULL,
+    paper_id   TEXT NOT NULL,
+    bonus_xp   INTEGER NOT NULL DEFAULT 0,
+    claimed_at TEXT,
+    PRIMARY KEY (user_id, date)
+  );
+
   CREATE TABLE IF NOT EXISTS likes (
     user_id    TEXT NOT NULL,
     kind       TEXT NOT NULL,
@@ -767,6 +776,38 @@ function paperLevel(paper) {
   return Math.max(15, Math.min(100, Math.round(raw)))
 }
 
+function todayKey() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function hashKey(input) {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+function dailyBaseXp(row) {
+  return paperLevel(row) + 40 + (String(row.notes || '').trim() ? 20 : 0)
+}
+
+function claimDailyBonus(userId, row) {
+  const date = todayKey()
+  const pick = db
+    .prepare('SELECT * FROM daily_picks WHERE user_id = ? AND date = ? AND paper_id = ?')
+    .get(userId, date, row.id)
+  if (!pick || pick.claimed_at) return
+  db.prepare('UPDATE daily_picks SET claimed_at = ?, bonus_xp = ? WHERE user_id = ? AND date = ?').run(
+    new Date().toISOString(),
+    dailyBaseXp(row),
+    userId,
+    date,
+  )
+}
+
 function levelForXp(xp) {
   let level = 1
   while (50 * level * (level + 1) <= xp) level += 1
@@ -796,6 +837,12 @@ function leaderboard() {
   const likesByUser = new Map(
     db.prepare('SELECT owner_id, COUNT(*) AS n FROM likes GROUP BY owner_id').all().map((row) => [row.owner_id, row.n]),
   )
+  const dailyByUser = new Map(
+    db
+      .prepare('SELECT user_id, COALESCE(SUM(bonus_xp), 0) AS n FROM daily_picks GROUP BY user_id')
+      .all()
+      .map((row) => [row.user_id, row.n]),
+  )
   for (const paper of papers) {
     const entry = byUser.get(paper.user_id)
     if (!entry) continue
@@ -814,7 +861,14 @@ function leaderboard() {
   const entries = [...byUser.values()]
     .map((entry) => {
       const likes = likesByUser.get(entry.userId) ?? 0
-      return { ...entry, likes, xp: entry.xp + likes, level: levelForXp(entry.xp + likes) }
+      const daily = dailyByUser.get(entry.userId) ?? 0
+      return {
+        ...entry,
+        likes,
+        daily,
+        xp: entry.xp + likes + daily,
+        level: levelForXp(entry.xp + likes + daily),
+      }
     })
     .sort((a, b) => b.xp - a.xp || b.read - a.read || a.name.localeCompare(b.name))
   return entries.map((entry, index) => ({ ...entry, rank: index + 1 }))
@@ -1678,6 +1732,48 @@ async function api(req, res, url) {
     }
   }
 
+  if (pathname === '/api/daily' && method === 'GET') {
+    const date = todayKey()
+    let pick = db.prepare('SELECT * FROM daily_picks WHERE user_id = ? AND date = ?').get(user.id, date)
+    if (!pick) {
+      const rows = db
+        .prepare("SELECT * FROM papers WHERE user_id = ? AND status = 'unread' ORDER BY id")
+        .all(user.id)
+      if (!rows.length) {
+        return sendJSON(res, 200, { date, paper: null, claimed: false, bonusXp: 0, reward: 0 })
+      }
+      const chosen = rows[hashKey(`${user.id}:${date}`) % rows.length]
+      db.prepare('INSERT INTO daily_picks (user_id, date, paper_id) VALUES (?, ?, ?)').run(
+        user.id,
+        date,
+        chosen.id,
+      )
+      pick = { user_id: user.id, date, paper_id: chosen.id, bonus_xp: 0, claimed_at: null }
+    }
+    const row = db
+      .prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?')
+      .get(pick.paper_id, user.id)
+    if (!row) {
+      return sendJSON(res, 200, { date, paper: null, claimed: false, bonusXp: 0, reward: 0 })
+    }
+    const claimed = Boolean(pick.claimed_at)
+    return sendJSON(res, 200, {
+      date,
+      paper: rowToPaper(row),
+      claimed,
+      bonusXp: pick.bonus_xp || 0,
+      reward: claimed ? pick.bonus_xp : dailyBaseXp(row),
+    })
+  }
+
+  if (pathname === '/api/progress/bonus' && method === 'GET') {
+    const likes = db.prepare('SELECT COUNT(*) AS n FROM likes WHERE owner_id = ?').get(user.id).n
+    const daily = db
+      .prepare('SELECT COALESCE(SUM(bonus_xp), 0) AS n FROM daily_picks WHERE user_id = ?')
+      .get(user.id).n
+    return sendJSON(res, 200, { likes, daily, total: likes + daily })
+  }
+
   if (pathname === '/api/likes' && method === 'POST') {
     const body = await readBody(req)
     const kind = body.kind === 'summary' ? 'summary' : body.kind === 'annotation' ? 'annotation' : null
@@ -1924,6 +2020,7 @@ async function api(req, res, url) {
         )
       }
       const fresh = db.prepare('SELECT * FROM papers WHERE id = ?').get(id)
+      if (patch.status === 'read') claimDailyBonus(user.id, fresh)
       return sendJSON(res, 200, { paper: rowToPaper(fresh) })
     }
 

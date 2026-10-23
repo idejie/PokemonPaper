@@ -234,4 +234,8 @@ export const pagesDict: Record<string, string> = {
   '获赞': 'Likes',
   '公开批注 / 总结被点赞': 'A public note or summary gets liked',
   '每赞 +1': '+1 per like',
+  '今日野生论文': 'Wild paper of the day',
+  '已捕获 +{xp} XP': 'Caught +{xp} XP',
+  '今日读完双倍 XP（+{xp}）': 'Double XP if finished today (+{xp})',
+  '去读': 'Read now',
 }
