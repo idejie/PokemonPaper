@@ -1,4 +1,13 @@
-import type { ArxivItem, AuthUser, Explain, Invite, LlmConfig, Paper, PaperInput } from './types'
+import type {
+  Annotation,
+  ArxivItem,
+  AuthUser,
+  Explain,
+  Invite,
+  LlmConfig,
+  Paper,
+  PaperInput,
+} from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -138,6 +147,39 @@ export const api = {
     return request<{ text: string; chars: number; pages?: number }>(`/api/papers/${id}/text`, {
       method: extract ? 'POST' : 'GET',
     })
+  },
+
+  async listAnnotations(paperId: string): Promise<Annotation[]> {
+    const data = await request<{ annotations: Annotation[] }>(`/api/papers/${paperId}/annotations`)
+    return data.annotations
+  },
+
+  async createAnnotation(
+    paperId: string,
+    input: {
+      page: number
+      rects: unknown[]
+      quote: string
+      color: string
+      comment: string
+    },
+  ): Promise<string> {
+    const data = await request<{ id: string }>(`/api/papers/${paperId}/annotations`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+    return data.id
+  },
+
+  async updateAnnotation(id: string, patch: { comment?: string; color?: string }): Promise<void> {
+    await request<{ ok: boolean }>(`/api/annotations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+  },
+
+  async deleteAnnotation(id: string): Promise<void> {
+    await request<{ ok: boolean }>(`/api/annotations/${id}`, { method: 'DELETE' })
   },
 
   async paperSummary(id: string, config?: unknown): Promise<string> {

@@ -69,6 +69,21 @@ db.exec(`
     value TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS annotations (
+    id         TEXT PRIMARY KEY,
+    paper_id   TEXT NOT NULL,
+    user_id    TEXT NOT NULL,
+    start      INTEGER NOT NULL,
+    end        INTEGER NOT NULL,
+    quote      TEXT NOT NULL DEFAULT '',
+    color      TEXT NOT NULL DEFAULT 'yellow',
+    comment    TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_annotations_paper ON annotations(paper_id, user_id);
+
   CREATE TABLE IF NOT EXISTS invites (
     code       TEXT PRIMARY KEY,
     created_by TEXT,
@@ -77,6 +92,16 @@ db.exec(`
     used_at    TEXT
   );
 `)
+
+const annotationColumns = db.prepare('PRAGMA table_info(annotations)').all().map((c) => c.name)
+for (const [name, ddl] of [
+  ['page', 'INTEGER NOT NULL DEFAULT 0'],
+  ['rects', "TEXT NOT NULL DEFAULT '[]'"],
+]) {
+  if (!annotationColumns.includes(name)) {
+    db.exec(`ALTER TABLE annotations ADD COLUMN ${name} ${ddl}`)
+  }
+}
 
 const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name)
 if (!userColumns.includes('is_admin')) {
@@ -241,6 +266,8 @@ seedIfEmpty()
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.wasm': 'application/wasm',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
@@ -1093,6 +1120,7 @@ async function api(req, res, url) {
     }
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id)
     db.prepare('DELETE FROM papers WHERE user_id = ?').run(user.id)
+    db.prepare('DELETE FROM annotations WHERE user_id = ?').run(user.id)
     db.prepare('DELETE FROM invites WHERE created_by = ? AND used_by IS NULL').run(user.id)
     db.prepare('DELETE FROM users WHERE id = ?').run(user.id)
     clearSessionCookie(res)
@@ -1259,6 +1287,94 @@ async function api(req, res, url) {
   }
 
 
+
+  /* ------------------------------------------------------ annotations */
+
+  const annotationMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/annotations$/)
+  if (annotationMatch) {
+    const paperId = annotationMatch[1]
+    const paper = db
+      .prepare('SELECT id FROM papers WHERE id = ? AND user_id = ?')
+      .get(paperId, user.id)
+    if (!paper) return sendJSON(res, 404, { error: 'not found' })
+
+    if (method === 'GET') {
+      const rows = db
+        .prepare('SELECT * FROM annotations WHERE paper_id = ? AND user_id = ? ORDER BY start ASC')
+        .all(paperId, user.id)
+      return sendJSON(res, 200, {
+        annotations: rows.map((row) => ({
+          id: row.id,
+          start: row.start,
+          end: row.end,
+          page: row.page ?? 0,
+          rects: JSON.parse(row.rects || '[]'),
+          quote: row.quote,
+          color: row.color,
+          comment: row.comment,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at ?? null,
+        })),
+      })
+    }
+
+    if (method === 'POST') {
+      const body = await readBody(req)
+      const colors = ['yellow', 'green', 'blue', 'pink']
+      const color = colors.includes(body.color) ? body.color : 'yellow'
+      const page = Number(body.page)
+      if (!Number.isInteger(page) || page < 1) {
+        return sendJSON(res, 400, { error: '页码不合法' })
+      }
+      const rects = Array.isArray(body.rects) ? body.rects.slice(0, 200) : []
+      if (!rects.length) return sendJSON(res, 400, { error: '没有选区' })
+      const id = randomUUID()
+      db.prepare(
+        'INSERT INTO annotations (id, paper_id, user_id, start, end, page, rects, quote, color, comment, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      ).run(
+        id,
+        paperId,
+        user.id,
+        0,
+        0,
+        page,
+        JSON.stringify(rects),
+        String(body.quote || '').slice(0, 2000),
+        color,
+        String(body.comment || '').slice(0, 4000),
+        new Date().toISOString(),
+      )
+      return sendJSON(res, 201, { id })
+    }
+  }
+
+  const annotationItem = pathname.match(/^\/api\/annotations\/([\w-]+)$/)
+  if (annotationItem) {
+    const row = db
+      .prepare('SELECT * FROM annotations WHERE id = ? AND user_id = ?')
+      .get(annotationItem[1], user.id)
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+
+    if (method === 'PATCH') {
+      const body = await readBody(req)
+      const comment = body.comment === undefined ? row.comment : String(body.comment).slice(0, 4000)
+      const colors = ['yellow', 'green', 'blue', 'pink']
+      const color = colors.includes(body.color) ? body.color : row.color
+      db.prepare('UPDATE annotations SET comment = ?, color = ?, updated_at = ? WHERE id = ?').run(
+        comment,
+        color,
+        new Date().toISOString(),
+        row.id,
+      )
+      return sendJSON(res, 200, { ok: true })
+    }
+
+    if (method === 'DELETE') {
+      db.prepare('DELETE FROM annotations WHERE id = ?').run(row.id)
+      return sendJSON(res, 200, { ok: true })
+    }
+  }
+
   const textMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/text$/)
   if (textMatch) {
     const row = db
@@ -1370,6 +1486,7 @@ async function api(req, res, url) {
     }
 
     if (method === 'DELETE') {
+      db.prepare('DELETE FROM annotations WHERE paper_id = ? AND user_id = ?').run(id, user.id)
       db.prepare('DELETE FROM papers WHERE id = ? AND user_id = ?').run(id, user.id)
       return sendJSON(res, 200, { ok: true })
     }

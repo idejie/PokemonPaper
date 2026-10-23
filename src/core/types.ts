@@ -74,6 +74,26 @@ export interface AuthUser {
   createdAt: string
 }
 
+export interface AnnotationRect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface Annotation {
+  id: string
+  start: number
+  end: number
+  page: number
+  rects: AnnotationRect[]
+  quote: string
+  color: 'yellow' | 'green' | 'blue' | 'pink'
+  comment: string
+  createdAt: string
+  updatedAt: string | null
+}
+
 export interface Invite {
   code: string
   createdAt: string

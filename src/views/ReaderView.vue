@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
 import MarkdownLite from '../components/MarkdownLite.vue'
+const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue'))
 import { api } from '../core/api'
 import { paperLevel } from '../core/level'
 import { TYPE_COLORS, TYPES } from '../core/typeMap'
@@ -13,12 +14,8 @@ const store = usePapersStore()
 const settings = useSettingsStore()
 const ui = useUiStore()
 
-type Tab = 'abstract' | 'text' | 'summary'
+type Tab = 'abstract' | 'pdf' | 'summary'
 const tab = ref<Tab>('abstract')
-
-const text = ref('')
-const textLoading = ref(false)
-const textError = ref('')
 const summarizing = ref(false)
 
 const paper = computed(() => store.byId(props.id))
@@ -30,39 +27,21 @@ const typeColor = computed(() =>
 const summary = computed(() => paper.value?.summary ?? '')
 const summaryDate = computed(() => {
   const raw = paper.value?.summaryAt
-  if (!raw) return ''
-  return new Date(raw).toLocaleDateString('zh-CN')
+  return raw ? new Date(raw).toLocaleDateString('zh-CN') : ''
 })
-const hasText = computed(() => text.value.length > 0 || Boolean(paper.value?.hasFullText))
-
-async function ensureText(force = false) {
-  if (!props.id) return
-  if (!force && text.value) return
-  if (!force && !paper.value?.hasFullText) {
-    // 没提取过就自动提取一次
-  }
-  textLoading.value = true
-  textError.value = ''
-  try {
-    const cached = !force && paper.value?.hasFullText
-    const result = await api.paperText(props.id, !cached)
-    text.value = result.text
-    if (!cached) store.notify(`全文已提取，${result.chars.toLocaleString()} 字`)
-  } catch (err) {
-    textError.value = err instanceof Error ? err.message : '提取失败'
-  } finally {
-    textLoading.value = false
-  }
-}
 
 async function generateSummary() {
   if (!settings.ready) {
     ui.openSettings()
     return
   }
-  if (!props.id) return
+  if (!props.id || !paper.value) return
   summarizing.value = true
   try {
+    // 有全文时总结更准；提取失败（扫描版）就退回摘要
+    if (!paper.value.hasFullText) {
+      await api.paperText(props.id, true).catch(() => null)
+    }
     const result = await api.paperSummary(props.id, settings.config)
     await store.update(props.id, { summary: result })
     store.notify('总结已生成')
@@ -73,16 +52,9 @@ async function generateSummary() {
   }
 }
 
-function switchTab(next: Tab) {
-  tab.value = next
-  if (next === 'text' && !text.value) void ensureText()
-}
-
 watch(
   () => props.id,
   () => {
-    text.value = ''
-    textError.value = ''
     tab.value = 'abstract'
   },
 )
@@ -98,13 +70,23 @@ onMounted(async () => {
       <div class="topbar">
         <RouterLink to="/" class="back">← 图鉴</RouterLink>
         <span class="no mono">No.{{ paper?.arxiv || '—' }}</span>
-        <span v-if="lv" class="lv mono" :style="{ background: lv.tier === '传说' ? '#c9971b' : 'var(--ink)' }">
+        <span
+          v-if="lv"
+          class="lv mono"
+          :style="{ background: lv.tier === '传说' ? '#c9971b' : 'var(--ink)' }"
+        >
           Lv.{{ lv.level }}
         </span>
         <span class="spacer" />
         <RouterLink v-if="paper" :to="`/p/${paper.id}`" class="link">详情</RouterLink>
-        <a v-if="paper" :href="`/api/papers/${paper.id}/pdf`" target="_blank" rel="noreferrer" class="link">
-          PDF ↗
+        <a
+          v-if="paper"
+          :href="`/api/papers/${paper.id}/pdf`"
+          target="_blank"
+          rel="noreferrer"
+          class="link"
+        >
+          下载 PDF ↗
         </a>
       </div>
 
@@ -123,9 +105,9 @@ onMounted(async () => {
         </p>
 
         <nav class="tabs">
-          <button :class="{ on: tab === 'abstract' }" @click="switchTab('abstract')">摘要</button>
-          <button :class="{ on: tab === 'text' }" @click="switchTab('text')">全文</button>
-          <button :class="{ on: tab === 'summary' }" @click="switchTab('summary')">总结</button>
+          <button :class="{ on: tab === 'abstract' }" @click="tab = 'abstract'">摘要</button>
+          <button :class="{ on: tab === 'pdf' }" @click="tab = 'pdf'">原文 PDF</button>
+          <button :class="{ on: tab === 'summary' }" @click="tab = 'summary'">总结</button>
         </nav>
 
         <section v-if="tab === 'abstract'" class="panel">
@@ -137,58 +119,38 @@ onMounted(async () => {
           </p>
         </section>
 
-        <section v-else-if="tab === 'text'" class="panel">
-          <div class="toolbar">
-            <span v-if="text" class="mono">{{ text.length.toLocaleString() }} 字</span>
-            <span v-else-if="textLoading" class="mono">解析中…</span>
-            <span v-else class="hint">还没有提取全文</span>
-            <span class="spacer" />
-            <button
-              v-if="hasText || textError"
-              type="button"
-              class="btn sm ghost"
-              :disabled="textLoading"
-              @click="ensureText(true)"
-            >
-              重新提取
-            </button>
-            <button
-              v-else
-              type="button"
-              class="btn sm"
-              :disabled="textLoading"
-              @click="ensureText(true)"
-            >
-              提取全文
-            </button>
-          </div>
-          <p v-if="textError" class="error">{{ textError }}</p>
-          <div v-if="textLoading" class="loading">正在解析 PDF，长论文要等几秒…</div>
-          <article v-else-if="text" class="fulltext">{{ text }}</article>
-          <p v-else class="empty">点「提取全文」把 PDF 转成可读文本，之后会缓存在本地。</p>
+        <section v-else-if="tab === 'pdf'" class="pdf-panel">
+          <PdfViewer :paper-id="paper.id" />
         </section>
 
         <section v-else class="panel">
           <div class="toolbar">
             <span class="hint">
-              {{ summary ? `生成于 ${summaryDate}` : settings.ready ? settings.config.model : '还没配置模型' }}
+              {{
+                summary
+                  ? `生成于 ${summaryDate}`
+                  : settings.ready
+                    ? settings.config.model
+                    : '还没配置模型'
+              }}
             </span>
             <span class="spacer" />
-            <button
-              v-if="!settings.ready"
-              type="button"
-              class="btn sm"
-              @click="ui.openSettings()"
-            >
+            <button v-if="!settings.ready" type="button" class="btn sm" @click="ui.openSettings()">
               去配置
             </button>
-            <button v-else type="button" class="btn sm" :disabled="summarizing" @click="generateSummary">
+            <button
+              v-else
+              type="button"
+              class="btn sm"
+              :disabled="summarizing"
+              @click="generateSummary"
+            >
               {{ summarizing ? '生成中…' : summary ? '重新生成' : '生成总结' }}
             </button>
           </div>
           <MarkdownLite v-if="summary" :source="summary" />
           <p v-else class="empty">
-            用摘要（和已提取的全文）生成一份 600–900 字的中文总结：问题、方法、结果、局限、适合谁读。
+            基于摘要和全文生成一份 600–900 字的中文总结：问题、方法、结果、局限、适合谁读。
           </p>
         </section>
       </template>
@@ -302,6 +264,14 @@ onMounted(async () => {
   max-width: 900px;
 }
 
+.pdf-panel {
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--panel-2);
+  box-shadow: var(--shadow-sm);
+  padding: 14px;
+}
+
 .abstract {
   font-size: 15.5px;
   line-height: 1.95;
@@ -330,31 +300,6 @@ onMounted(async () => {
   line-height: 1.8;
 }
 
-.error {
-  color: var(--red);
-  font-size: 12.5px;
-  font-weight: 700;
-}
-
-.loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 13px;
-  padding: 20px 0;
-}
-
-.fulltext {
-  white-space: pre-wrap;
-  font-size: 14.5px;
-  line-height: 2;
-  color: var(--text);
-  max-height: 68vh;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
 .missing {
   display: grid;
   justify-items: center;
@@ -371,9 +316,8 @@ onMounted(async () => {
     padding: 16px;
   }
 
-  .fulltext {
-    font-size: 13.5px;
-    line-height: 1.9;
+  .pdf-panel {
+    padding: 8px;
   }
 }
 </style>
