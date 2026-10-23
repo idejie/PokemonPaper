@@ -12,6 +12,8 @@ function defaults(): LlmConfig {
     baseUrl: deepseek.baseUrl,
     apiKey: '',
     model: deepseek.models[0],
+    scholarProvider: 'off',
+    scholarKey: '',
   }
 }
 

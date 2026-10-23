@@ -61,9 +61,13 @@ export interface Explain {
   actions: string[]
 }
 
+export type ScholarProvider = 'off' | 'serpapi' | 'serper'
+
 export interface LlmConfig {
   providerId: string
   baseUrl: string
   apiKey: string
   model: string
+  scholarProvider: ScholarProvider
+  scholarKey: string
 }

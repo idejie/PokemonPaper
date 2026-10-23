@@ -49,6 +49,10 @@ const seed = computed(() => form.arxiv || form.title || 'pokemonpaper-new')
 const typeDef = computed(() => TYPES[form.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.normal)
 
+const scholarUrl = computed(
+  () => `https://scholar.google.com/scholar?q=${encodeURIComponent(`"${form.title}"`)}`,
+)
+
 const level = computed(() =>
   paperLevel({ codeUrl: form.codeUrl, stars: form.stars, citations: form.citations }),
 )
@@ -216,13 +220,20 @@ async function syncMetrics() {
   try {
     // 先把仓库地址存下来，服务端才能读到
     await store.update(props.id, { codeUrl: form.codeUrl.trim() })
-    const result = await store.syncMetrics(props.id)
+    const result = await store.syncMetrics(props.id, {
+      provider: settings.config.scholarProvider,
+      apiKey: settings.config.scholarKey,
+    })
     if (result) {
       form.stars = result.paper.stars
       form.citations = result.paper.citations
-      store.notify(
-        result.notes.length ? result.notes.join('；') : `已同步：${result.paper.stars} star · ${result.paper.citations} 引用`,
-      )
+      const citationFailed = result.notes.some((note) => note.includes('引用量抓取失败'))
+      const parts: string[] = []
+      if (form.codeUrl) parts.push(`${result.paper.stars} star`)
+      if (!citationFailed) parts.push(`${result.paper.citations} 引用`)
+      const suffix = citationFailed ? '，引用量被抓取限流，可手动填' : ''
+      store.notify(parts.length ? `已同步 ${parts.join(' · ')}${suffix}` : `同步失败${suffix}`)
+      if (result.notes.length) console.info('[metrics]', result.notes)
     }
   } finally {
     syncing.value = false
@@ -438,7 +449,10 @@ onBeforeUnmount(() => {
                 <input v-model.number="form.stars" class="input mono" type="number" min="0" />
               </label>
               <label class="field">
-                <span>引用量</span>
+                <span>
+                  引用量
+                  <a class="gs-link" :href="scholarUrl" target="_blank" rel="noreferrer">Scholar ↗</a>
+                </span>
                 <input v-model.number="form.citations" class="input mono" type="number" min="0" />
               </label>
             </div>
@@ -732,6 +746,15 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
   align-content: start;
+}
+
+.gs-link {
+  float: right;
+  font-size: 9.5px;
+  color: var(--blue);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .levelbar {

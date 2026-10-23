@@ -117,6 +117,41 @@ onBeforeUnmount(() => {
           <a :href="provider.keyUrl" target="_blank" rel="noreferrer">去 {{ provider.name }} 申请 →</a>
         </p>
 
+        <div class="divider" />
+
+        <h3 class="block-title">引用量来源</h3>
+        <p class="lead">
+          Google Scholar 没有公开 API，从服务器直连基本会被 403。
+          填 SerpAPI 或 Serper 的 Key 可以拿到真实 GS 引用数；不填会自动退回 Semantic Scholar / OpenAlex。
+        </p>
+
+        <label class="field">
+          <span>Google Scholar 通道</span>
+          <select v-model="form.scholarProvider" class="select">
+            <option value="off">直连（通常失败，自动退回）</option>
+            <option value="serpapi">SerpAPI</option>
+            <option value="serper">Serper</option>
+          </select>
+        </label>
+
+        <label v-if="form.scholarProvider !== 'off'" class="field">
+          <span>{{ form.scholarProvider === 'serpapi' ? 'SerpAPI Key' : 'Serper API Key' }}</span>
+          <input
+            v-model="form.scholarKey"
+            class="input mono"
+            type="password"
+            placeholder="粘贴 key"
+            autocomplete="off"
+          />
+        </label>
+
+        <p class="hint">
+          申请：
+          <a href="https://serpapi.com/manage-api-key" target="_blank" rel="noreferrer">SerpAPI</a>
+          ·
+          <a href="https://serper.dev/api-key" target="_blank" rel="noreferrer">Serper</a>
+        </p>
+
         <div class="actions">
           <button v-if="settings.config.apiKey" type="button" class="btn ghost sm" @click="settings.clearKey(), store.notify('已清除本地 Key')">
             清除 Key
@@ -233,6 +268,17 @@ onBeforeUnmount(() => {
   background: var(--gold);
   transform: translate(1px, 1px);
   box-shadow: 1px 1px 0 var(--ink);
+}
+
+.divider {
+  border-top: 2px dashed var(--line);
+  margin: 4px 0;
+}
+
+.block-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .key-row {

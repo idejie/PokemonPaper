@@ -537,23 +537,124 @@ async function citationsFromOpenAlex(title) {
   return Number(hit.cited_by_count) || 0
 }
 
-async function fetchCitations(arxiv, title) {
+async function scholarViaSerpApi(title, key) {
+  const url =
+    'https://serpapi.com/search.json?engine=google_scholar' +
+    `&q=${encodeURIComponent(title)}&api_key=${encodeURIComponent(key)}`
+  const response = await fetch(url, { signal: AbortSignal.timeout(20000) })
+  if (!response.ok) throw new HttpError(502, `SerpAPI 返回 ${response.status}`)
+  const data = await response.json()
+  const total = data?.organic_results?.[0]?.inline_links?.cited_by?.total
+  if (typeof total !== 'number') throw new HttpError(502, 'SerpAPI 没返回 cited_by')
+  return total
+}
+
+async function scholarViaSerper(title, key) {
+  const response = await fetch('https://google.serper.dev/scholar', {
+    method: 'POST',
+    headers: { 'X-API-KEY': key, 'content-type': 'application/json' },
+    body: JSON.stringify({ q: title }),
+    signal: AbortSignal.timeout(20000),
+  })
+  if (!response.ok) throw new HttpError(502, `Serper 返回 ${response.status}`)
+  const data = await response.json()
+  const hit = data?.organic?.[0] ?? {}
+  const direct = hit.citedBy ?? hit.cited_by
+  if (typeof direct === 'number') return direct
+  const match = JSON.stringify(hit).match(/Cited by (\d+)/)
+  if (match) return Number(match[1])
+  throw new HttpError(502, 'Serper 没返回引用数')
+}
+
+/** 直连 Google Scholar：机房 IP 基本必被 403，只在住宅网络下有机会 */
+async function scholarDirect(title) {
+  const url = `https://scholar.google.com/scholar?q=${encodeURIComponent(`"${title}"`)}&hl=en`
+  const response = await fetch(url, {
+    headers: {
+      'user-agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36',
+      'accept-language': 'en-US,en;q=0.9',
+    },
+    signal: AbortSignal.timeout(20000),
+  })
+  if (!response.ok) throw new HttpError(502, `Google Scholar 返回 ${response.status}`)
+  const html = await response.text()
+  if (/unusual traffic|captcha|Sorry\.\.\./i.test(html)) {
+    throw new HttpError(502, 'Google Scholar 要求验证码，换 SerpAPI 或手动填')
+  }
+  const match = html.match(/Cited by (\d+)/)
+  if (!match) throw new HttpError(502, '页面里没找到 Cited by')
+  return Number(match[1])
+}
+
+async function scholarCount(title, scholar) {
+  if (!title) throw new HttpError(400, '没有标题，无法搜 Google Scholar')
+  const provider = scholar?.provider
+  const key = scholar?.apiKey
+  if (provider === 'serpapi' && key) {
+    return { count: await scholarViaSerpApi(title, key), source: 'Google Scholar · SerpAPI' }
+  }
+  if (provider === 'serper' && key) {
+    return { count: await scholarViaSerper(title, key), source: 'Google Scholar · Serper' }
+  }
+  return { count: await scholarDirect(title), source: 'Google Scholar' }
+}
+
+async function citationsFromCrossref(title) {
+  const url =
+    'https://api.crossref.org/works?rows=3&select=title,is-referenced-by-count' +
+    `&query.bibliographic=${encodeURIComponent(title)}`
+  const response = await fetch(url, {
+    headers: { accept: 'application/json', 'user-agent': 'PokemonPaper/0.3 (mailto:i@idejie.com)' },
+    signal: AbortSignal.timeout(20000),
+  })
+  if (!response.ok) throw new HttpError(502, `Crossref 返回 ${response.status}`)
+  const data = await response.json()
+  const hit = (data.message?.items || []).find((item) =>
+    titleMatches(title, (item.title || [])[0]),
+  )
+  if (!hit) throw new HttpError(502, 'Crossref 没找到匹配')
+  return Number(hit['is-referenced-by-count']) || 0
+}
+
+async function fetchCitations(arxiv, title, scholar) {
+  const notes = []
+
+  try {
+    const result = await scholarCount(title, scholar)
+    return { ...result, notes }
+  } catch (error) {
+    notes.push(`Google Scholar 失败：${error?.message || error}`)
+  }
+
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const response = await fetch(
       `https://api.semanticscholar.org/graph/v1/paper/arXiv:${arxiv}?fields=citationCount`,
       { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15000) },
-    )
-    if (response.ok) {
+    ).catch(() => null)
+    if (response?.ok) {
       const data = await response.json()
-      return Number(data.citationCount) || 0
+      return { count: Number(data.citationCount) || 0, source: 'Semantic Scholar', notes }
     }
-    if (response.status !== 429) {
-      break
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    if (!response || response.status !== 429) break
+    await new Promise((resolve) => setTimeout(resolve, 2500))
   }
-  // Semantic Scholar 限流时退回 OpenAlex
-  return citationsFromOpenAlex(title)
+  notes.push('Semantic Scholar 也失败了')
+
+  try {
+    const count = await citationsFromOpenAlex(title)
+    return { count, source: 'OpenAlex', notes }
+  } catch (error) {
+    notes.push(`OpenAlex 失败：${error?.message || error}`)
+  }
+
+  try {
+    const count = await citationsFromCrossref(title)
+    return { count, source: 'Crossref（通常低于 Google Scholar）', notes }
+  } catch (error) {
+    notes.push(`Crossref 失败：${error?.message || error}`)
+    throw new HttpError(502, notes.join('；'))
+  }
 }
 
 function upsert(paper) {
@@ -669,6 +770,7 @@ async function api(req, res, url) {
     const row = db.prepare('SELECT * FROM papers WHERE id = ?').get(metricsMatch[1])
     if (!row) return sendJSON(res, 404, { error: 'not found' })
 
+    const body = await readBody(req).catch(() => ({}))
     const notes = []
     let stars = row.stars ?? 0
     let citations = row.citations ?? 0
@@ -685,7 +787,10 @@ async function api(req, res, url) {
 
     if (row.arxiv) {
       try {
-        citations = await fetchCitations(row.arxiv, row.title)
+        const result = await fetchCitations(row.arxiv, row.title, body.scholar)
+        citations = result.count
+        notes.push(`引用来源：${result.source}`)
+        notes.push(...result.notes)
       } catch (error) {
         notes.push(`引用量抓取失败：${error?.message || error}`)
       }

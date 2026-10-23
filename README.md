@@ -100,7 +100,7 @@ buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
 |---|---|---|
 | 开源代码 | +15 | 填了 GitHub 仓库地址就算 |
 | GitHub star | 最多 +40 | 点「同步指标」抓取，10k star 拿满 |
-| 引用量 | 最多 +45 | Semantic Scholar，失败时退回 OpenAlex |
+| 引用量 | 最多 +45 | Google Scholar 优先；直连失败退回 Semantic Scholar → OpenAlex → Crossref |
 
 ```
 level = 1 + 15·[有代码] + 40·log10(1+stars)/log10(10001) + 45·log10(1+cites)/log10(5001)
@@ -116,7 +116,23 @@ level = 1 + 15·[有代码] + 40·log10(1+stars)/log10(10001) + 45·log10(1+cite
 
 对数刻度的用意：不让一篇万引综述把所有精灵压成 1 级，也不让新论文永远垫底。
 
-**同步**：详情页点「同步指标」，服务端去 GitHub 和 Semantic Scholar 拉数据。没配置 `GITHUB_TOKEN` 时，GitHub API 容易触发未认证限流，会自动退回抓取仓库页面里的星数。引用量遇到限流会退回 OpenAlex，再失败就保留旧值。
+**同步**：详情页点「同步指标」，服务端去 GitHub 和 Google Scholar 拉数据。没配置 `GITHUB_TOKEN` 时，GitHub API 容易触发未认证限流，会自动退回抓取仓库页面里的星数。
+
+### 为什么 Google Scholar 需要配 Key
+
+Google Scholar 没有公开 API，且对机房 IP 直接返回 `403 Sorry...`（本项目实测如此）。所以引用量的抓取是一条降级链：
+
+```
+Google Scholar（SerpAPI / Serper）
+  → Google Scholar 直连（住宅网络才有机会）
+  → Semantic Scholar
+  → OpenAlex
+  → Crossref（通常偏低）
+```
+
+想稳定拿到 GS 数字，在设置里选 SerpAPI 或 Serper 并填 Key。都没有时，详情页「引用量」旁边有 `Scholar ↗` 链接，可以自己查完手动填。
+
+> 这几个公共接口都有速率限制。同一 IP 短时间内连点几篇，可能会看到「引用量被抓取限流」，过一会儿再试，或者直接手填。
 
 ## PDF 本地化
 
@@ -165,6 +181,7 @@ pnpm start     # http://127.0.0.1:8787
 - 自定义位置：`POKEMONPAPER_DB=/path/to.db pnpm start`
 - 自定义端口：`PORT=9000 pnpm start`
 - 可选：`GITHUB_TOKEN=ghp_xxx pnpm start`，把 GitHub API 限额从 60 次/时提到 5000
+- 引用量的 SerpAPI / Serper Key 在页面「设置」里填，不用环境变量
 - 备份：界面右上角「导出」；恢复用「导入」，按 arXiv 号合并
 
 `data/`、`dist/`、`node_modules/` 都在 `.gitignore` 里，不会进版本库。
@@ -265,6 +282,7 @@ interface Paper {
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
 - 批量下载 PDF 还没做，目前是一篇一篇点
 - 指标来自第三方 API，有速率限制；引用量有几天到几周的滞后
+- Google Scholar 直连基本被 403，想要 GS 数字需要 SerpAPI / Serper 的 Key
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 精灵生成器是模板式的，形状会有重复，但配色和细节组合足够区分
 - 未做全文检索，只搜已录入的字段
