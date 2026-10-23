@@ -166,4 +166,8 @@ export const pagesDict: Record<string, string> = {
   '查看完整等级说明 →': 'See the full level guide →',
   '准备中…': 'Preparing…',
   '正在从 arXiv 下载 PDF…': 'Downloading PDF from arXiv…',
+  '随机未读': 'Random unread',
+  '抽到 No.{id}': 'Picked No.{id}',
+  '没有未点亮的论文了': 'Every paper is already lit up',
+  '从未点亮的论文里随机抽一篇': 'Pick a random paper you have not finished yet',
 }

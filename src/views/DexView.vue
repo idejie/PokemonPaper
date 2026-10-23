@@ -4,10 +4,12 @@ import { usePapersStore } from '../stores/papers'
 import PaperCard from '../components/PaperCard.vue'
 import PaperRow from '../components/PaperRow.vue'
 import { usePrefsStore } from '../stores/prefs'
+import { useRouter } from 'vue-router'
 import { paperLevel } from '../core/level'
 import { t } from '../core/i18n'
 
 const store = usePapersStore()
+const router = useRouter()
 const prefs = usePrefsStore()
 const query = ref('')
 const filter = ref<'all' | 'read' | 'reading' | 'unread'>('all')
@@ -46,6 +48,18 @@ const filters = computed<Array<{ key: typeof filter.value; label: string }>>(() 
   { key: 'reading', label: t('在读') },
   { key: 'unread', label: t('未点亮') },
 ])
+
+const unlit = computed(() => store.items.filter((paper) => paper.status !== 'read'))
+
+function pickRandom() {
+  if (!unlit.value.length) {
+    store.notify(t('没有未点亮的论文了'))
+    return
+  }
+  const paper = unlit.value[Math.floor(Math.random() * unlit.value.length)]
+  store.notify(t('抽到 No.{id}', { id: paper.arxiv || '—' }))
+  void router.push(`/p/${paper.id}`)
+}
 
 function onKeydown(event: KeyboardEvent) {
   const target = event.target as HTMLElement | null
@@ -86,6 +100,16 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           <b class="mono">{{ counts[item.key] }}</b>
         </button>
       </div>
+
+      <button
+        type="button"
+        class="dice"
+        :disabled="!unlit.length"
+        :title="t('从未点亮的论文里随机抽一篇')"
+        @click="pickRandom"
+      >
+        🎲 <span>{{ t('随机未读') }}</span>
+      </button>
 
       <div class="layout-switch" role="group" :aria-label="t('布局')">
         <button
@@ -211,6 +235,29 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 
 .chips .pill.on b {
   color: var(--gold);
+}
+
+.dice {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 2px dashed var(--ink);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 12px;
+}
+
+.dice:hover:not(:disabled) {
+  background: var(--gold);
+}
+
+.dice:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .layout-switch {
