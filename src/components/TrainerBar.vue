@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { usePapersStore } from '../stores/papers'
+import { useUiStore } from '../stores/ui'
 import { api } from '../core/api'
 
 const store = usePapersStore()
-const fileInput = ref<HTMLInputElement | null>(null)
+const ui = useUiStore()
 const busy = ref(false)
 
 async function exportJson() {
@@ -23,23 +24,6 @@ async function exportJson() {
     store.notify('导出失败')
   } finally {
     busy.value = false
-  }
-}
-
-async function onFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  try {
-    const parsed = JSON.parse(await file.text()) as { papers?: unknown } | unknown[]
-    const papers = Array.isArray(parsed) ? parsed : (parsed.papers ?? [])
-    const count = await api.importAll({ papers: papers as never[] })
-    await store.load()
-    store.notify(`导入 ${count} 篇`)
-  } catch {
-    store.notify('导入失败：JSON 结构不对')
-  } finally {
-    input.value = ''
   }
 }
 </script>
@@ -76,9 +60,11 @@ async function onFile(event: Event) {
 
       <div class="actions">
         <RouterLink to="/new" class="btn">＋ 登记论文</RouterLink>
+        <button class="btn ghost import-btn" @click="ui.openImport()">导入</button>
         <button class="btn ghost" :disabled="busy" @click="exportJson">导出</button>
-        <button class="btn ghost import-btn" @click="fileInput?.click()">导入</button>
-        <input ref="fileInput" type="file" accept="application/json" class="sr-only" @change="onFile" />
+        <button class="btn icon" title="模型设置" aria-label="模型设置" @click="ui.openSettings()">
+          ⚙
+        </button>
       </div>
     </div>
   </header>
@@ -199,6 +185,12 @@ async function onFile(event: Event) {
   font-size: 9.5px;
   font-weight: 800;
   color: var(--ink);
+}
+
+.btn.icon {
+  padding: 7px 9px;
+  font-size: 14px;
+  background: var(--panel);
 }
 
 .actions {

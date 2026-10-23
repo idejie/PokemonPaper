@@ -72,6 +72,17 @@ export const usePapersStore = defineStore('papers', () => {
     }
   }
 
+  async function ensurePdf(id: string): Promise<Paper | null> {
+    try {
+      const paper = await api.ensurePdf(id)
+      items.value = items.value.map((p) => (p.id === id ? paper : p))
+      return paper
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'PDF 下载失败')
+      return null
+    }
+  }
+
   async function remove(id: string): Promise<boolean> {
     try {
       await api.remove(id)
@@ -115,6 +126,7 @@ export const usePapersStore = defineStore('papers', () => {
     create,
     update,
     remove,
+    ensurePdf,
     markRead,
     byId,
     byArxiv,

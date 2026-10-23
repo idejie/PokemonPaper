@@ -1,0 +1,270 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { PROVIDERS, providerById } from '../core/providers'
+import { useSettingsStore } from '../stores/settings'
+import { usePapersStore } from '../stores/papers'
+import { useUiStore } from '../stores/ui'
+
+const settings = useSettingsStore()
+const store = usePapersStore()
+const ui = useUiStore()
+
+const form = reactive({ ...settings.config })
+const showKey = ref(false)
+const provider = computed(() => providerById(form.providerId))
+
+function selectProvider(id: string) {
+  form.providerId = id
+  const next = providerById(id)
+  if (next.id !== 'custom') {
+    form.baseUrl = next.baseUrl
+    form.model = next.models[0] ?? ''
+  }
+}
+
+function save() {
+  if (!form.baseUrl.trim() || !form.model.trim()) {
+    store.notify('Base URL 和模型名不能为空')
+    return
+  }
+  settings.save({ ...form, baseUrl: form.baseUrl.trim(), model: form.model.trim() })
+  store.notify('模型设置已保存到本地')
+  ui.closeSettings()
+}
+
+function close() {
+  ui.closeSettings()
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') close()
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown)
+  document.body.style.overflow = 'hidden'
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
+})
+</script>
+
+<template>
+  <div class="overlay" @click.self="close">
+    <section class="sheet" role="dialog" aria-modal="true" aria-label="模型设置">
+      <header class="head">
+        <h2>模型设置</h2>
+        <button class="close" type="button" aria-label="关闭" @click="close">×</button>
+      </header>
+
+      <div class="body">
+        <p class="lead">
+          解读用 OpenAI 兼容接口。选一个厂商，填自己的 API Key。
+          <b>Key 只存在这台浏览器</b>，请求经本地服务转发，不会上传到别处。
+        </p>
+
+        <div class="providers">
+          <button
+            v-for="item in PROVIDERS"
+            :key="item.id"
+            type="button"
+            class="provider"
+            :class="{ on: form.providerId === item.id }"
+            @click="selectProvider(item.id)"
+          >
+            <b>{{ item.name }}</b>
+            <small>{{ item.note }}</small>
+          </button>
+        </div>
+
+        <label class="field">
+          <span>Base URL</span>
+          <input v-model="form.baseUrl" class="input mono" placeholder="https://api.deepseek.com/v1" />
+        </label>
+
+        <label class="field">
+          <span>模型</span>
+          <input
+            v-model="form.model"
+            class="input mono"
+            :list="`models-${form.providerId}`"
+            placeholder="deepseek-chat"
+          />
+          <datalist :id="`models-${form.providerId}`">
+            <option v-for="model in provider.models" :key="model" :value="model" />
+          </datalist>
+        </label>
+
+        <label class="field">
+          <span>API Key</span>
+          <div class="key-row">
+            <input
+              v-model="form.apiKey"
+              class="input mono"
+              :type="showKey ? 'text' : 'password'"
+              placeholder="sk-..."
+              autocomplete="off"
+            />
+            <button type="button" class="btn ghost sm" @click="showKey = !showKey">
+              {{ showKey ? '隐藏' : '显示' }}
+            </button>
+          </div>
+        </label>
+
+        <p v-if="provider.keyUrl" class="hint">
+          没有 Key？
+          <a :href="provider.keyUrl" target="_blank" rel="noreferrer">去 {{ provider.name }} 申请 →</a>
+        </p>
+
+        <div class="actions">
+          <button v-if="settings.config.apiKey" type="button" class="btn ghost sm" @click="settings.clearKey(), store.notify('已清除本地 Key')">
+            清除 Key
+          </button>
+          <span class="spacer" />
+          <button type="button" class="btn ghost" @click="close">取消</button>
+          <button type="button" class="btn" @click="save">保存</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<style scoped>
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(34, 29, 26, 0.55);
+  backdrop-filter: blur(3px);
+  overflow-y: auto;
+}
+
+.sheet {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 4px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 9px 9px 0 var(--ink);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom: 4px solid var(--ink);
+}
+
+.head h2 {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ink);
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.body {
+  display: grid;
+  gap: 13px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.lead {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.lead b {
+  color: var(--text);
+}
+
+.providers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.provider {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 2.5px solid var(--ink);
+  border-radius: 9px;
+  background: var(--paper);
+  padding: 7px 9px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.provider b {
+  font-size: 12.5px;
+}
+
+.provider small {
+  font-size: 10px;
+  color: var(--dim);
+  line-height: 1.35;
+}
+
+.provider.on {
+  background: var(--gold);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.key-row {
+  display: flex;
+  gap: 8px;
+}
+
+.key-row .input {
+  flex: 1;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 2px dashed var(--line);
+}
+
+.spacer {
+  flex: 1;
+}
+
+@media (max-width: 620px) {
+  .providers {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+</style>

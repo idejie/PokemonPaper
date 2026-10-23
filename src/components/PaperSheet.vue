@@ -2,14 +2,19 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import SpriteSvg from './SpriteSvg.vue'
+import { api } from '../core/api'
 import { usePapersStore } from '../stores/papers'
+import { useSettingsStore } from '../stores/settings'
+import { useUiStore } from '../stores/ui'
 import { TYPE_KEYS, TYPE_COLORS, TYPES, guessType } from '../core/typeMap'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
-import type { Paper, PaperStatus, TypeKey } from '../core/types'
+import type { Explain, Paper, PaperStatus, TypeKey } from '../core/types'
 
 const props = defineProps<{ id?: string }>()
 const router = useRouter()
 const store = usePapersStore()
+const settings = useSettingsStore()
+const ui = useUiStore()
 
 const currentYear = new Date().getFullYear()
 const form = reactive({
@@ -23,10 +28,14 @@ const form = reactive({
   rating: 0,
   tags: '',
   notes: '',
+  abstract: '',
 })
 
 const typeTouched = ref(false)
 const saving = ref(false)
+const fetching = ref(false)
+const pdfBusy = ref(false)
+const explaining = ref(false)
 
 const creating = computed(() => !props.id)
 const paper = computed(() => (props.id ? store.byId(props.id) : undefined))
@@ -34,6 +43,17 @@ const missing = computed(() => !creating.value && !store.loading && !paper.value
 const seed = computed(() => form.arxiv || form.title || 'pokemonpaper-new')
 const typeDef = computed(() => TYPES[form.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.normal)
+
+const explainData = computed<Explain | null>(() => {
+  const raw = paper.value?.explain
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as Explain
+    return parsed && parsed.oneLiner ? parsed : null
+  } catch {
+    return null
+  }
+})
 
 function apply(entry: Paper) {
   form.arxiv = entry.arxiv
@@ -46,6 +66,7 @@ function apply(entry: Paper) {
   form.rating = entry.rating
   form.tags = entry.tags
   form.notes = entry.notes
+  form.abstract = entry.abstract
   typeTouched.value = true
 }
 
@@ -59,7 +80,7 @@ watch(
 
 function maybeGuessType() {
   if (typeTouched.value) return
-  form.type = guessType(form.title, form.tags, form.arxiv)
+  form.type = guessType(form.title, form.tags, form.arxiv, form.abstract)
 }
 
 function onArxivInput() {
@@ -88,7 +109,38 @@ function payload() {
     rating: form.rating,
     tags: form.tags.trim(),
     notes: form.notes,
+    abstract: form.abstract.trim(),
     url: form.arxiv ? arxivAbsUrl(form.arxiv.trim()) : '',
+  }
+}
+
+async function fetchMeta() {
+  const id = parseArxivId(form.arxiv)
+  if (!id) {
+    store.notify('先填一个 arXiv 编号或链接')
+    return
+  }
+  fetching.value = true
+  try {
+    const [item] = await api.previewArxiv([id])
+    if (!item) {
+      store.notify('arXiv 上没找到这篇')
+      return
+    }
+    form.arxiv = item.arxiv
+    form.title = item.title || form.title
+    form.authors = item.authors || form.authors
+    form.venue = item.venue || form.venue
+    form.year = item.year ?? form.year
+    form.abstract = item.abstract || form.abstract
+    if (!typeTouched.value) {
+      form.type = guessType(item.title, item.abstract, item.comment, item.category)
+    }
+    store.notify('已抓取元数据')
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : '抓取失败')
+  } finally {
+    fetching.value = false
   }
 }
 
@@ -132,9 +184,38 @@ async function markLit() {
   }
 }
 
+async function openPdf() {
+  if (!props.id) return
+  pdfBusy.value = true
+  const updated = await store.ensurePdf(props.id)
+  pdfBusy.value = false
+  if (updated) window.open(api.pdfUrl(props.id), '_blank', 'noopener')
+}
+
+async function generateExplain() {
+  if (!settings.ready) {
+    ui.openSettings()
+    return
+  }
+  if (!props.id) {
+    store.notify('先保存这篇论文，再生成解读')
+    return
+  }
+  explaining.value = true
+  try {
+    const result = await api.explain(payload(), settings.config)
+    const updated = await store.update(props.id, { explain: JSON.stringify(result) })
+    if (updated) store.notify('解读已生成')
+  } catch (err) {
+    store.notify(err instanceof Error ? err.message : '生成失败')
+  } finally {
+    explaining.value = false
+  }
+}
+
 async function remove() {
   if (!props.id) return
-  const ok = window.confirm('从图鉴中移除这篇论文？笔记也会一起删除。')
+  const ok = window.confirm('从图鉴中移除这篇论文？笔记和解读也会一起删除。')
   if (!ok) return
   const done = await store.remove(props.id)
   if (done) close()
@@ -175,117 +256,206 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-else class="sheet-body">
-        <aside class="preview">
-          <div class="stage" :class="{ dim: form.status !== 'read' }">
-            <SpriteSvg :seed="seed" :type="form.type" :locked="form.status === 'unread'" />
-          </div>
+        <div class="main">
+          <aside class="preview">
+            <div class="stage" :class="{ dim: form.status === 'unread' }">
+              <SpriteSvg :seed="seed" :type="form.type" :locked="form.status === 'unread'" />
+            </div>
 
-          <div class="preview-meta">
-            <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
-            <span class="mono dim">{{ form.arxiv || '待登记' }}</span>
-          </div>
+            <div class="preview-meta">
+              <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
+              <span class="mono dim">{{ form.arxiv || '待登记' }}</span>
+            </div>
 
-          <div class="stars" role="group" aria-label="评分">
-            <button
-              v-for="star in 5"
-              :key="star"
-              type="button"
-              class="star"
-              :class="{ on: star <= form.rating }"
-              :aria-label="`${star} 星`"
-              @click="setRating(star)"
-            >
-              ★
-            </button>
-          </div>
+            <div class="stars" role="group" aria-label="评分">
+              <button
+                v-for="star in 5"
+                :key="star"
+                type="button"
+                class="star"
+                :class="{ on: star <= form.rating }"
+                :aria-label="`${star} 星`"
+                @click="setRating(star)"
+              >
+                ★
+              </button>
+            </div>
 
-          <div class="seg" role="group" aria-label="阅读状态">
-            <button
-              type="button"
-              :class="{ on: form.status === 'unread' }"
-              @click="setStatus('unread')"
-            >
-              未读
-            </button>
-            <button
-              type="button"
-              :class="{ on: form.status === 'reading' }"
-              @click="setStatus('reading')"
-            >
-              在读
-            </button>
-            <button type="button" :class="{ on: form.status === 'read' }" @click="setStatus('read')">
-              已读
-            </button>
-          </div>
+            <div class="seg" role="group" aria-label="阅读状态">
+              <button type="button" :class="{ on: form.status === 'unread' }" @click="setStatus('unread')">
+                未读
+              </button>
+              <button type="button" :class="{ on: form.status === 'reading' }" @click="setStatus('reading')">
+                在读
+              </button>
+              <button type="button" :class="{ on: form.status === 'read' }" @click="setStatus('read')">
+                已读
+              </button>
+            </div>
 
-          <p class="preview-hint">精灵由 arXiv 编号生成，编号不变，精灵不变。</p>
-        </aside>
+            <p class="preview-hint">精灵由 arXiv 编号生成，编号不变，精灵不变。</p>
+          </aside>
 
-        <form class="form" @submit.prevent="save">
-          <label class="field">
-            <span>arXiv 编号 / 链接</span>
-            <input
-              v-model="form.arxiv"
-              class="input mono"
-              placeholder="2610.28480 或 https://arxiv.org/pdf/2610.28480"
-              @input="onArxivInput"
-            />
-          </label>
+          <form class="form" @submit.prevent="save">
+            <div class="pdfbar">
+              <span class="pdf-tag">PDF</span>
+              <span class="pdf-state">
+                {{ paper?.pdfPath ? `已存本地 · ${paper.pdfPath}` : '未下载，点右侧从 arXiv 拉取' }}
+              </span>
+              <button
+                type="button"
+                class="btn sm"
+                :disabled="pdfBusy || !props.id || !form.arxiv"
+                @click="openPdf"
+              >
+                {{ pdfBusy ? '处理中…' : paper?.pdfPath ? '阅读原文' : '下载并阅读' }}
+              </button>
+            </div>
 
-          <label class="field">
-            <span>标题 *</span>
-            <input v-model="form.title" class="input" required @input="maybeGuessType" />
-          </label>
+            <div class="row2">
+              <label class="field">
+                <span>arXiv 编号 / 链接</span>
+                <div class="input-row">
+                  <input
+                    v-model="form.arxiv"
+                    class="input mono"
+                    placeholder="2610.28480"
+                    @input="onArxivInput"
+                  />
+                  <button
+                    type="button"
+                    class="btn sm ghost"
+                    :disabled="fetching || !form.arxiv"
+                    @click="fetchMeta"
+                  >
+                    {{ fetching ? '…' : '抓取' }}
+                  </button>
+                </div>
+              </label>
+              <label class="field">
+                <span>年份</span>
+                <input v-model.number="form.year" class="input mono" type="number" min="1950" max="2100" />
+              </label>
+            </div>
 
-          <label class="field">
-            <span>作者</span>
-            <input v-model="form.authors" class="input" placeholder="用逗号分隔" />
-          </label>
-
-          <div class="row2">
             <label class="field">
-              <span>会议 / 期刊</span>
-              <input v-model="form.venue" class="input" placeholder="CoRL / arXiv / Science Robotics" />
+              <span>标题 *</span>
+              <input v-model="form.title" class="input" required @input="maybeGuessType" />
             </label>
-            <label class="field">
-              <span>年份</span>
-              <input v-model.number="form.year" class="input mono" type="number" min="1950" max="2100" />
-            </label>
-          </div>
 
-          <div class="row2">
             <label class="field">
-              <span>属性</span>
-              <select v-model="form.type" class="select" @change="typeTouched = true">
-                <option v-for="key in TYPE_KEYS" :key="key" :value="key">
-                  {{ TYPES[key].cn }}
-                </option>
-              </select>
+              <span>作者</span>
+              <input v-model="form.authors" class="input" placeholder="用逗号分隔" />
             </label>
+
+            <div class="row2">
+              <label class="field">
+                <span>会议 / 期刊</span>
+                <input v-model="form.venue" class="input" placeholder="CoRL / arXiv / Science Robotics" />
+              </label>
+              <label class="field">
+                <span>属性</span>
+                <select v-model="form.type" class="select" @change="typeTouched = true">
+                  <option v-for="key in TYPE_KEYS" :key="key" :value="key">{{ TYPES[key].cn }}</option>
+                </select>
+              </label>
+            </div>
+
             <label class="field">
               <span>标签</span>
               <input v-model="form.tags" class="input" placeholder="world model, humanoid" @input="maybeGuessType" />
             </label>
+
+            <label class="field">
+              <span>摘要</span>
+              <textarea
+                v-model="form.abstract"
+                class="textarea abstract"
+                placeholder="点「抓取」自动填；也可以手贴"
+              />
+            </label>
+
+            <label class="field">
+              <span>我的笔记</span>
+              <textarea
+                v-model="form.notes"
+                class="textarea"
+                placeholder="一句话结论、方法要点、要复现的东西…"
+              />
+            </label>
+
+            <div class="actions">
+              <button v-if="!creating" type="button" class="btn danger" @click="remove">删除</button>
+              <span class="spacer" />
+              <button type="button" class="btn ghost" @click="close">取消</button>
+              <button type="submit" class="btn" :disabled="saving">
+                {{ saving ? '保存中…' : '保存' }}
+              </button>
+              <button v-if="form.status !== 'read'" type="button" class="btn lit" @click="markLit">
+                ✦ 点亮
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <section class="explain">
+          <header class="explain-head">
+            <h3>AI 解读</h3>
+            <span class="hint">
+              {{ settings.ready ? settings.config.model : '还没配置模型' }}
+            </span>
+            <button v-if="!settings.ready" type="button" class="btn sm" @click="ui.openSettings()">
+              去配置
+            </button>
+            <button
+              v-else
+              type="button"
+              class="btn sm"
+              :disabled="explaining || !paper"
+              @click="generateExplain"
+            >
+              {{ explaining ? '生成中…' : explainData ? '重新生成' : '生成解读' }}
+            </button>
+          </header>
+
+          <div v-if="!explainData" class="explain-empty">
+            用摘要生成一张速读卡：一句话、问题、方法、关键数字、局限、下一步。
+            <span v-if="!form.abstract" class="warn">还没有摘要，建议先点「抓取」。</span>
           </div>
 
-          <label class="field">
-            <span>笔记</span>
-            <textarea v-model="form.notes" class="textarea" placeholder="一句话结论、方法要点、要复现的东西…" />
-          </label>
-
-          <div class="actions">
-            <button v-if="!creating" type="button" class="btn danger" @click="remove">删除</button>
-            <span class="spacer" />
-            <button type="button" class="btn ghost" @click="close">取消</button>
-            <button type="submit" class="btn" :disabled="saving">
-              {{ saving ? '保存中…' : '保存' }}
-            </button>
-            <button v-if="form.status !== 'read'" type="button" class="btn lit" @click="markLit">
-              ✦ 点亮
-            </button>
+          <div v-else class="explain-grid">
+            <p class="one-liner">{{ explainData.oneLiner }}</p>
+            <div class="block">
+              <h4>问题</h4>
+              <p>{{ explainData.problem || '—' }}</p>
+            </div>
+            <div class="block">
+              <h4>方法</h4>
+              <p>{{ explainData.method || '—' }}</p>
+            </div>
+            <div class="block">
+              <h4>关键数字</h4>
+              <ul v-if="explainData.numbers.length">
+                <li v-for="(item, i) in explainData.numbers" :key="i">{{ item }}</li>
+              </ul>
+              <p v-else class="muted">摘要里没有定量结果</p>
+            </div>
+            <div class="block">
+              <h4>局限</h4>
+              <ul v-if="explainData.limitations.length">
+                <li v-for="(item, i) in explainData.limitations" :key="i">{{ item }}</li>
+              </ul>
+              <p v-else class="muted">—</p>
+            </div>
+            <div class="block">
+              <h4>下一步</h4>
+              <ul v-if="explainData.actions.length">
+                <li v-for="(item, i) in explainData.actions" :key="i">{{ item }}</li>
+              </ul>
+              <p v-else class="muted">—</p>
+            </div>
           </div>
-        </form>
+        </section>
       </div>
     </section>
   </div>
@@ -305,7 +475,7 @@ onBeforeUnmount(() => {
 }
 
 .sheet {
-  width: min(920px, 100%);
+  width: min(980px, 100%);
   max-height: calc(100vh - 44px);
   display: flex;
   flex-direction: column;
@@ -368,10 +538,15 @@ onBeforeUnmount(() => {
 
 .sheet-body {
   display: grid;
-  grid-template-columns: 250px 1fr;
-  gap: 22px;
+  gap: 18px;
   padding: 20px;
   overflow-y: auto;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 22px;
 }
 
 .preview {
@@ -393,7 +568,7 @@ onBeforeUnmount(() => {
 }
 
 .stage.dim :deep(svg) {
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .preview-meta {
@@ -482,10 +657,55 @@ onBeforeUnmount(() => {
   align-content: start;
 }
 
+.pdfbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2.5px dashed var(--line);
+  border-radius: 9px;
+  padding: 7px 10px;
+  background: var(--paper);
+}
+
+.pdf-tag {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--red);
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.pdf-state {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .row2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.input-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.textarea.abstract {
+  min-height: 86px;
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
 .actions {
@@ -521,8 +741,89 @@ onBeforeUnmount(() => {
   font-size: 14px;
 }
 
+.explain {
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: var(--panel-2);
+  padding: 14px 16px 16px;
+}
+
+.explain-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.explain-head h3 {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.explain-head .hint {
+  font-size: 11px;
+  color: var(--dim);
+  flex: 1;
+}
+
+.explain-empty {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.explain-empty .warn {
+  color: var(--red);
+  font-weight: 700;
+}
+
+.explain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 16px;
+}
+
+.one-liner {
+  grid-column: 1 / -1;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.5;
+  border-left: 3px solid var(--red);
+  padding-left: 10px;
+}
+
+.block h4 {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  margin-bottom: 3px;
+}
+
+.block p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.block ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.block li {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--dim) !important;
+  font-size: 12px;
+}
+
 @media (max-width: 760px) {
-  .sheet-body {
+  .main {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -559,6 +860,10 @@ onBeforeUnmount(() => {
   }
 
   .row2 {
+    grid-template-columns: 1fr;
+  }
+
+  .explain-grid {
     grid-template-columns: 1fr;
   }
 }

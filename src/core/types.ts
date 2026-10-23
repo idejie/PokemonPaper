@@ -24,6 +24,9 @@ export interface Paper {
   rating: number
   tags: string
   notes: string
+  abstract: string
+  explain: string
+  pdfPath: string
   url: string
   addedAt: string
   readAt: string | null
@@ -31,4 +34,32 @@ export interface Paper {
 
 export type PaperInput = Partial<Omit<Paper, 'id' | 'addedAt'>> & {
   title: string
+}
+
+export interface ArxivItem {
+  arxiv: string
+  title: string
+  authors: string
+  abstract: string
+  published: string
+  year: number | null
+  venue: string
+  comment: string
+  category: string
+}
+
+export interface Explain {
+  oneLiner: string
+  problem: string
+  method: string
+  numbers: string[]
+  limitations: string[]
+  actions: string[]
+}
+
+export interface LlmConfig {
+  providerId: string
+  baseUrl: string
+  apiKey: string
+  model: string
 }
