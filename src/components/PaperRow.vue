@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import SpriteSvg from './SpriteSvg.vue'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
-import { TYPE_COLORS, TYPES } from '../core/typeMap'
+import { categoryChipColor } from '../core/palette'
 
 const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
@@ -12,8 +12,7 @@ const router = useRouter()
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const locked = computed(() => props.paper.status === 'unread')
 const lv = computed(() => paperLevel(props.paper))
-const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.steel)
-const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.steel)
+const catColor = computed(() => categoryChipColor(props.paper.primaryCategory))
 function openDetail() {
   void router.push(`/p/${props.paper.id}`)
 }
@@ -39,7 +38,7 @@ const statusText = computed(() => {
     @keydown.enter="openDetail"
   >
     <div class="pic">
-      <SpriteSvg :seed="seed" :type="paper.type" :locked="locked" />
+      <SpriteSvg :seed="seed" :category="paper.primaryCategory" :locked="locked" />
     </div>
 
     <div class="main">
@@ -54,8 +53,9 @@ const statusText = computed(() => {
     </div>
 
     <div class="side">
-      <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
-      <span v-if="paper.primaryCategory" class="cat mono">{{ paper.primaryCategory }}</span>
+      <span class="type-chip" :style="{ background: catColor }">
+        {{ paper.primaryCategory || '未分类' }}
+      </span>
       <span class="lv mono" :style="{ background: TIER_COLORS[lv.tier] }" :title="`${lv.tier} · ${paper.stars} star`">
         Lv.{{ lv.level }}
       </span>

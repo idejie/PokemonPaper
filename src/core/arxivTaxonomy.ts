@@ -1,5 +1,3 @@
-import type { TypeKey } from './types'
-
 export interface ArxivCategory {
   code: string
   name: string
@@ -169,62 +167,6 @@ export const ARXIV_CATEGORIES: ArxivCategory[] = [
 
 const CATEGORY_NAMES = new Map(ARXIV_CATEGORIES.map((item) => [item.code, item.name]))
 
-/** 常用类目直接指定属性，避免关键词误判 */
-const CODE_TYPES: Record<string, TypeKey> = {
-  'cs.RO': 'steel',
-  'cs.CV': 'water',
-  'cs.LG': 'psychic',
-  'cs.AI': 'dragon',
-  'cs.CL': 'psychic',
-  'cs.MA': 'ghost',
-  'cs.NE': 'dark',
-  'cs.DS': 'dark',
-  'cs.CR': 'dark',
-  'cs.DB': 'steel',
-  'cs.GR': 'water',
-  'cs.SD': 'water',
-  'cs.IR': 'steel',
-  'cs.HC': 'steel',
-  'cs.ET': 'electric',
-  'cs.IT': 'electric',
-  'stat.ML': 'psychic',
-  'eess.SY': 'electric',
-  'eess.AS': 'water',
-  'eess.IV': 'water',
-  'eess.SP': 'electric',
-  'math.OC': 'steel',
-}
-
-/** 剩下的按一级归档兜底 */
-const PREFIX_TYPES: Array<[string, TypeKey]> = [
-  ['cs.', 'steel'],
-  ['stat.', 'psychic'],
-  ['eess.', 'electric'],
-  ['math.', 'steel'],
-  ['econ.', 'steel'],
-  ['q-fin.', 'steel'],
-  ['q-bio.', 'grass'],
-  ['astro-ph.', 'dragon'],
-  ['cond-mat.', 'steel'],
-  ['gr-qc', 'psychic'],
-  ['hep-', 'electric'],
-  ['math-ph', 'psychic'],
-  ['nlin.', 'ghost'],
-  ['nucl-', 'electric'],
-  ['physics.', 'steel'],
-  ['quant-ph', 'ghost'],
-]
-
 export function categoryName(code: string): string {
   return CATEGORY_NAMES.get(code) ?? code
-}
-
-export function typeForCategory(code: string | undefined | null): TypeKey | null {
-  if (!code) return null
-  if (CODE_TYPES[code]) return CODE_TYPES[code]
-  for (const [prefix, type] of PREFIX_TYPES) {
-    if (code.startsWith(prefix)) return type
-  }
-  // 没有收录的类目也给一个正经属性，不留「普通」
-  return 'steel'
 }

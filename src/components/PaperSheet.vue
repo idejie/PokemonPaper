@@ -6,11 +6,11 @@ import { api } from '../core/api'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
-import { TYPE_KEYS, TYPE_COLORS, TYPES, guessType } from '../core/typeMap'
+import { categoryChipColor } from '../core/palette'
 import { TIER_COLORS, paperLevel } from '../core/level'
-import { ARXIV_CATEGORIES, typeForCategory } from '../core/arxivTaxonomy'
+import { ARXIV_CATEGORIES } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
-import type { Explain, Paper, PaperStatus, TypeKey } from '../core/types'
+import type { Explain, Paper, PaperStatus } from '../core/types'
 
 const props = defineProps<{ id?: string }>()
 const router = useRouter()
@@ -25,7 +25,6 @@ const form = reactive({
   authors: '',
   venue: '',
   year: currentYear as number | null,
-  type: 'steel' as TypeKey,
   status: 'unread' as PaperStatus,
   rating: 0,
   tags: '',
@@ -36,7 +35,6 @@ const form = reactive({
   stars: 0,
 })
 
-const typeTouched = ref(false)
 const saving = ref(false)
 const fetching = ref(false)
 const pdfBusy = ref(false)
@@ -47,8 +45,7 @@ const creating = computed(() => !props.id)
 const paper = computed(() => (props.id ? store.byId(props.id) : undefined))
 const missing = computed(() => !creating.value && !store.loading && !paper.value)
 const seed = computed(() => form.arxiv || form.title || 'pokemonpaper-new')
-const typeDef = computed(() => TYPES[form.type] ?? TYPES.steel)
-const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.steel)
+const catColor = computed(() => categoryChipColor(form.primaryCategory))
 
 const level = computed(() => paperLevel({ codeUrl: form.codeUrl, stars: form.stars }))
 
@@ -69,7 +66,6 @@ function apply(entry: Paper) {
   form.authors = entry.authors
   form.venue = entry.venue
   form.year = entry.year ?? currentYear
-  form.type = entry.type
   form.status = entry.status
   form.rating = entry.rating
   form.tags = entry.tags
@@ -78,7 +74,6 @@ function apply(entry: Paper) {
   form.primaryCategory = entry.primaryCategory
   form.codeUrl = entry.codeUrl
   form.stars = entry.stars
-  typeTouched.value = true
 }
 
 watch(
@@ -89,21 +84,9 @@ watch(
   { immediate: true },
 )
 
-function onCategoryChange() {
-  if (typeTouched.value) return
-  const mapped = typeForCategory(form.primaryCategory)
-  if (mapped) form.type = mapped
-}
-
-function maybeGuessType() {
-  if (typeTouched.value) return
-  form.type = guessType(form.title, form.tags, form.arxiv, form.abstract)
-}
-
 function onArxivInput() {
   const parsed = parseArxivId(form.arxiv)
   if (parsed && parsed !== form.arxiv) form.arxiv = parsed
-  maybeGuessType()
 }
 
 function setStatus(status: PaperStatus) {
@@ -121,7 +104,6 @@ function payload() {
     authors: form.authors.trim(),
     venue: form.venue.trim(),
     year: form.year ? Number(form.year) : null,
-    type: form.type,
     status: form.status,
     rating: form.rating,
     tags: form.tags.trim(),
@@ -155,11 +137,6 @@ async function fetchMeta() {
     form.year = item.year ?? form.year
     form.abstract = item.abstract || form.abstract
     form.primaryCategory = item.primaryCategory || item.category || form.primaryCategory
-    if (!typeTouched.value) {
-      form.type =
-        typeForCategory(form.primaryCategory) ??
-        guessType(item.title, item.abstract, item.comment, item.category)
-    }
     store.notify('已抓取元数据')
   } catch (err) {
     store.notify(err instanceof Error ? err.message : '抓取失败')
@@ -305,11 +282,13 @@ onBeforeUnmount(() => {
         <div class="main">
           <aside class="preview">
             <div class="stage" :class="{ dim: form.status === 'unread' }">
-              <SpriteSvg :seed="seed" :type="form.type" :locked="form.status === 'unread'" />
+              <SpriteSvg :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" />
             </div>
 
             <div class="preview-meta">
-              <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
+              <span class="type-chip" :style="{ background: catColor }">
+                {{ form.primaryCategory || '未分类' }}
+              </span>
               <span class="mono dim">{{ form.arxiv || '待登记' }}</span>
             </div>
 
@@ -387,7 +366,7 @@ onBeforeUnmount(() => {
 
             <label class="field">
               <span>标题 *</span>
-              <input v-model="form.title" class="input" required @input="maybeGuessType" />
+              <input v-model="form.title" class="input" required />
             </label>
 
             <label class="field">
@@ -395,22 +374,14 @@ onBeforeUnmount(() => {
               <input v-model="form.authors" class="input" placeholder="用逗号分隔" />
             </label>
 
-            <div class="row2">
-              <label class="field">
-                <span>会议 / 期刊</span>
-                <input v-model="form.venue" class="input" placeholder="CoRL / arXiv / Science Robotics" />
-              </label>
-              <label class="field">
-                <span>属性</span>
-                <select v-model="form.type" class="select" @change="typeTouched = true">
-                  <option v-for="key in TYPE_KEYS" :key="key" :value="key">{{ TYPES[key].cn }}</option>
-                </select>
-              </label>
-            </div>
+            <label class="field">
+              <span>会议 / 期刊</span>
+              <input v-model="form.venue" class="input" placeholder="CoRL / arXiv / Science Robotics" />
+            </label>
 
             <label class="field">
               <span>arXiv 分类</span>
-              <select v-model="form.primaryCategory" class="select" @change="onCategoryChange">
+              <select v-model="form.primaryCategory" class="select">
                 <option value="">未设置</option>
                 <option v-for="item in ARXIV_CATEGORIES" :key="item.code" :value="item.code">
                   {{ item.code }} · {{ item.name }}
@@ -420,7 +391,7 @@ onBeforeUnmount(() => {
 
             <label class="field">
               <span>标签</span>
-              <input v-model="form.tags" class="input" placeholder="world model, humanoid" @input="maybeGuessType" />
+              <input v-model="form.tags" class="input" placeholder="world model, humanoid" />
             </label>
 
             <div class="levelbar">

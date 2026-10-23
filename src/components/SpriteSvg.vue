@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { SPRITE_SIZE, buildSprite } from '../core/sprite'
-import type { TypeKey } from '../core/types'
 
 const props = withDefaults(
   defineProps<{
     seed: string
-    type: TypeKey
+    category: string
     locked?: boolean
   }>(),
   { locked: false },
 )
 
-const rects = computed(() => buildSprite(props.seed, props.type, props.locked))
+const rects = computed(() => buildSprite(props.seed, props.category, props.locked))
 </script>
 
 <template>

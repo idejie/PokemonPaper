@@ -3,9 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../core/api'
 import { arxivAbsUrl } from '../core/arxiv'
 import { bibEntryToPaper, parseBibtex } from '../core/bibtex'
-import { guessType } from '../core/typeMap'
-import { typeForCategory } from '../core/arxivTaxonomy'
-import type { Paper, TypeKey } from '../core/types'
+import type { Paper } from '../core/types'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
 
@@ -19,7 +17,6 @@ interface Draft {
   abstract: string
   tags: string
   primaryCategory: string
-  type: TypeKey
 }
 
 type Tab = 'arxiv' | 'bibtex' | 'json'
@@ -71,7 +68,6 @@ function makeDraft(partial: Partial<Draft> & { title: string }): Draft {
     abstract: '',
     tags: '',
     primaryCategory: '',
-    type: guessType(partial.title, partial.abstract, partial.tags),
     ...partial,
   }
 }
@@ -98,9 +94,6 @@ async function loadArxiv() {
         year: item.year,
         abstract: item.abstract,
         primaryCategory,
-        type:
-          typeForCategory(primaryCategory) ??
-          guessType(item.title, item.abstract, item.comment, item.category),
       })
     })
     if (found.length < ids.length) {
@@ -122,10 +115,7 @@ function loadBibtex() {
   }
   items.value = entries.map((entry) => {
     const paper = bibEntryToPaper(entry)
-    return makeDraft({
-      ...paper,
-      type: guessType(paper.title, paper.abstract, paper.tags, paper.venue),
-    })
+    return makeDraft(paper)
   })
 }
 
@@ -158,10 +148,6 @@ async function onJsonFile(event: Event) {
           abstract: paper.abstract ?? '',
           tags: paper.tags ?? '',
           primaryCategory: paper.primaryCategory ?? '',
-          type:
-            typeForCategory(paper.primaryCategory) ??
-            paper.type ??
-            guessType(paper.title, paper.tags),
         }),
       )
   } catch {
@@ -190,7 +176,6 @@ async function confirmImport() {
         authors: item.authors,
         venue: item.venue,
         year: item.year,
-        type: item.type,
         tags: item.tags,
         abstract: item.abstract,
         primaryCategory: item.primaryCategory,

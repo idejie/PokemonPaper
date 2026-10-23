@@ -3,15 +3,14 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Paper } from '../core/types'
 import { TIER_COLORS, paperLevel } from '../core/level'
-import { TYPE_COLORS, TYPES } from '../core/typeMap'
+import { categoryChipColor } from '../core/palette'
 import SpriteSvg from './SpriteSvg.vue'
 
 const props = defineProps<{ paper: Paper }>()
 const router = useRouter()
 
 const locked = computed(() => props.paper.status === 'unread')
-const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.steel)
-const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.steel)
+const catColor = computed(() => categoryChipColor(props.paper.primaryCategory))
 const seed = computed(() => props.paper.arxiv || props.paper.title)
 const lv = computed(() => paperLevel(props.paper))
 const statusText = computed(() => {
@@ -55,16 +54,18 @@ function readFull() {
     </div>
 
     <div class="sprite-box">
-      <SpriteSvg :seed="seed" :type="paper.type" :locked="locked" />
+      <SpriteSvg :seed="seed" :category="paper.primaryCategory" :locked="locked" />
       <span v-if="!locked" class="spark" aria-hidden="true">✦</span>
     </div>
 
     <h3 class="title">{{ paper.title }}</h3>
 
     <div class="card-foot">
-      <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
+      <span class="type-chip" :style="{ background: catColor }">
+        {{ paper.primaryCategory || '未分类' }}
+      </span>
       <span class="venue mono" :title="`${paper.venue || ''} ${paper.year || ''}`">
-        {{ paper.primaryCategory || paper.categories[0] || '—' }}
+        {{ paper.venue || '—' }}{{ paper.year ? ` · ${paper.year}` : '' }}
       </span>
     </div>
 

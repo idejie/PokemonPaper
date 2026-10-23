@@ -5,7 +5,7 @@ import MarkdownLite from '../components/MarkdownLite.vue'
 const PdfViewer = defineAsyncComponent(() => import('../components/PdfViewer.vue'))
 import { api } from '../core/api'
 import { paperLevel } from '../core/level'
-import { TYPE_COLORS, TYPES } from '../core/typeMap'
+import { categoryChipColor } from '../core/palette'
 import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
@@ -22,10 +22,7 @@ const summarizing = ref(false)
 
 const paper = computed(() => store.byId(props.id))
 const lv = computed(() => (paper.value ? paperLevel(paper.value) : null))
-const typeDef = computed(() => (paper.value ? TYPES[paper.value.type] ?? TYPES.steel : TYPES.steel))
-const typeColor = computed(() =>
-  paper.value ? TYPE_COLORS[paper.value.type] ?? TYPE_COLORS.steel : TYPE_COLORS.steel,
-)
+const typeColor = computed(() => categoryChipColor(paper.value?.primaryCategory))
 const summary = computed(() => paper.value?.summary ?? '')
 const summaryDate = computed(() => {
   const raw = paper.value?.summaryAt
@@ -110,7 +107,9 @@ onMounted(async () => {
           <span v-if="paper.authors">{{ paper.authors }}</span>
           <span v-if="paper.venue" class="venue">{{ paper.venue }}</span>
           <span v-if="paper.year" class="mono">{{ paper.year }}</span>
-          <span class="chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
+          <span class="chip mono" :style="{ background: typeColor }">
+            {{ paper.primaryCategory || '未分类' }}
+          </span>
         </p>
 
         <nav class="tabs">

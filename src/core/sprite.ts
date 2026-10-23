@@ -1,5 +1,4 @@
-import type { TypeKey } from './types'
-import { TYPES } from './typeMap'
+import { paletteForCategory, type SpritePalette } from './palette'
 
 export interface SpriteRect {
   x: number
@@ -28,14 +27,7 @@ const ACCENT = 6
 const EDGE = 7
 const SHADOW_PX = 9
 
-interface Palette {
-  base: string
-  light: string
-  dark: string
-  accent: string
-}
-
-const LOCKED: Palette = {
+const LOCKED: SpritePalette = {
   base: '#57503f',
   light: '#57503f',
   dark: '#57503f',
@@ -508,17 +500,7 @@ function groundShadow(g: Grid, a: Anatomy) {
 
 const cache = new Map<string, SpriteRect[]>()
 
-function paletteOf(type: TypeKey): Palette {
-  const def = TYPES[type] ?? TYPES.steel
-  return {
-    base: def.base,
-    light: def.light,
-    dark: def.dark,
-    accent: def.light,
-  }
-}
-
-function colorFor(v: number, palette: Palette, locked: boolean): string {
+function colorFor(v: number, palette: SpritePalette, locked: boolean): string {
   if (locked) {
     if (v === EYE || v === EDGE) return OUTLINE
     if (v === WHITE) return '#cfc7b8'
@@ -541,8 +523,8 @@ function colorFor(v: number, palette: Palette, locked: boolean): string {
   }
 }
 
-export function buildSprite(seed: string, type: TypeKey, locked = false): SpriteRect[] {
-  const key = `${seed}|${type}|${locked ? 1 : 0}`
+export function buildSprite(seed: string, category: string, locked = false): SpriteRect[] {
+  const key = `${seed}|${category}|${locked ? 1 : 0}`
   const hit = cache.get(key)
   if (hit) return hit
 
@@ -563,7 +545,7 @@ export function buildSprite(seed: string, type: TypeKey, locked = false): Sprite
   outline(g)
   if (!locked) groundShadow(g, anatomy)
 
-  const palette = paletteOf(type)
+  const palette = paletteForCategory(category)
   const rects: SpriteRect[] = []
 
   for (let y = 0; y < S; y += 1) {

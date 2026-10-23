@@ -1,16 +1,5 @@
 export type PaperStatus = 'unread' | 'reading' | 'read'
 
-export type TypeKey =
-  | 'fire'
-  | 'water'
-  | 'grass'
-  | 'electric'
-  | 'psychic'
-  | 'ghost'
-  | 'steel'
-  | 'dark'
-  | 'dragon'
-
 export interface Paper {
   id: string
   arxiv: string
@@ -18,7 +7,6 @@ export interface Paper {
   authors: string
   venue: string
   year: number | null
-  type: TypeKey
   status: PaperStatus
   rating: number
   tags: string
