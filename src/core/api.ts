@@ -210,6 +210,14 @@ export const api = {
     return request<{ exportedAt: string; papers: Paper[] }>('/api/export')
   },
 
+  async searchArxiv(query: string, max = 20): Promise<ArxivItem[]> {
+    const data = await request<{ items: ArxivItem[] }>('/api/arxiv/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, max }),
+    })
+    return data.items
+  },
+
   async previewArxiv(ids: string[]): Promise<ArxivItem[]> {
     const data = await request<{ items: ArxivItem[] }>('/api/arxiv/preview', {
       method: 'POST',

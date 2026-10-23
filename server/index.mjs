@@ -481,6 +481,24 @@ function parseAtom(xml) {
   return items
 }
 
+async function searchArxiv(query, maxResults = 20) {
+  const cleaned = String(query || '').trim().slice(0, 200)
+  if (!cleaned) throw new HttpError(400, '请输入搜索关键词')
+  const field = /^[a-z]{2,12}:/i.test(cleaned)
+    ? cleaned
+    : `all:"${cleaned.replace(/"/g, '')}"`
+  const params = new URLSearchParams({
+    search_query: field,
+    start: '0',
+    max_results: String(Math.min(30, Math.max(1, maxResults))),
+    sortBy: 'relevance',
+    sortOrder: 'descending',
+  })
+  const res = await fetch(`${ARXIV_API}?${params}`, { signal: AbortSignal.timeout(20000) })
+  if (!res.ok) throw new HttpError(502, `arXiv 返回 ${res.status}`)
+  return parseAtom(await res.text())
+}
+
 async function fetchArxiv(ids) {
   const url = `${ARXIV_API}?id_list=${encodeURIComponent(ids.join(','))}&max_results=${ids.length}`
   const res = await fetch(url, { signal: AbortSignal.timeout(20000) })
@@ -1114,6 +1132,18 @@ async function api(req, res, url) {
       )
       .get(user.id).n
     return sendJSON(res, 200, { updated, remaining })
+  }
+
+  if (pathname === '/api/arxiv/search' && method === 'POST') {
+    const body = await readBody(req)
+    try {
+      const items = await searchArxiv(body.query, Number(body.max) || 20)
+      return sendJSON(res, 200, { items })
+    } catch (error) {
+      return sendJSON(res, error.statusCode || 502, {
+        error: error?.message || 'arXiv 搜索失败',
+      })
+    }
   }
 
   if (pathname === '/api/arxiv/preview' && method === 'POST') {

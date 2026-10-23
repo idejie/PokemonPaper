@@ -20,21 +20,24 @@ interface Draft {
   primaryCategory: string
 }
 
-type Tab = 'arxiv' | 'bibtex' | 'json'
+type Tab = 'arxiv' | 'search' | 'bibtex' | 'json'
 
 const store = usePapersStore()
 const ui = useUiStore()
 
 const tab = ref<Tab>('arxiv')
 const raw = ref('')
+const query = ref('')
 const items = ref<Draft[]>([])
 const loading = ref(false)
+const searching = ref(false)
 const importing = ref(false)
 const error = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const tabs = computed<Array<{ key: Tab; label: string }>>(() => [
   { key: 'arxiv', label: t('arXiv 批量') },
+  { key: 'search', label: t('关键词搜索') },
   { key: 'bibtex', label: 'BibTeX' },
   { key: 'json', label: t('JSON 备份') },
 ])
@@ -70,6 +73,37 @@ function makeDraft(partial: Partial<Draft> & { title: string }): Draft {
     tags: '',
     primaryCategory: '',
     ...partial,
+  }
+}
+
+async function loadSearch() {
+  const q = query.value.trim()
+  if (!q) return
+  searching.value = true
+  error.value = ''
+  items.value = []
+  try {
+    const found = await api.searchArxiv(q, 30)
+    if (!found.length) {
+      error.value = t('没有找到相关论文')
+      return
+    }
+    items.value = found.map((item) => {
+      const primaryCategory = item.primaryCategory || item.category || ''
+      return makeDraft({
+        arxiv: item.arxiv,
+        title: item.title,
+        authors: item.authors,
+        venue: item.venue,
+        year: item.year,
+        abstract: item.abstract,
+        primaryCategory,
+      })
+    })
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : t('搜索失败')
+  } finally {
+    searching.value = false
   }
 }
 
@@ -254,6 +288,28 @@ onBeforeUnmount(() => {
           </div>
         </template>
 
+        <template v-else-if="tab === 'search'">
+          <div class="search-row">
+            <input
+              v-model="query"
+              class="input"
+              :placeholder="t('关键词，例如 world model')"
+              @keydown.enter="loadSearch"
+            />
+            <button
+              class="btn"
+              type="button"
+              :disabled="searching || !query.trim()"
+              @click="loadSearch"
+            >
+              {{ searching ? t('搜索中…') : t('搜索') }}
+            </button>
+          </div>
+          <p class="hint">
+            {{ t('按标题和摘要搜索 arXiv，最多返回 30 条。支持 ti: / au: / abs: 前缀。') }}
+          </p>
+        </template>
+
         <template v-else-if="tab === 'bibtex'">
           <textarea
             v-model="raw"
@@ -411,6 +467,15 @@ onBeforeUnmount(() => {
 .textarea {
   min-height: 150px;
   font-size: 12.5px;
+}
+
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.search-row .input {
+  flex: 1;
 }
 
 .row {

@@ -235,4 +235,11 @@ export const dialogsDict: Record<string, string> = {
   '称号': 'Titles',
   '新手训练家 → 见习研究员（5）→ 图鉴收集者（10）→ 论文猎人（20）→ 知识训练家（35）→ 文献大师（50）。':
     'Rookie Trainer → Apprentice Researcher (5) → Dex Collector (10) → Paper Hunter (20) → Knowledge Trainer (35) → Literature Master (50).',
+  '关键词搜索': 'Keyword search',
+  '关键词，例如 world model': 'Keywords, e.g. world model',
+  '搜索中…': 'Searching…',
+  '搜索': 'Search',
+  '按标题和摘要搜索 arXiv，最多返回 30 条。支持 ti: / au: / abs: 前缀。': 'Search arXiv by title and abstract, up to 30 results. Supports ti: / au: / abs: prefixes.',
+  '没有找到相关论文': 'No papers found',
+  '搜索失败': 'Search failed',
 }
