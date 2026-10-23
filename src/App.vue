@@ -93,11 +93,31 @@ async function finishOnboarding() {
 
 onMounted(async () => {
   await auth.fetchMe()
+  await auth.fetchConfig()
   const params = new URLSearchParams(window.location.search)
   if (params.get('import') === '1') ui.openImport()
   if (params.get('settings') === '1') ui.openSettings()
   if (params.get('avatar') === '1') ui.openAvatar()
   if (params.get('profile') === '1') ui.openProfile()
+  const github = params.get('github')
+  if (github === 'bound') {
+    store.notify(t('GitHub 已绑定'))
+  } else if (github === 'error') {
+    const reason = params.get('reason')
+    store.notify(
+      reason === 'taken'
+        ? t('这个 GitHub 已经绑定了其他账号')
+        : reason === 'cancelled'
+          ? t('已取消 GitHub 绑定')
+          : t('GitHub 绑定失败，请重试'),
+    )
+  }
+  if (github) {
+    const clean = new URL(window.location.href)
+    clean.searchParams.delete('github')
+    clean.searchParams.delete('reason')
+    window.history.replaceState({}, '', clean)
+  }
 })
 
 watch(

@@ -33,8 +33,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  async getAuthConfig(): Promise<{ registration: 'open' | 'invite' }> {
-    return request<{ registration: 'open' | 'invite' }>('/api/auth/config')
+  async getAuthConfig(): Promise<{ registration: 'open' | 'invite'; github: boolean }> {
+    return request<{ registration: 'open' | 'invite'; github: boolean }>('/api/auth/config')
   },
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
@@ -121,6 +121,11 @@ export const api = {
 
   async logout(): Promise<void> {
     await request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' })
+  },
+
+  async unbindGithub(): Promise<AuthUser> {
+    const data = await request<{ user: AuthUser }>('/api/auth/github', { method: 'DELETE' })
+    return data.user
   },
 
   async completeOnboarding(): Promise<AuthUser> {

@@ -35,11 +35,22 @@ const pwNew = ref('')
 const pwConfirm = ref('')
 const pwBusy = ref(false)
 const pwMsg = ref('')
+const githubBusy = ref(false)
 
 const adminMode = ref<'open' | 'invite'>(auth.config.registration)
 const resetEmail = ref('')
 const resetUrl = ref('')
 const resetBusy = ref(false)
+
+async function unbindGithub() {
+  githubBusy.value = true
+  try {
+    if (await auth.unbindGithub()) store.notify(t('已解绑 GitHub'))
+    else store.notify(auth.error || t('解绑失败'))
+  } finally {
+    githubBusy.value = false
+  }
+}
 
 async function makeResetLink() {
   if (!resetEmail.value.trim()) {
@@ -268,6 +279,35 @@ onBeforeUnmount(() => {
               {{ pwBusy ? t('提交中…') : t('更新密码') }}
             </button>
           </div>
+        </section>
+
+        <section class="block">
+          <h3>{{ t('GitHub 绑定') }}</h3>
+          <div v-if="auth.user?.githubLogin" class="github-row">
+            <img
+              v-if="auth.user.githubAvatar"
+              :src="auth.user.githubAvatar"
+              class="github-avatar"
+              alt=""
+              referrerpolicy="no-referrer"
+            />
+            <div class="grow">
+              <b class="label">@{{ auth.user.githubLogin }}</b>
+              <p class="hint">{{ auth.user.githubName || t('已绑定') }}</p>
+            </div>
+            <button type="button" class="btn ghost" :disabled="githubBusy" @click="unbindGithub">
+              {{ githubBusy ? t('解绑中…') : t('解绑') }}
+            </button>
+          </div>
+          <template v-else>
+            <p class="hint">{{ t('绑定只用于展示 GitHub 身份，登录仍然使用邮箱和密码。') }}</p>
+            <a v-if="auth.config.github" class="btn" href="/api/auth/github/start">
+              {{ t('绑定 GitHub') }}
+            </a>
+            <p v-else class="hint">
+              {{ t('管理员还没有配置 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET。') }}
+            </p>
+          </template>
         </section>
 
         <section v-if="auth.isAdmin" class="block">
@@ -584,4 +624,23 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
 }
+
+.github-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.github-avatar {
+  width: 38px;
+  height: 38px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--panel-2);
+}
+
+.github-row .grow {
+  min-width: 0;
+}
+
 </style>

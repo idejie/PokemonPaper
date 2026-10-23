@@ -6,7 +6,10 @@ import type { AuthUser } from '../core/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
-  const config = ref<{ registration: 'open' | 'invite' }>({ registration: 'open' })
+  const config = ref<{ registration: 'open' | 'invite'; github: boolean }>({
+    registration: 'open',
+    github: false,
+  })
   const loading = ref(true)
   const busy = ref(false)
   const error = ref('')
@@ -21,7 +24,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchConfig() {
-    config.value = await api.getAuthConfig().catch(() => ({ registration: 'open' as const }))
+    config.value = await api
+      .getAuthConfig()
+      .catch(() => ({ registration: 'open' as const, github: false }))
   }
 
   async function register(email: string, password: string, name: string, invite = '') {
@@ -76,6 +81,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function unbindGithub() {
+    try {
+      user.value = await api.unbindGithub()
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : t('解绑失败')
+      return false
+    }
+  }
+
   async function completeOnboarding() {
     try {
       user.value = await api.completeOnboarding()
@@ -110,6 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     updateProfile,
     completeOnboarding,
+    unbindGithub,
     changePassword,
     deleteAccount,
   }

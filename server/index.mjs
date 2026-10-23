@@ -17,7 +17,14 @@ const PORT = Number(process.env.PORT || 8787)
 const HOST = process.env.HOST || '127.0.0.1'
 // 反向代理终止 TLS 时设 COOKIE_SECURE=1，让 Cookie 只在 HTTPS 下发送
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1' ? '; Secure' : ''
-const PUBLIC_URL = process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`
+const PUBLIC_URL = (process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`).replace(/\/$/, '')
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || ''
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || ''
+const GITHUB_OAUTH_BASE = (process.env.GITHUB_OAUTH_BASE || 'https://github.com').replace(/\/$/, '')
+const GITHUB_API_BASE = (process.env.GITHUB_API_BASE || 'https://api.github.com').replace(/\/$/, '')
+const GITHUB_REDIRECT_URI =
+  process.env.GITHUB_REDIRECT_URI || `${PUBLIC_URL}/api/auth/github/callback`
+const GITHUB_OAUTH_ENABLED = Boolean(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET)
 
 mkdirSync(DATA_DIR, { recursive: true })
 mkdirSync(PDF_DIR, { recursive: true })
@@ -59,7 +66,19 @@ db.exec(`
     avatar_id     TEXT NOT NULL DEFAULT 'red-cap',
     created_at    TEXT NOT NULL,
     last_login_at TEXT,
-    onboarded_at  TEXT
+    onboarded_at  TEXT,
+    github_id       TEXT,
+    github_login    TEXT,
+    github_name     TEXT,
+    github_avatar   TEXT,
+    github_bound_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS oauth_states (
+    state      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    provider   TEXT NOT NULL,
+    created_at TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -227,6 +246,23 @@ if (!existingUserColumns.includes('onboarded_at')) {
   db.exec('ALTER TABLE users ADD COLUMN onboarded_at TEXT')
   db.exec('UPDATE users SET onboarded_at = created_at')
 }
+
+for (const [name, ddl] of [
+  ['github_id', 'TEXT'],
+  ['github_login', 'TEXT'],
+  ['github_name', 'TEXT'],
+  ['github_avatar', 'TEXT'],
+  ['github_bound_at', 'TEXT'],
+]) {
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN ${name} ${ddl}`)
+  } catch {
+    /* already exists */
+  }
+}
+db.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_github ON users(github_id) WHERE github_id IS NOT NULL AND github_id != ''",
+)
 
 // 老库升级：没有任何管理员时，把最早注册的用户提升为管理员
 const adminCount = db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').get().n
@@ -588,7 +624,32 @@ function publicUser(row) {
     isAdmin: Boolean(row.is_admin),
     createdAt: row.created_at,
     onboardedAt: row.onboarded_at ?? null,
+    githubLogin: row.github_login || null,
+    githubName: row.github_name || null,
+    githubAvatar: row.github_avatar || null,
+    githubBoundAt: row.github_bound_at || null,
   }
+}
+
+function requestBase(req) {
+  if (process.env.PUBLIC_URL) return PUBLIC_URL
+  const proto = String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim()
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '127.0.0.1').split(',')[0].trim()
+  return `${proto}://${host}`
+}
+
+async function githubOauthRequest(url, options) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      accept: 'application/json',
+      'user-agent': 'PokemonPaper',
+      ...(options?.headers || {}),
+    },
+    signal: AbortSignal.timeout(30000),
+  })
+  if (!response.ok) throw new HttpError(502, `GitHub OAuth 返回 ${response.status}`)
+  return response.json()
 }
 
 function createSession(userId) {
@@ -1660,7 +1721,10 @@ async function api(req, res, url) {
 
   if (pathname === '/api/health') return sendJSON(res, 200, { ok: true })
   if (pathname === '/api/auth/config' && method === 'GET') {
-    return sendJSON(res, 200, { registration: getSetting('registration', 'open') })
+    return sendJSON(res, 200, {
+      registration: getSetting('registration', 'open'),
+      github: GITHUB_OAUTH_ENABLED,
+    })
   }
 
   /* ------------------------------------------------------------ auth */
@@ -1812,6 +1876,117 @@ async function api(req, res, url) {
       user.id,
     )
     const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id)
+    return sendJSON(res, 200, { user: publicUser(fresh) })
+  }
+
+  if (pathname === '/api/auth/github/start' && method === 'GET') {
+    const me = currentUser(req)
+    if (!me) return sendJSON(res, 401, { error: 'not logged in' })
+    if (!GITHUB_OAUTH_ENABLED) return sendJSON(res, 400, { error: 'GitHub 绑定还没配置' })
+    const state = randomBytes(24).toString('hex')
+    const now = new Date().toISOString()
+    db.prepare('DELETE FROM oauth_states WHERE created_at < ?').run(
+      new Date(Date.now() - 10 * 60000).toISOString(),
+    )
+    db.prepare(
+      'INSERT INTO oauth_states (state, user_id, provider, created_at) VALUES (?, ?, ?, ?)',
+    ).run(state, me.id, 'github', now)
+    const redirectUri = process.env.GITHUB_REDIRECT_URI || `${requestBase(req)}/api/auth/github/callback`
+    const url = new URL(`${GITHUB_OAUTH_BASE}/login/oauth/authorize`)
+    url.searchParams.set('client_id', GITHUB_CLIENT_ID)
+    url.searchParams.set('redirect_uri', redirectUri)
+    url.searchParams.set('scope', 'read:user')
+    url.searchParams.set('state', state)
+    res.writeHead(302, { location: url.toString() })
+    return res.end()
+  }
+
+  if (pathname === '/api/auth/github/callback' && method === 'GET') {
+    const url = new URL(req.url, requestBase(req))
+    const state = url.searchParams.get('state') || ''
+    const code = url.searchParams.get('code') || ''
+    const fail = (reason) =>
+      `/?avatar=1&github=error&reason=${encodeURIComponent(reason)}`
+    if (url.searchParams.get('error')) {
+      res.writeHead(302, { location: fail('cancelled') })
+      return res.end()
+    }
+    const saved = db
+      .prepare("SELECT * FROM oauth_states WHERE state = ? AND provider = 'github'")
+      .get(state)
+    if (!saved) {
+      res.writeHead(302, { location: fail('state') })
+      return res.end()
+    }
+    db.prepare('DELETE FROM oauth_states WHERE state = ?').run(state)
+    if (Date.now() - new Date(saved.created_at).getTime() > 10 * 60000) {
+      res.writeHead(302, { location: fail('expired') })
+      return res.end()
+    }
+    const me = currentUser(req)
+    if (!me || me.id !== saved.user_id) {
+      res.writeHead(302, { location: fail('login') })
+      return res.end()
+    }
+    if (!code) {
+      res.writeHead(302, { location: fail('code') })
+      return res.end()
+    }
+    try {
+      const redirectUri =
+        process.env.GITHUB_REDIRECT_URI || `${requestBase(req)}/api/auth/github/callback`
+      const tokenData = await githubOauthRequest(
+        `${GITHUB_OAUTH_BASE}/login/oauth/access_token`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: GITHUB_CLIENT_ID,
+            client_secret: GITHUB_CLIENT_SECRET,
+            code,
+            redirect_uri: redirectUri,
+          }),
+        },
+      )
+      if (!tokenData.access_token) throw new HttpError(502, 'GitHub 没有返回 token')
+      const profile = await githubOauthRequest(`${GITHUB_API_BASE}/user`, {
+        headers: { authorization: `Bearer ${tokenData.access_token}` },
+      })
+      if (!profile.id) throw new HttpError(502, 'GitHub 没有返回用户信息')
+      const githubId = String(profile.id)
+      const taken = db
+        .prepare('SELECT id FROM users WHERE github_id = ? AND id != ?')
+        .get(githubId, me.id)
+      if (taken) {
+        res.writeHead(302, { location: fail('taken') })
+        return res.end()
+      }
+      db.prepare(
+        'UPDATE users SET github_id = ?, github_login = ?, github_name = ?, github_avatar = ?, github_bound_at = ? WHERE id = ?',
+      ).run(
+        githubId,
+        profile.login || '',
+        profile.name || '',
+        profile.avatar_url || '',
+        new Date().toISOString(),
+        me.id,
+      )
+      res.writeHead(302, { location: '/?avatar=1&github=bound' })
+      return res.end()
+    } catch (err) {
+      console.warn('[paperdex] github oauth failed:', err?.message || err)
+      res.writeHead(302, { location: fail('oauth') })
+      return res.end()
+    }
+  }
+
+  if (pathname === '/api/auth/github' && method === 'DELETE') {
+    const me = currentUser(req)
+    if (!me) return sendJSON(res, 401, { error: 'not logged in' })
+    db.prepare(
+      'UPDATE users SET github_id = NULL, github_login = NULL, github_name = NULL, github_avatar = NULL, github_bound_at = NULL WHERE id = ?',
+    ).run(me.id)
+    const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(me.id)
     return sendJSON(res, 200, { user: publicUser(fresh) })
   }
 

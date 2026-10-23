@@ -56,6 +56,15 @@ onBeforeUnmount(() => {
             <div class="name">{{ auth.user?.name }}</div>
             <div class="title">{{ t(progress.title) }}</div>
             <div class="lv mono">Lv.{{ progress.level }}</div>
+            <a
+              v-if="auth.user?.githubLogin"
+              class="github-tag"
+              :href="`https://github.com/${auth.user.githubLogin}`"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub @{{ auth.user.githubLogin }}
+            </a>
           </div>
         </div>
 
@@ -509,4 +518,18 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 }
+
+.github-tag {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 1px 7px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--panel-2);
+  font-size: 9px;
+  font-weight: 800;
+  text-decoration: none;
+  color: var(--ink);
+}
+
 </style>

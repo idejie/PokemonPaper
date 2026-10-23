@@ -55,6 +55,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🎨 **AI artwork** | Generate per-paper artwork, or batch up to 60 with a progress bar; cached in `data/sprites/`, falls back to the procedural sprite; key stays in the browser |
 | 🧬 **Deterministic sprites** | 32×32 pixels, 10 body types with random headwear, glasses, scarves, patterns and hue shifts; rounded pixels, soft outlines, lighting gradient and extruded depth; the same arXiv ID always yields the same sprite |
 | 👤 **Multi-user** | Register / log in, one dex per user; 16 pixel avatars plus a random combo builder (92k combinations); scrypt password hashing, HttpOnly session cookie |
+| 🔗 **GitHub binding** | Optional OAuth link in Account settings; shows `@login` on your profile; email login is unchanged |
 | 📥 **Bulk import** | One arXiv ID or URL per line, up to 50; BibTeX, JSON backups and share-card QR scanning |
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
@@ -195,6 +196,7 @@ papers.example.com {
 - Set `COOKIE_SECURE=1` once the public URL is HTTPS
 - `PUBLIC_URL` is used in password-reset links; set it to your public origin
 - Optional email: `RESEND_API_KEY` + `MAIL_FROM`; without it, the admin can generate reset links in the account panel (and they are printed to the server log)
+- Optional GitHub binding: create an OAuth App, set `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`, and use `${PUBLIC_URL}/api/auth/github/callback` as the callback; scope `read:user`. `GITHUB_REDIRECT_URI` can override the callback
 - Registration is invite-only by default: the first account is the admin and can generate codes under Settings
 - SQLite is a single file, so run exactly one instance and back up `data/`
 
@@ -514,6 +516,7 @@ MIT © idejie
 | 🎨 **AI 插画** | 单篇生成，或批量生成最多 60 篇（带进度条）；缓存到 `data/sprites/`，未生成时回退程序精灵；Key 存浏览器 |
 | 🧬 **确定性精灵** | 32×32 像素，10 种体型（两足/四足/团子/鸟/幽灵/昆虫/蛇/鱼/机械/植物），随机头饰、眼镜、围巾、花纹与色相偏移；圆角像素 + 去硬描边 + 光照渐变 + 挤出立体，同一 arXiv 号永远生成同一只 |
 | 👤 **多用户** | 注册 / 登录，每人一份独立图鉴；16 个预设头像 + 随机组合（9 万多种）；密码 scrypt 哈希，会话存 HttpOnly Cookie |
+| 🔗 **GitHub 绑定** | 账号设置里可选绑定 GitHub；档案页显示 `@用户名`；不影响邮箱密码登录 |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX、JSON 备份和分享卡扫码 |
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
@@ -798,6 +801,7 @@ papers.example.com {
 - 公网是 HTTPS 时设 `COOKIE_SECURE=1`
 - `PUBLIC_URL` 用于拼接密码重置链接，设成公网地址
 - 可选邮件：`RESEND_API_KEY` + `MAIL_FROM`；不配也能用，管理员在账号面板生成重置链接（同时打印到服务端日志）
+- 可选 GitHub 绑定：创建 OAuth App，配置 `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET`，回调填 `${PUBLIC_URL}/api/auth/github/callback`，scope 选 `read:user`；可用 `GITHUB_REDIRECT_URI` 覆盖
 - 注册默认邀请制：第一个账号是管理员，在「设置」里生成邀请码
 - SQLite 是单文件，只能跑一个实例，记得备份 `data/`
 - `METRICS_REFRESH_HOURS=0` 关闭后台 star 刷新（默认 12 小时）

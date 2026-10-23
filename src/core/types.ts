@@ -71,6 +71,10 @@ export interface AuthUser {
   isAdmin: boolean
   createdAt: string
   onboardedAt: string | null
+  githubLogin: string | null
+  githubName: string | null
+  githubAvatar: string | null
+  githubBoundAt: string | null
 }
 
 export interface LeaderboardEntry {
