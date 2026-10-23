@@ -174,4 +174,12 @@ export const pagesDict: Record<string, string> = {
   '来自 {name}': 'By {name}',
   '没有批注': 'No note',
   '公开批注': 'Public note',
+  '统计': 'Statistics',
+  '你的图鉴都由什么组成：领域、年份、会议，以及点亮的比例。': 'What your dex is made of: fields, years, venues, and how much you have lit up.',
+  '阅读率': 'Read rate',
+  '分类分布': 'By category',
+  '年份分布': 'By year',
+  '会议 / 期刊': 'Venues',
+  '等级分布': 'By level',
+  '还没有数据': 'No data yet',
 }

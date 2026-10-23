@@ -42,6 +42,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🔎 **Keyword search** | Search arXiv directly, 30 relevance-ranked results, tick to import; hides papers you already own by default |
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
 | 💬 **Shared notes** | Public by default; other readers of the same paper can see them (joined by arXiv ID, dashed outline). Uncheck to keep one private |
+| 📊 **Statistics** | Distribution by category, year and venue, plus read rate and level mix |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
 | 🎖️ **Trainer levels** | XP from paper level, reading, and notes; 6 titles, 8 badges |
@@ -165,7 +166,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] PDF reader with highlights and comments
 - [x] Trainer levels, titles, badges
 - [x] Bilingual UI (zh / en)
-- [ ] Statistics page: categories, years, venues
+- [x] Statistics page: categories, years, venues
 - [ ] Cross-page annotations
 - [ ] Full-text search inside PDFs
 
@@ -202,6 +203,7 @@ MIT © idejie
 | 🔎 **关键词搜索** | 直接搜 arXiv，按相关性返回 30 条，勾选即导入；默认排除已收录 |
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
 | 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到（按 arXiv 号聚合，虚线高亮），可手动设为私有 |
+| 📊 **统计页** | 分类、年份、会议分布，阅读率与等级构成 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
 | 🎖️ **训练家等级** | 论文等级 + 阅读 + 笔记决定 XP；6 个称号、8 枚徽章 |
