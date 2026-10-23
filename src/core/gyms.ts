@@ -57,3 +57,8 @@ export function gymStatus(papers: Paper[]): GymStatus[] {
     }
   })
 }
+
+export function paperInGym(paper: Paper, gymId: string): boolean {
+  const gym = GYMS.find((item) => item.id === gymId)
+  return gym ? belongs(paper, gym) : false
+}

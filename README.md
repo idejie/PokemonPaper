@@ -47,7 +47,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | ✨ **Shiny variants** | High stars, top venues, decade-old classics and 1/64 hashes get a gold palette, sparkles and a shiny tag |
 | 🔊 **8-bit cries** | Every arXiv ID has a deterministic 3–5 note WebAudio cry, played when it lights up; can be muted in settings |
 | ❤️ **Bond** | Notes, revisits and reading time build a 0–100 bond (stored locally); tiers light up hearts on the detail sheet |
-| 🏅 **Gyms** | 12 gyms by arXiv field; read 3 papers and write a note on one to earn the badge, shown on the profile and guide |
+| 🏅 **Gyms** | 12 gyms by arXiv field; read 3 papers and write a note on one to earn the badge. A strip on the dex shows progress and filters by field |
 | 🌿 **Daily wild paper** | One deterministic unread paper per day; finishing it that day doubles its XP |
 | 🖼️ **Share card** | Export a paper as a 640×900 PNG card with its sprite, level, category and trainer |
 | ✍️ **Manual summary** | Write or edit Markdown in the summary tab; share the same field as AI generation and can be made public |
@@ -488,7 +488,7 @@ MIT © idejie
 | ✨ **异色精灵** | 高 star、顶会/顶刊、十年经典或 1/64 哈希命中，获得金色配色、粒子和 ✦ 标记 |
 | 🔊 **8-bit 叫声** | 每个 arXiv 号确定性生成 3–5 个音符的 WebAudio 叫声，点亮时播放，可在设置里关闭 |
 | ❤️ **羁绊** | 笔记、复访和阅读时长累积 0–100 羁绊（本地记录），等级点亮详情页爱心 |
-| 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，读满 3 篇 + 1 篇笔记得徽章，展示在档案和 Guide |
+| 🏅 **道馆** | 按 arXiv 大类设 12 座道馆，读满 3 篇 + 1 篇笔记得徽章；主页有道馆进度条，点击可按领域筛选 |
 | 🌿 **每日野生论文** | 每天按账号确定性抽一篇未读论文，当天读完双倍 XP |
 | 🖼️ **分享卡** | 一键导出论文卡 PNG（精灵、等级、分类、训练家），适合发推 / 朋友圈 |
 | ✍️ **手动总结** | 总结页可直接写 / 改 Markdown，和 AI 生成共用同一字段；可设为公开 |

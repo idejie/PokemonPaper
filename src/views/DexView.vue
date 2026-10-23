@@ -10,6 +10,7 @@ import { paperLevel } from '../core/level'
 import { t } from '../core/i18n'
 import { api } from '../core/api'
 import type { DailyPick } from '../core/types'
+import { gymStatus, paperInGym } from '../core/gyms'
 
 const store = usePapersStore()
 const router = useRouter()
@@ -20,6 +21,14 @@ const sort = ref<'arxiv' | 'added' | 'rating' | 'level'>('arxiv')
 const searchInput = ref<HTMLInputElement | null>(null)
 const daily = ref<DailyPick | null>(null)
 const breedOpen = ref(false)
+const gymFilter = ref<string | null>(null)
+
+const gyms = computed(() => gymStatus(store.items))
+const gymEarned = computed(() => gyms.value.filter((gym) => gym.earned).length)
+
+function toggleGymFilter(id: string) {
+  gymFilter.value = gymFilter.value === id ? null : id
+}
 
 const counts = computed(() => ({
   all: store.items.length,
@@ -32,6 +41,7 @@ const counts = computed(() => ({
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const list = store.items.filter((paper) => {
+    if (gymFilter.value && !paperInGym(paper, gymFilter.value)) return false
     if (filter.value === 'egg' && !paper.eggAt) return false
     if (filter.value !== 'all' && filter.value !== 'egg' && paper.status !== filter.value) return false
     if (!q) return true
@@ -110,6 +120,33 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
       <span class="spacer" />
       <button type="button" class="btn sm" @click="openDaily">
         {{ daily.claimed ? t('查看') : t('去读') }}
+      </button>
+    </section>
+
+    <section v-if="store.items.length" class="gym-strip">
+      <span class="gym-strip-label">
+        🏅 {{ t('道馆') }}
+        <b class="mono">{{ gymEarned }}/{{ gyms.length }}</b>
+      </span>
+      <button
+        v-for="gym in gyms"
+        :key="gym.id"
+        type="button"
+        class="gym-pill"
+        :class="{ on: gym.earned, active: gymFilter === gym.id }"
+        :title="`${t(gym.name)} · ${gym.readCount}/${gym.read} · ${gym.noteCount}/${gym.notes}`"
+        @click="toggleGymFilter(gym.id)"
+      >
+        <span class="gym-strip-icon">{{ gym.icon }}</span>
+        <small class="mono">{{ gym.readCount }}/{{ gym.read }}</small>
+      </button>
+      <button
+        v-if="gymFilter"
+        type="button"
+        class="gym-clear"
+        @click="gymFilter = null"
+      >
+        {{ t('清除') }}
       </button>
     </section>
 
@@ -229,6 +266,79 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 <style scoped>
 .page {
   padding-bottom: 60px;
+}
+
+.gym-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.gym-strip-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-right: 4px;
+  font-size: 10px;
+  font-weight: 900;
+  flex: none;
+}
+
+.gym-strip-label b {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.gym-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 11px;
+  line-height: 1.6;
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.gym-pill.on {
+  opacity: 1;
+  filter: none;
+  border-color: var(--ink);
+  background: #fff4cf;
+}
+
+.gym-pill.active {
+  box-shadow: 0 0 0 2px var(--ink);
+  opacity: 1;
+  filter: none;
+}
+
+.gym-strip-icon {
+  font-size: 11px;
+}
+
+.gym-pill small {
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.gym-clear {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--muted);
+  text-decoration: underline;
 }
 
 .wild {
