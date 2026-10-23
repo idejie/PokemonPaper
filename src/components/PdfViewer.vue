@@ -90,6 +90,7 @@ async function renderPage(pageNumber: number) {
   textDiv.style.width = `${viewport.width}px`
   textDiv.style.height = `${viewport.height}px`
   textDiv.style.setProperty('--scale-factor', String(scale.value))
+  textDiv.style.setProperty('--total-scale-factor', String(scale.value))
   const layer = new pdfjs.TextLayer({
     textContentSource: page.streamTextContent(),
     container: textDiv,
@@ -102,6 +103,14 @@ async function boot() {
   loading.value = true
   error.value = ''
   try {
+    // 本地没有就现下，避免阅读器直接 404
+    await fetch(`/api/papers/${props.paperId}/pdf`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    }).then((res) => {
+      if (!res.ok) throw new Error(res.status === 401 ? '请先登录' : 'PDF 下载失败')
+    })
+
     task = pdfjs.getDocument({
       url: `/api/papers/${props.paperId}/pdf`,
       withCredentials: true,
@@ -422,6 +431,12 @@ onBeforeUnmount(() => {
   transform-origin: 0 0;
 }
 
+.text-layer {
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
 .text-layer :deep(span),
 .text-layer :deep(br) {
   color: transparent;
@@ -429,6 +444,9 @@ onBeforeUnmount(() => {
   white-space: pre;
   cursor: text;
   transform-origin: 0% 0%;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate, 0deg)) scaleX(var(--scale-x, 1))
+    scale(var(--min-font-size-inv));
 }
 
 .text-layer :deep(::selection) {
