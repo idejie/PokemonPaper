@@ -185,4 +185,6 @@ export const pagesDict: Record<string, string> = {
   '在 PDF 中搜索': 'Search in PDF',
   '上一处': 'Previous match',
   '下一处': 'Next match',
+  '导出 Markdown': 'Export Markdown',
+  '已导出 Markdown': 'Markdown exported',
 }

@@ -194,7 +194,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Batch download of missing PDFs (background queue + progress)
 - [ ] Annotation list panel (grouped by page, click to jump)
 - [ ] Scheduled metric refresh (stars / categories)
-- [ ] Export AI summaries to Markdown / standalone HTML
+- [x] Export AI summaries to Markdown
 - [ ] Password reset by email (needs SMTP)
 - [ ] Level-up animation (card bounce, XP bar, sound)
 
@@ -642,7 +642,7 @@ interface Paper {
 - [x] 批量下载缺失 PDF（后台队列 + 进度）
 - [ ] 标注列表（按页聚合，点击跳转）
 - [ ] 指标定时刷新（star / 分类）
-- [ ] 解读导出为 Markdown / 独立 HTML
+- [x] 解读导出为 Markdown
 - [ ] 邮件找回密码（需要 SMTP）
 - [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 

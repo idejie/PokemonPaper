@@ -42,6 +42,32 @@ async function downloadPdf() {
   }
 }
 
+function exportSummary() {
+  const paperValue = paper.value
+  if (!paperValue?.summary) return
+  const meta = [paperValue.authors, [paperValue.venue, paperValue.year].filter(Boolean).join(' · ')]
+    .filter(Boolean)
+    .join('\n\n')
+  const body = [
+    `# ${paperValue.title}`,
+    meta,
+    paperValue.arxiv ? `**arXiv:** https://arxiv.org/abs/${paperValue.arxiv}` : '',
+    paperValue.codeUrl ? `**Code:** ${paperValue.codeUrl}` : '',
+    '## Summary',
+    paperValue.summary,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+  const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${paperValue.arxiv || 'paper'}-summary.md`
+  link.click()
+  URL.revokeObjectURL(url)
+  store.notify(t('已导出 Markdown'))
+}
+
 async function generateSummary() {
   if (!settings.ready) {
     ui.openSettings()
@@ -152,6 +178,9 @@ onMounted(async () => {
               }}
             </span>
             <span class="spacer" />
+            <button v-if="summary" type="button" class="btn sm ghost" @click="exportSummary">
+              {{ t('导出 Markdown') }}
+            </button>
             <button v-if="!settings.ready" type="button" class="btn sm" @click="ui.openSettings()">
               {{ t('去配置') }}
             </button>
