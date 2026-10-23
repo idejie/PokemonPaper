@@ -1,4 +1,4 @@
-import type { ArxivItem, AuthUser, Explain, LlmConfig, Paper, PaperInput } from './types'
+import type { ArxivItem, AuthUser, Explain, Invite, LlmConfig, Paper, PaperInput } from './types'
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -19,7 +19,55 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  async register(input: { email: string; password: string; name?: string }): Promise<AuthUser> {
+  async getAuthConfig(): Promise<{ registration: 'open' | 'invite' }> {
+    return request<{ registration: 'open' | 'invite' }>('/api/auth/config')
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await request<{ ok: boolean }>('/api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+  },
+
+  async deleteAccount(password: string): Promise<void> {
+    await request<{ ok: boolean }>('/api/auth/me', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    })
+  },
+
+  async adminGetConfig(): Promise<{ registration: 'open' | 'invite' }> {
+    return request<{ registration: 'open' | 'invite' }>('/api/admin/config')
+  },
+
+  async adminSetConfig(registration: 'open' | 'invite'): Promise<{ registration: 'open' | 'invite' }> {
+    return request<{ registration: 'open' | 'invite' }>('/api/admin/config', {
+      method: 'PATCH',
+      body: JSON.stringify({ registration }),
+    })
+  },
+
+  async adminListInvites(): Promise<Invite[]> {
+    const data = await request<{ invites: Invite[] }>('/api/admin/invites')
+    return data.invites
+  },
+
+  async adminCreateInvite(): Promise<string> {
+    const data = await request<{ code: string }>('/api/admin/invites', { method: 'POST' })
+    return data.code
+  },
+
+  async adminRevokeInvite(code: string): Promise<void> {
+    await request<{ ok: boolean }>(`/api/admin/invites/${code}`, { method: 'DELETE' })
+  },
+
+  async register(input: {
+    email: string
+    password: string
+    name?: string
+    invite?: string
+  }): Promise<AuthUser> {
     const data = await request<{ user: AuthUser }>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(input),

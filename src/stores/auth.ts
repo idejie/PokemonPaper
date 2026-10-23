@@ -5,11 +5,13 @@ import type { AuthUser } from '../core/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null)
+  const config = ref<{ registration: 'open' | 'invite' }>({ registration: 'open' })
   const loading = ref(true)
   const busy = ref(false)
   const error = ref('')
 
   const loggedIn = computed(() => Boolean(user.value))
+  const isAdmin = computed(() => Boolean(user.value?.isAdmin))
 
   async function fetchMe() {
     loading.value = true
@@ -17,11 +19,15 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = false
   }
 
-  async function register(email: string, password: string, name: string) {
+  async function fetchConfig() {
+    config.value = await api.getAuthConfig().catch(() => ({ registration: 'open' as const }))
+  }
+
+  async function register(email: string, password: string, name: string, invite = '') {
     busy.value = true
     error.value = ''
     try {
-      user.value = await api.register({ email, password, name })
+      user.value = await api.register({ email, password, name, invite })
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : '注册失败'
@@ -50,6 +56,25 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
+  async function changePassword(currentPassword: string, newPassword: string): Promise<string> {
+    try {
+      await api.changePassword(currentPassword, newPassword)
+      return ''
+    } catch (err) {
+      return err instanceof Error ? err.message : '修改失败'
+    }
+  }
+
+  async function deleteAccount(password: string): Promise<string> {
+    try {
+      await api.deleteAccount(password)
+      user.value = null
+      return ''
+    } catch (err) {
+      return err instanceof Error ? err.message : '注销失败'
+    }
+  }
+
   async function updateProfile(patch: { name?: string; avatarId?: string }) {
     try {
       user.value = await api.updateMe(patch)
@@ -60,5 +85,21 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, loading, busy, error, loggedIn, fetchMe, register, login, logout, updateProfile }
+  return {
+    user,
+    config,
+    loading,
+    busy,
+    error,
+    loggedIn,
+    isAdmin,
+    fetchMe,
+    fetchConfig,
+    register,
+    login,
+    logout,
+    updateProfile,
+    changePassword,
+    deleteAccount,
+  }
 })

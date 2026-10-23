@@ -69,7 +69,12 @@ buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
 - 登录后发一个 `HttpOnly; SameSite=Lax` 的会话 Cookie，30 天有效
 - 每个账号的论文、笔记、PDF 完全隔离：所有查询都带 `user_id`
 - 同一邮箱连续输错 5 次，锁 60 秒
-- 顶栏右侧是训练家头像，点开可以换头像和昵称
+- 顶栏右侧是训练家头像，点开「账号设置」可以换头像、改昵称
+- 已登录状态下可以**改密码**，改完其它设备的会话立即失效
+- **邀请制**：第一个注册的账号自动成为管理员，可以把注册方式切成「邀请制」并生成一次性邀请码
+- 危险区支持**导出我的数据**和**注销账号**（连同论文、笔记、解读一起删除）
+
+![账号设置](docs/account.png)
 
 ![登录](docs/login.png)
 
@@ -226,6 +231,12 @@ src/
 | `POST` | `/api/auth/logout` | 登出 |
 | `GET` | `/api/auth/me` | 当前用户 |
 | `PATCH` | `/api/auth/me` | 改昵称 / 头像 |
+| `DELETE` | `/api/auth/me` | 注销账号（需密码） |
+| `POST` | `/api/auth/password` | 改密码 |
+| `GET` | `/api/auth/config` | 注册方式（open / invite） |
+| `GET` `PATCH` | `/api/admin/config` | 管理员查看 / 切换注册方式 |
+| `GET` `POST` | `/api/admin/invites` | 邀请码列表 / 生成 |
+| `DELETE` | `/api/admin/invites/:code` | 撤销未使用的邀请码 |
 | `GET` | `/api/papers` | 当前用户的列表 |
 | `POST` | `/api/papers` | 新建（`title` 必填，`arxiv` 唯一） |
 | `PATCH` | `/api/papers/:id` | 局部更新（状态、笔记、评分…） |
@@ -247,8 +258,15 @@ interface User {
   email: string
   name: string
   avatarId: string      // 8 个预设头像之一
+  isAdmin: boolean      // 第一个注册的账号自动成为管理员
   passwordHash: string  // scrypt$salt$hash
   createdAt: string
+}
+
+interface Invite {
+  code: string          // 8 位一次性邀请码
+  createdBy: string
+  usedBy: string | null
 }
 
 interface Paper {
@@ -284,7 +302,10 @@ interface Paper {
 - [x] PDF 本地化与 Range 流式阅读
 - [x] AI 速读卡（OpenAI 兼容，预设 DeepSeek 等）
 - [x] 论文等级：开源 + star + 引用量
-- [ ] 改密码 / 找回密码
+- [x] 改密码
+- [x] 管理员 + 邀请码
+- [x] 注销账号与数据导出
+- [ ] 邮件找回密码
 - [ ] 指标定时刷新（现在要手点）
 - [ ] 批量下载缺失 PDF（后台队列 + 进度）
 - [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
@@ -294,7 +315,7 @@ interface Paper {
 
 ## 已知限制
 
-- 没有邮箱验证、找回密码、改密码和 OAuth
+- 没有邮箱验证、找回密码和 OAuth（改密码已有，但忘了就进不去）
 - 会话存在 SQLite，多实例部署需要共享数据库
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
 - 批量下载 PDF 还没做，目前是一篇一篇点

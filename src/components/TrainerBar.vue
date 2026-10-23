@@ -55,7 +55,7 @@ async function exportJson() {
           <b class="mono lit">{{ store.readCount }}</b>
           <span>已点亮</span>
         </div>
-        <button class="trainer-chip" type="button" title="更换头像" @click="ui.openAvatar()">
+        <button class="trainer-chip" type="button" title="账号设置" @click="ui.openAvatar()">
           <span class="avatar"><AvatarSvg :id="auth.user?.avatarId || 'red-cap'" /></span>
           <span class="meta">
             <b class="mono">Lv.{{ store.level }}</b>

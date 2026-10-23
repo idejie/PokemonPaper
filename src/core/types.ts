@@ -66,7 +66,15 @@ export interface AuthUser {
   email: string
   name: string
   avatarId: string
+  isAdmin: boolean
   createdAt: string
+}
+
+export interface Invite {
+  code: string
+  createdAt: string
+  used: boolean
+  usedAt: string | null
 }
 
 export type ScholarProvider = 'off' | 'serpapi' | 'serper'

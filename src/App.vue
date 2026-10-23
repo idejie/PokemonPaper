@@ -5,7 +5,7 @@ import TrainerBar from './components/TrainerBar.vue'
 import ToastHost from './components/ToastHost.vue'
 import ImportDialog from './components/ImportDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
-import AvatarDialog from './components/AvatarDialog.vue'
+import AccountDialog from './components/AccountDialog.vue'
 import { useAuthStore } from './stores/auth'
 import { usePapersStore } from './stores/papers'
 import { useUiStore } from './stores/ui'
@@ -45,7 +45,7 @@ watch(
     <RouterView />
     <ImportDialog v-if="ui.importOpen" />
     <SettingsDialog v-if="ui.settingsOpen" />
-    <AvatarDialog v-if="ui.avatarOpen" />
+    <AccountDialog v-if="ui.avatarOpen" />
     <ToastHost />
   </template>
 </template>

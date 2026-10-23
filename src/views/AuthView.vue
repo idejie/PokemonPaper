@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AvatarSvg from '../components/AvatarSvg.vue'
 import { useAuthStore } from '../stores/auth'
 
@@ -8,6 +8,7 @@ const mode = ref<'login' | 'register'>('login')
 const email = ref('')
 const password = ref('')
 const name = ref('')
+const invite = ref('')
 
 const title = computed(() => (mode.value === 'login' ? '欢迎回来，训练家' : '登记一位新训练家'))
 const action = computed(() => (mode.value === 'login' ? '登录' : '注册并开始'))
@@ -17,6 +18,10 @@ function switchMode(next: 'login' | 'register') {
   auth.error = ''
 }
 
+onMounted(() => {
+  void auth.fetchConfig()
+})
+
 async function submit() {
   if (!email.value.trim() || !password.value) {
     auth.error = '邮箱和密码都要填'
@@ -25,7 +30,7 @@ async function submit() {
   if (mode.value === 'login') {
     await auth.login(email.value.trim(), password.value)
   } else {
-    await auth.register(email.value.trim(), password.value, name.value.trim())
+    await auth.register(email.value.trim(), password.value, name.value.trim(), invite.value.trim())
   }
 }
 </script>
@@ -76,6 +81,16 @@ async function submit() {
             />
           </label>
 
+          <label v-if="mode === 'register' && auth.config.registration === 'invite'" class="field">
+            <span>邀请码</span>
+            <input
+              v-model="invite"
+              class="input mono"
+              placeholder="向管理员要一个"
+              autocomplete="off"
+            />
+          </label>
+
           <label class="field">
             <span>密码</span>
             <input
@@ -102,6 +117,9 @@ async function submit() {
           </button>
         </p>
 
+        <p v-if="auth.config.registration === 'invite'" class="foot">
+          本站目前是邀请制，注册需要管理员发的邀请码。
+        </p>
         <p class="foot">数据存在这台机器的 SQLite，不会上传到任何地方。</p>
       </div>
     </div>

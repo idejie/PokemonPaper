@@ -62,7 +62,33 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS invites (
+    code       TEXT PRIMARY KEY,
+    created_by TEXT,
+    created_at TEXT NOT NULL,
+    used_by    TEXT,
+    used_at    TEXT
+  );
 `)
+
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name)
+if (!userColumns.includes('is_admin')) {
+  db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0')
+}
+db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('registration', 'open')").run()
+
+// 老库升级：没有任何管理员时，把最早注册的用户提升为管理员
+const adminCount = db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').get().n
+if (adminCount === 0) {
+  const oldest = db.prepare('SELECT id FROM users ORDER BY created_at ASC LIMIT 1').get()
+  if (oldest) db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(oldest.id)
+}
 
 const paperColumns = db.prepare('PRAGMA table_info(papers)').all().map((c) => c.name)
 for (const [name, ddl] of [
@@ -215,6 +241,19 @@ async function readBody(req, limit = 1_000_000) {
 const SESSION_DAYS = 30
 const loginFailures = new Map()
 
+function getSetting(key, fallback = '') {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key)
+  return row ? row.value : fallback
+}
+
+function setSetting(key, value) {
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value)
+}
+
+function newInviteCode() {
+  return randomBytes(4).toString('hex').toUpperCase()
+}
+
 function hashPassword(password) {
   const salt = randomBytes(16)
   const key = scryptSync(password, salt, 64)
@@ -246,6 +285,7 @@ function publicUser(row) {
     email: row.email,
     name: row.name || row.email.split('@')[0],
     avatarId: row.avatar_id || 'red-cap',
+    isAdmin: Boolean(row.is_admin),
     createdAt: row.created_at,
   }
 }
@@ -839,6 +879,9 @@ async function api(req, res, url) {
   const method = req.method || 'GET'
 
   if (pathname === '/api/health') return sendJSON(res, 200, { ok: true })
+  if (pathname === '/api/auth/config' && method === 'GET') {
+    return sendJSON(res, 200, { registration: getSetting('registration', 'open') })
+  }
 
   /* ------------------------------------------------------------ auth */
 
@@ -853,6 +896,16 @@ async function api(req, res, url) {
       return sendJSON(res, 409, { error: '这个邮箱已经注册过了' })
     }
 
+    const mode = getSetting('registration', 'open')
+    let invite = null
+    if (mode === 'invite') {
+      const code = String(body.invite || '').trim().toUpperCase()
+      if (!code) return sendJSON(res, 400, { error: '这个站需要邀请码' })
+      invite = db.prepare('SELECT * FROM invites WHERE code = ?').get(code)
+      if (!invite) return sendJSON(res, 403, { error: '邀请码无效' })
+      if (invite.used_by) return sendJSON(res, 403, { error: '邀请码已经被用掉了' })
+    }
+
     const id = randomUUID()
     db.prepare(
       'INSERT INTO users (id, email, name, password_hash, avatar_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -861,7 +914,15 @@ async function api(req, res, url) {
     // 第一个注册的用户接管迁移前遗留的无主论文
     const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n
     if (userCount === 1) {
+      db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(id)
       db.prepare('UPDATE papers SET user_id = ? WHERE user_id IS NULL').run(id)
+    }
+    if (invite) {
+      db.prepare('UPDATE invites SET used_by = ?, used_at = ? WHERE code = ?').run(
+        id,
+        new Date().toISOString(),
+        invite.code,
+      )
     }
 
     const { token, expires } = createSession(id)
@@ -919,6 +980,88 @@ async function api(req, res, url) {
 
   const user = currentUser(req)
   if (!user) return sendJSON(res, 401, { error: '请先登录' })
+
+  /* --------------------------------------------------------- account */
+
+  if (pathname === '/api/auth/password' && method === 'POST') {
+    const body = await readBody(req)
+    const current = String(body.currentPassword || '')
+    const next = String(body.newPassword || '')
+    if (!verifyPassword(current, user.password_hash)) {
+      return sendJSON(res, 400, { error: '当前密码不对' })
+    }
+    if (next.length < 8) return sendJSON(res, 400, { error: '新密码至少 8 位' })
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(next), user.id)
+    // 其它设备上的会话全部失效
+    const token = parseCookies(req).pp_session
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(user.id, token ?? '')
+    return sendJSON(res, 200, { ok: true })
+  }
+
+  if (pathname === '/api/auth/me' && method === 'DELETE') {
+    const body = await readBody(req)
+    if (!verifyPassword(String(body.password || ''), user.password_hash)) {
+      return sendJSON(res, 400, { error: '密码不对' })
+    }
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id)
+    db.prepare('DELETE FROM papers WHERE user_id = ?').run(user.id)
+    db.prepare('DELETE FROM invites WHERE created_by = ? AND used_by IS NULL').run(user.id)
+    db.prepare('DELETE FROM users WHERE id = ?').run(user.id)
+    clearSessionCookie(res)
+    return sendJSON(res, 200, { ok: true })
+  }
+
+  /* ----------------------------------------------------------- admin */
+
+  if (pathname.startsWith('/api/admin/')) {
+    if (!user.is_admin) return sendJSON(res, 403, { error: '需要管理员权限' })
+
+    if (pathname === '/api/admin/config') {
+      if (method === 'GET') {
+        return sendJSON(res, 200, { registration: getSetting('registration', 'open') })
+      }
+      if (method === 'PATCH') {
+        const body = await readBody(req)
+        const mode = body.registration === 'invite' ? 'invite' : 'open'
+        setSetting('registration', mode)
+        return sendJSON(res, 200, { registration: mode })
+      }
+    }
+
+    if (pathname === '/api/admin/invites') {
+      if (method === 'GET') {
+        const rows = db
+          .prepare('SELECT * FROM invites ORDER BY created_at DESC LIMIT 100')
+          .all()
+        return sendJSON(res, 200, {
+          invites: rows.map((row) => ({
+            code: row.code,
+            createdAt: row.created_at,
+            used: Boolean(row.used_by),
+            usedAt: row.used_at ?? null,
+          })),
+        })
+      }
+      if (method === 'POST') {
+        const code = newInviteCode()
+        db.prepare('INSERT INTO invites (code, created_by, created_at) VALUES (?, ?, ?)').run(
+          code,
+          user.id,
+          new Date().toISOString(),
+        )
+        return sendJSON(res, 201, { code })
+      }
+    }
+
+    const inviteMatch = pathname.match(/^\/api\/admin\/invites\/([A-Z0-9]+)$/)
+    if (inviteMatch && method === 'DELETE') {
+      const row = db.prepare('SELECT * FROM invites WHERE code = ?').get(inviteMatch[1])
+      if (!row) return sendJSON(res, 404, { error: '邀请码不存在' })
+      if (row.used_by) return sendJSON(res, 409, { error: '已使用的邀请码不能撤销' })
+      db.prepare('DELETE FROM invites WHERE code = ?').run(inviteMatch[1])
+      return sendJSON(res, 200, { ok: true })
+    }
+  }
 
 
   if (pathname === '/api/papers' && method === 'GET') {
