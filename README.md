@@ -43,6 +43,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🎲 **Random unread** | Pick a random paper you have not finished yet |
 | 💬 **Shared notes** | Public by default; other readers of the same paper can see them (joined by arXiv ID, dashed outline). Uncheck to keep one private |
 | 📊 **Statistics** | Distribution by category, year and venue, plus read rate and level mix |
+| 🔦 **In-PDF search** | Search across pages, highlight matches, jump prev / next |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
 | 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
 | 🎖️ **Trainer levels** | XP from paper level, reading, and notes; 6 titles, 8 badges |
@@ -154,6 +155,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 ## Limits
 
 - Scanned PDFs have no text layer: no text selection, and summaries fall back to the abstract
+- In-PDF search matches per text-layer span; phrases split across spans may be missed
 - Annotations are single-page; cross-page selections are rejected
 - Token usage and model costs are yours; keys never leave the browser except to the endpoint you configure
 - GitHub star counts come from the GitHub API / HTML and may lag by minutes
@@ -168,7 +170,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Bilingual UI (zh / en)
 - [x] Statistics page: categories, years, venues
 - [ ] Cross-page annotations
-- [ ] Full-text search inside PDFs
+- [x] Full-text search inside PDFs
 
 ## License
 
@@ -204,6 +206,7 @@ MIT © idejie
 | 🎲 **随机未读** | 从还没点亮的论文里随机抽一篇，治选择困难 |
 | 💬 **公开批注** | 批注默认公开，其他读者在同一篇论文上能看到（按 arXiv 号聚合，虚线高亮），可手动设为私有 |
 | 📊 **统计页** | 分类、年份、会议分布，阅读率与等级构成 |
+| 🔦 **PDF 内搜索** | 跨页搜索，命中高亮，支持上一处 / 下一处 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
 | 🎖️ **训练家等级** | 论文等级 + 阅读 + 笔记决定 XP；6 个称号、8 枚徽章 |
@@ -585,6 +588,7 @@ interface Paper {
 - star 来自 GitHub，有分钟级延迟
 - 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 扫描版 PDF 没有文字层，无法选中标注，总结也只能靠摘要
+- PDF 内搜索按文本层片段匹配，跨片段的短语可能漏
 - 跨页选择暂不支持，一次标注请在同一页内
 - 精灵生成器是模板式的，形状会有重复，但配色和细节组合足够区分
 - 未做全文检索，只搜已录入的字段

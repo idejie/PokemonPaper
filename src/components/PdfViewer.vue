@@ -36,6 +36,36 @@ const stage = ref<'download' | 'render'>('download')
 const waitSeconds = ref(0)
 let waitTimer: number | undefined
 
+function clearHits() {
+  for (const el of hits.value) el.classList.remove('hit', 'active')
+  hits.value = []
+  hitIndex.value = 0
+}
+
+function focusHit() {
+  hits.value.forEach((el, index) => el.classList.toggle('active', index === hitIndex.value))
+  hits.value[hitIndex.value]?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
+
+function runSearch() {
+  clearHits()
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query || !pagesEl.value) return
+  const spans = [...pagesEl.value.querySelectorAll<HTMLElement>('.text-layer span')].filter(
+    (el) => !el.querySelector('span') && (el.textContent || '').trim(),
+  )
+  const found = spans.filter((el) => (el.textContent || '').toLowerCase().includes(query))
+  hits.value = found
+  for (const el of found) el.classList.add('hit')
+  focusHit()
+}
+
+function stepHit(step: number) {
+  if (!hits.value.length) return
+  hitIndex.value = (hitIndex.value + step + hits.value.length) % hits.value.length
+  focusHit()
+}
+
 function startWait() {
   waitSeconds.value = 0
   window.clearInterval(waitTimer)
@@ -56,6 +86,9 @@ const editing = ref<Annotation | null>(null)
 const draft = ref('')
 const publicFlag = ref(true)
 const viewing = ref<Annotation | null>(null)
+const searchQuery = ref('')
+const hits = ref<HTMLElement[]>([])
+const hitIndex = ref(0)
 
 const canvasRefs = new Map<number, HTMLCanvasElement>()
 const textRefs = new Map<number, HTMLDivElement>()
@@ -303,6 +336,35 @@ onBeforeUnmount(() => {
     <div class="toolbar">
       <span class="mono">{{ t('{n} 页', { n: pages.length }) }}</span>
       <span class="hint">{{ t('在页面上选文字即可高亮 / 写批注') }}</span>
+      <div class="find">
+        <input
+          v-model="searchQuery"
+          class="input find-input"
+          type="search"
+          :placeholder="t('在 PDF 中搜索')"
+          @keydown.enter.prevent="runSearch"
+          @input="!searchQuery && clearHits()"
+        />
+        <span v-if="hits.length" class="mono find-count">{{ hitIndex + 1 }}/{{ hits.length }}</span>
+        <button
+          type="button"
+          class="find-btn"
+          :title="t('上一处')"
+          :disabled="!hits.length"
+          @click="stepHit(-1)"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          class="find-btn"
+          :title="t('下一处')"
+          :disabled="!hits.length"
+          @click="stepHit(1)"
+        >
+          ›
+        </button>
+      </div>
       <span class="spacer" />
       <span class="count mono">{{ t('{n} 条标注', { n: count }) }}</span>
     </div>
@@ -519,6 +581,49 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.find {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.find-input {
+  width: 170px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-width: 2px;
+}
+
+.find-count {
+  font-size: 10px;
+  color: var(--dim);
+  min-width: 34px;
+  text-align: center;
+}
+
+.find-btn {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 2px 7px;
+}
+
+.find-btn:disabled {
+  opacity: 0.4;
+}
+
+.text-layer :deep(span.hit) {
+  background: rgba(255, 203, 5, 0.55);
+  border-radius: 2px;
+}
+
+.text-layer :deep(span.hit.active) {
+  background: rgba(255, 122, 0, 0.75);
 }
 
 .text-layer {

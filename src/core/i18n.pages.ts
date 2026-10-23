@@ -182,4 +182,7 @@ export const pagesDict: Record<string, string> = {
   '会议 / 期刊': 'Venues',
   '等级分布': 'By level',
   '还没有数据': 'No data yet',
+  '在 PDF 中搜索': 'Search in PDF',
+  '上一处': 'Previous match',
+  '下一处': 'Next match',
 }
