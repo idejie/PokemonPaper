@@ -153,6 +153,8 @@ for (const [name, ddl] of [
   ['citations', "INTEGER NOT NULL DEFAULT 0"],
   ['metrics_at', "TEXT"],
   ['user_id', "TEXT"],
+  ['primary_category', "TEXT NOT NULL DEFAULT ''"],
+  ['categories', "TEXT NOT NULL DEFAULT ''"],
   ['full_text', "TEXT NOT NULL DEFAULT ''"],
   ['full_text_at', "TEXT"],
   ['summary_text', "TEXT NOT NULL DEFAULT ''"],
@@ -172,6 +174,8 @@ const FIELDS = {
   rating: 'rating',
   tags: 'tags',
   notes: 'notes',
+  primaryCategory: 'primary_category',
+  categories: 'categories',
   abstract: 'abstract',
   explain: 'explain',
   summary: 'summary_text',
@@ -201,6 +205,8 @@ function rowToPaper(row) {
     codeUrl: row.code_url ?? '',
     stars: row.stars ?? 0,
     metricsAt: row.metrics_at ?? null,
+    primaryCategory: row.primary_category ?? '',
+    categories: row.categories ? row.categories.split(',').filter(Boolean) : [],
     summary: row.summary_text ?? '',
     summaryAt: row.summary_at ?? null,
     hasFullText: Boolean(row.full_text),
@@ -418,7 +424,8 @@ function recordFailure(email) {
 function pick(body) {
   const out = {}
   for (const [key, column] of Object.entries(FIELDS)) {
-    if (body[key] !== undefined) out[column] = body[key]
+    if (body[key] === undefined) continue
+    out[column] = Array.isArray(body[key]) ? body[key].join(',') : body[key]
   }
   return out
 }
@@ -455,6 +462,9 @@ function parseAtom(xml) {
       .map((m) => decodeXml(m[1]))
       .join(', ')
     const published = atomTag(entry, 'published')
+    const categories = [...entry.matchAll(/<category[^>]*term="([^"]+)"/g)].map((m) => m[1])
+    const primary =
+      (entry.match(/<arxiv:primary_category[^>]*term="([^"]+)"/) || [])[1] || categories[0] || ''
     items.push({
       arxiv: idMatch[1],
       title: atomTag(entry, 'title'),
@@ -464,7 +474,9 @@ function parseAtom(xml) {
       year: published ? Number(published.slice(0, 4)) : null,
       venue: atomTag(entry, 'arxiv:journal_ref'),
       comment: atomTag(entry, 'arxiv:comment'),
-      category: (entry.match(/<arxiv:primary_category[^>]*term="([^"]+)"/) || [])[1] || '',
+      category: primary,
+      primaryCategory: primary,
+      categories,
     })
   }
   return items
@@ -819,6 +831,13 @@ function upsert(paper, userId) {
     readAt,
     userId ?? null,
   )
+  if (paper.primaryCategory || (Array.isArray(paper.categories) && paper.categories.length)) {
+    db.prepare('UPDATE papers SET primary_category = ?, categories = ? WHERE id = ?').run(
+      paper.primaryCategory ?? '',
+      Array.isArray(paper.categories) ? paper.categories.join(',') : '',
+      id,
+    )
+  }
   return rowToPaper(db.prepare('SELECT * FROM papers WHERE id = ?').get(id))
 }
 

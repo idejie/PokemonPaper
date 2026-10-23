@@ -63,7 +63,9 @@ function readFull() {
 
     <div class="card-foot">
       <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
-      <span class="venue mono">{{ paper.venue || '—' }}{{ paper.year ? ` · ${paper.year}` : '' }}</span>
+      <span class="venue mono" :title="`${paper.venue || ''} ${paper.year || ''}`">
+        {{ paper.primaryCategory || paper.categories[0] || '—' }}
+      </span>
     </div>
 
     <button class="read-btn" type="button" @click.stop="readFull">阅读全文</button>

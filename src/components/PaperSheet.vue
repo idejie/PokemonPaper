@@ -8,6 +8,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 import { TYPE_KEYS, TYPE_COLORS, TYPES, guessType } from '../core/typeMap'
 import { TIER_COLORS, paperLevel } from '../core/level'
+import { ARXIV_CATEGORIES, typeForCategory } from '../core/arxivTaxonomy'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import type { Explain, Paper, PaperStatus, TypeKey } from '../core/types'
 
@@ -30,6 +31,7 @@ const form = reactive({
   tags: '',
   notes: '',
   abstract: '',
+  primaryCategory: '',
   codeUrl: '',
   stars: 0,
 })
@@ -73,6 +75,7 @@ function apply(entry: Paper) {
   form.tags = entry.tags
   form.notes = entry.notes
   form.abstract = entry.abstract
+  form.primaryCategory = entry.primaryCategory
   form.codeUrl = entry.codeUrl
   form.stars = entry.stars
   typeTouched.value = true
@@ -85,6 +88,12 @@ watch(
   },
   { immediate: true },
 )
+
+function onCategoryChange() {
+  if (typeTouched.value) return
+  const mapped = typeForCategory(form.primaryCategory)
+  if (mapped) form.type = mapped
+}
 
 function maybeGuessType() {
   if (typeTouched.value) return
@@ -118,6 +127,8 @@ function payload() {
     tags: form.tags.trim(),
     notes: form.notes,
     abstract: form.abstract.trim(),
+    primaryCategory: form.primaryCategory,
+    categories: form.primaryCategory ? [form.primaryCategory] : [],
     codeUrl: form.codeUrl.trim(),
     stars: Number(form.stars) || 0,
     url: form.arxiv ? arxivAbsUrl(form.arxiv.trim()) : '',
@@ -143,8 +154,11 @@ async function fetchMeta() {
     form.venue = item.venue || form.venue
     form.year = item.year ?? form.year
     form.abstract = item.abstract || form.abstract
+    form.primaryCategory = item.primaryCategory || item.category || form.primaryCategory
     if (!typeTouched.value) {
-      form.type = guessType(item.title, item.abstract, item.comment, item.category)
+      form.type =
+        typeForCategory(form.primaryCategory) ??
+        guessType(item.title, item.abstract, item.comment, item.category)
     }
     store.notify('已抓取元数据')
   } catch (err) {
@@ -393,6 +407,16 @@ onBeforeUnmount(() => {
                 </select>
               </label>
             </div>
+
+            <label class="field">
+              <span>arXiv 分类</span>
+              <select v-model="form.primaryCategory" class="select" @change="onCategoryChange">
+                <option value="">未设置</option>
+                <option v-for="item in ARXIV_CATEGORIES" :key="item.code" :value="item.code">
+                  {{ item.code }} · {{ item.name }}
+                </option>
+              </select>
+            </label>
 
             <label class="field">
               <span>标签</span>

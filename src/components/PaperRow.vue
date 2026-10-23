@@ -55,6 +55,7 @@ const statusText = computed(() => {
 
     <div class="side">
       <span class="type-chip" :style="{ background: typeColor }">{{ typeDef.cn }}</span>
+      <span v-if="paper.primaryCategory" class="cat mono">{{ paper.primaryCategory }}</span>
       <span class="lv mono" :style="{ background: TIER_COLORS[lv.tier] }" :title="`${lv.tier} · ${paper.stars} star`">
         Lv.{{ lv.level }}
       </span>
@@ -172,6 +173,12 @@ const statusText = computed(() => {
   padding: 0 7px;
 }
 
+.cat {
+  font-size: 9px;
+  color: var(--dim);
+  font-weight: 700;
+}
+
 .lv {
   font-size: 9.5px;
   font-weight: 900;
@@ -212,7 +219,8 @@ const statusText = computed(() => {
     display: none;
   }
 
-  .type-chip {
+  .type-chip,
+  .cat {
     display: none;
   }
 }

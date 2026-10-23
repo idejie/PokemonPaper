@@ -34,6 +34,8 @@ export interface Paper {
   summaryAt: string | null
   hasFullText: boolean
   fullTextChars: number
+  primaryCategory: string
+  categories: string[]
   url: string
   addedAt: string
   readAt: string | null
@@ -45,6 +47,8 @@ export type PaperInput = Partial<Omit<Paper, 'id' | 'addedAt'>> & {
 
 export interface ArxivItem {
   arxiv: string
+  primaryCategory?: string
+  categories?: string[]
   title: string
   authors: string
   abstract: string

@@ -4,6 +4,7 @@ import { api } from '../core/api'
 import { arxivAbsUrl } from '../core/arxiv'
 import { bibEntryToPaper, parseBibtex } from '../core/bibtex'
 import { guessType } from '../core/typeMap'
+import { typeForCategory } from '../core/arxivTaxonomy'
 import type { Paper, TypeKey } from '../core/types'
 import { usePapersStore } from '../stores/papers'
 import { useUiStore } from '../stores/ui'
@@ -17,6 +18,7 @@ interface Draft {
   year: number | null
   abstract: string
   tags: string
+  primaryCategory: string
   type: TypeKey
 }
 
@@ -68,6 +70,7 @@ function makeDraft(partial: Partial<Draft> & { title: string }): Draft {
     year: null,
     abstract: '',
     tags: '',
+    primaryCategory: '',
     type: guessType(partial.title, partial.abstract, partial.tags),
     ...partial,
   }
@@ -85,17 +88,21 @@ async function loadArxiv() {
   error.value = ''
   try {
     const found = await api.previewArxiv(ids)
-    items.value = found.map((item) =>
-      makeDraft({
+    items.value = found.map((item) => {
+      const primaryCategory = item.primaryCategory || item.category || ''
+      return makeDraft({
         arxiv: item.arxiv,
         title: item.title,
         authors: item.authors,
         venue: item.venue,
         year: item.year,
         abstract: item.abstract,
-        type: guessType(item.title, item.abstract, item.comment, item.category),
-      }),
-    )
+        primaryCategory,
+        type:
+          typeForCategory(primaryCategory) ??
+          guessType(item.title, item.abstract, item.comment, item.category),
+      })
+    })
     if (found.length < ids.length) {
       error.value = `${ids.length} 个编号里只找到 ${found.length} 篇，其余可能编号有误`
     }
@@ -150,7 +157,11 @@ async function onJsonFile(event: Event) {
           year: paper.year ?? null,
           abstract: paper.abstract ?? '',
           tags: paper.tags ?? '',
-          type: paper.type ?? guessType(paper.title, paper.tags),
+          primaryCategory: paper.primaryCategory ?? '',
+          type:
+            typeForCategory(paper.primaryCategory) ??
+            paper.type ??
+            guessType(paper.title, paper.tags),
         }),
       )
   } catch {
@@ -182,6 +193,8 @@ async function confirmImport() {
         type: item.type,
         tags: item.tags,
         abstract: item.abstract,
+        primaryCategory: item.primaryCategory,
+        categories: item.primaryCategory ? [item.primaryCategory] : [],
         url: item.arxiv ? arxivAbsUrl(item.arxiv) : '',
       }
       // 已存在的论文只更新元数据，不覆盖阅读状态和笔记
@@ -293,6 +306,7 @@ onBeforeUnmount(() => {
                 {{ item.venue || '—' }}
               </span>
             </span>
+            <span v-if="item.primaryCategory" class="cat mono">{{ item.primaryCategory }}</span>
             <span v-if="exists(item)" class="badge">已存在</span>
             <span v-else-if="!item.arxiv" class="badge warn">无编号</span>
           </label>
@@ -509,8 +523,14 @@ onBeforeUnmount(() => {
   color: var(--dim);
 }
 
-.badge {
+.cat {
+  font-size: 9.5px;
+  color: var(--dim);
+  font-weight: 700;
   margin-left: auto;
+}
+
+.badge {
   flex: none;
   font-size: 10px;
   font-weight: 800;
