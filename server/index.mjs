@@ -70,6 +70,16 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
+  CREATE TABLE IF NOT EXISTS breeds (
+    id         TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    a_id       TEXT NOT NULL,
+    b_id       TEXT NOT NULL,
+    seed       TEXT NOT NULL,
+    idea       TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS party_slots (
     user_id  TEXT NOT NULL,
     slot     INTEGER NOT NULL,
@@ -829,6 +839,29 @@ function levelForXp(xp) {
   let level = 1
   while (50 * level * (level + 1) <= xp) level += 1
   return level
+}
+
+function buildBreedPrompt(a, b, zh) {
+  const lines = zh
+    ? [
+        '你在帮研究者把两篇论文“培育”成一个新的交叉研究点。',
+        '输出 3 段纯文本，每段 2–3 句，不要 markdown 标题，不要客套：',
+        '1) 两篇论文共同缺口；2) 一个可执行实验（数据、方法、指标）；3) 最大风险或反例。',
+      ]
+    : [
+        'You are cross-breeding two papers into one concrete research idea.',
+        'Write exactly 3 plain-text paragraphs, 2–3 sentences each, no markdown headings, no preamble:',
+        '1) the shared gap; 2) one executable experiment (data, method, metric); 3) the biggest risk or counterexample.',
+      ]
+  lines.push(
+    '',
+    `Paper A: ${a.title || ''} (${a.primary_category || ''})`,
+    `Abstract A: ${String(a.abstract || '').slice(0, 900) || '(none)'}`,
+    '',
+    `Paper B: ${b.title || ''} (${b.primary_category || ''})`,
+    `Abstract B: ${String(b.abstract || '').slice(0, 900) || '(none)'}`,
+  )
+  return lines.join('\n')
 }
 
 const GYM_PREFIXES = [
@@ -2096,6 +2129,44 @@ async function api(req, res, url) {
       })
       return sendJSON(res, 200, { party: partyFor(user.id) })
     }
+  }
+
+  if (pathname === '/api/breed' && method === 'POST') {
+    const body = await readBody(req)
+    const a = db.prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?').get(String(body.a || ''), user.id)
+    const b = db.prepare('SELECT * FROM papers WHERE id = ? AND user_id = ?').get(String(body.b || ''), user.id)
+    if (!a || !b) return sendJSON(res, 404, { error: '找不到这两篇论文' })
+    if (a.id === b.id) return sendJSON(res, 400, { error: '选两篇不同的论文' })
+    const idea = (
+      await chatCompletion(
+        body.config || {},
+        [
+          {
+            role: 'system',
+            content:
+              body.locale === 'zh'
+                ? '你是严谨的交叉研究方向顾问，只输出三段纯文本。'
+                : 'You are a rigorous cross-field research advisor. Reply with exactly three plain-text paragraphs.',
+          },
+          { role: 'user', content: buildBreedPrompt(a, b, body.locale === 'zh') },
+        ],
+        900,
+      )
+    )
+      .replace(/\s+\n/g, '\n')
+      .trim()
+      .slice(0, 2400)
+    const seed = `${a.arxiv || a.id}+${b.arxiv || b.id}`
+    db.prepare(
+      'INSERT INTO breeds (id, user_id, a_id, b_id, seed, idea, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(randomUUID(), user.id, a.id, b.id, seed, idea, new Date().toISOString())
+    return sendJSON(res, 200, {
+      idea,
+      seed,
+      category: b.primary_category || a.primary_category || '',
+      a: { id: a.id, arxiv: a.arxiv, title: a.title },
+      b: { id: b.id, arxiv: b.arxiv, title: b.title },
+    })
   }
 
   const tradeMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/trade$/)

@@ -150,6 +150,24 @@ export const api = {
     })
   },
 
+  async breed(
+    a: string,
+    b: string,
+    config: { baseUrl: string; apiKey: string; model: string },
+    locale: 'zh' | 'en',
+  ): Promise<{
+    idea: string
+    seed: string
+    category: string
+    a: { id: string; arxiv: string; title: string }
+    b: { id: string; arxiv: string; title: string }
+  }> {
+    return request('/api/breed', {
+      method: 'POST',
+      body: JSON.stringify({ a, b, config, locale }),
+    })
+  },
+
   async gymLeaders(): Promise<{
     month: string
     gyms: Record<

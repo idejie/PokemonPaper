@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePapersStore } from '../stores/papers'
 import PaperCard from '../components/PaperCard.vue'
 import PaperRow from '../components/PaperRow.vue'
+import BreedDialog from '../components/BreedDialog.vue'
 import { usePrefsStore } from '../stores/prefs'
 import { useRouter } from 'vue-router'
 import { paperLevel } from '../core/level'
@@ -18,6 +19,7 @@ const filter = ref<'all' | 'read' | 'reading' | 'unread'>('all')
 const sort = ref<'arxiv' | 'added' | 'rating' | 'level'>('arxiv')
 const searchInput = ref<HTMLInputElement | null>(null)
 const daily = ref<DailyPick | null>(null)
+const breedOpen = ref(false)
 
 const counts = computed(() => ({
   all: store.items.length,
@@ -143,6 +145,16 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         🎲 <span>{{ t('随机未读') }}</span>
       </button>
 
+      <button
+        type="button"
+        class="dice"
+        :disabled="store.items.length < 2"
+        :title="t('选两篇论文培育一个交叉想法')"
+        @click="breedOpen = true"
+      >
+        🧬 <span>{{ t('培育') }}</span>
+      </button>
+
       <div class="layout-switch" role="group" :aria-label="t('布局')">
         <button
           type="button"
@@ -205,6 +217,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
       {{ t('编号即 arXiv 号 · 读完点亮 · 数据存在本地 SQLite（') }}<code>data/pokemonpaper.db</code>{{ t('）') }}
     </p>
   </div>
+
+  <BreedDialog v-if="breedOpen" :papers="store.items" @close="breedOpen = false" />
 
   <RouterView />
 </template>

@@ -43,7 +43,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
 
 ## D. Reading tools
 
-- [ ] **Breeding / cross-paper ideas** — pick two papers to "breed"; the model
+- [x] **Breeding / cross-paper ideas** — pick two papers to "breed"; the model
       proposes a cross-field research gap and the UI shows a hybrid sprite.
       Turns collecting into a topic-generation tool. `L`
 - [ ] **Paper eggs** — queue papers you want to read but have no time for; open
