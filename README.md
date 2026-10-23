@@ -195,7 +195,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Deploy for multiple users: `HOST` binding, reverse proxy / HTTPS guide
 - [x] Batch download of missing PDFs (background queue + progress)
 - [x] Annotation list panel (grouped by page, click to jump)
-- [ ] Scheduled metric refresh (stars / categories)
+- [x] Scheduled metric refresh (stars / categories)
 - [x] Export AI summaries to Markdown
 - [x] Password reset (email via Resend, or admin-generated link)
 - [x] Level-up animation (card bounce, XP bar, sound)
@@ -500,6 +500,7 @@ papers.example.com {
 - 可选邮件：`RESEND_API_KEY` + `MAIL_FROM`；不配也能用，管理员在账号面板生成重置链接（同时打印到服务端日志）
 - 注册默认邀请制：第一个账号是管理员，在「设置」里生成邀请码
 - SQLite 是单文件，只能跑一个实例，记得备份 `data/`
+- `METRICS_REFRESH_HOURS=0` 关闭后台 star 刷新（默认 12 小时）
 
 ## 数据
 
@@ -645,7 +646,7 @@ interface Paper {
 - [x] 对外部署：`HOST` 绑定 + 反向代理 / HTTPS 说明
 - [x] 批量下载缺失 PDF（后台队列 + 进度）
 - [x] 标注列表（按页聚合，点击跳转）
-- [ ] 指标定时刷新（star / 分类）
+- [x] 指标定时刷新（star / 分类）
 - [x] 解读导出为 Markdown
 - [x] 密码重置（Resend 邮件或管理员生成链接）
 - [x] 点亮动效：卡片弹跳 + 经验条增长 + 音效
