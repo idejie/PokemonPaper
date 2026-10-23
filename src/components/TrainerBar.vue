@@ -69,9 +69,12 @@ async function exportJson() {
             <small>{{ auth.user?.name }}</small>
           </span>
         </button>
-        <div class="progress" :title="t('完成度 {n}%', { n: store.progress })">
-          <div class="progress-fill" :style="{ width: store.progress + '%' }" />
-          <span class="progress-label mono">{{ store.progress }}%</span>
+        <div
+          class="progress"
+          :title="t('距离 Lv.{n} 还差 {m} XP', { n: store.level + 1, m: store.xp.needed })"
+        >
+          <div class="progress-fill" :style="{ width: store.xp.percent + '%' }" />
+          <span class="progress-label mono">{{ store.xp.percent }}%</span>
         </div>
       </div>
 

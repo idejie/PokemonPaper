@@ -109,7 +109,7 @@ XP counts three things: **the paper's level, whether you finished it, and whethe
 | Notes | +20 (+10 while reading) |
 | Collected but unread | 0 |
 
-Open source and stars already determine the paper level, so they are not counted again. The level curve is `50·(L−1)·L`. The `?` button in the header opens a dedicated `/guide` page with the full rules, curve, titles, and badges.
+Open source and stars already determine the paper level, so they are not counted again. The level curve is `50·(L−1)·L`. The progress bar in the header shows XP progress within the current level, not the share of papers read. The `?` button in the header opens a dedicated `/guide` page with the full rules, curve, titles, and badges.
 
 ## Project structure
 
@@ -311,7 +311,7 @@ buildSprite(seed: string, category: string, locked: boolean): SpriteRect[]
 
 **开源和 star 不再单独加 XP**——它们已经决定了论文等级，再加一次就是双重计分。所以读一篇 Lv.82 的论文比读十篇 Lv.1 的更有价值，但前提是真的读完。
 
-升级曲线是 `50·(L−1)·L`：Lv.2 需要 100 XP，Lv.5 需要 1000，Lv.10 需要 4500。
+升级曲线是 `50·(L−1)·L`：Lv.2 需要 100 XP，Lv.5 需要 1000，Lv.10 需要 4500。顶栏进度条显示的是当前等级的经验进度，不是已读比例。
 
 称号：新手训练家 → 见习研究员（5）→ 图鉴收集者（10）→ 论文猎人（20）→ 知识训练家（35）→ 文献大师（50）。
 
