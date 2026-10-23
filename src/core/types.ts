@@ -27,6 +27,10 @@ export interface Paper {
   abstract: string
   explain: string
   pdfPath: string
+  codeUrl: string
+  stars: number
+  citations: number
+  metricsAt: string | null
   url: string
   addedAt: string
   readAt: string | null

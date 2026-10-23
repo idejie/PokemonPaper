@@ -48,6 +48,10 @@ for (const [name, ddl] of [
   ['abstract', "TEXT NOT NULL DEFAULT ''"],
   ['explain', "TEXT NOT NULL DEFAULT ''"],
   ['pdf_path', "TEXT NOT NULL DEFAULT ''"],
+  ['code_url', "TEXT NOT NULL DEFAULT ''"],
+  ['stars', "INTEGER NOT NULL DEFAULT 0"],
+  ['citations', "INTEGER NOT NULL DEFAULT 0"],
+  ['metrics_at', "TEXT"],
 ]) {
   if (!paperColumns.includes(name)) db.exec(`ALTER TABLE papers ADD COLUMN ${name} ${ddl}`)
 }
@@ -65,6 +69,10 @@ const FIELDS = {
   notes: 'notes',
   abstract: 'abstract',
   explain: 'explain',
+  codeUrl: 'code_url',
+  stars: 'stars',
+  citations: 'citations',
+  metricsAt: 'metrics_at',
   url: 'url',
   readAt: 'read_at',
 }
@@ -85,6 +93,10 @@ function rowToPaper(row) {
     abstract: row.abstract ?? '',
     explain: row.explain ?? '',
     pdfPath: row.pdf_path ?? '',
+    codeUrl: row.code_url ?? '',
+    stars: row.stars ?? 0,
+    citations: row.citations ?? 0,
+    metricsAt: row.metrics_at ?? null,
     url: row.url ?? '',
     addedAt: row.added_at,
     readAt: row.read_at ?? null,
@@ -430,6 +442,120 @@ function streamPdf(req, res, file) {
   createReadStream(file).pipe(res)
 }
 
+
+/* ------------------------------------------------------------ metrics */
+
+function parseRepo(input) {
+  const text = String(input || '').trim()
+  if (!text) return null
+  const match = text.match(/github\.com[/:]([^/\s]+)\/([^/\s#?]+)/i)
+  if (match) return { owner: match[1], repo: match[2].replace(/\.git$/, '') }
+  const short = text.match(/^([\w.-]+)\/([\w.-]+)$/)
+  if (short) return { owner: short[1], repo: short[2] }
+  return null
+}
+
+async function starsFromApi(repo, token) {
+  const headers = { accept: 'application/vnd.github+json', 'user-agent': 'PokemonPaper/0.2' }
+  if (token) headers.authorization = `Bearer ${token}`
+  const response = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}`, {
+    headers,
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!response.ok) return null
+  const data = await response.json()
+  return Number(data.stargazers_count) || 0
+}
+
+/** 无 token 时 API 很容易 403；退回到仓库页面里嵌的 stargazerCount */
+async function starsFromHtml(repo) {
+  const response = await fetch(`https://github.com/${repo.owner}/${repo.repo}`, {
+    headers: {
+      'user-agent':
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36',
+      accept: 'text/html',
+    },
+    signal: AbortSignal.timeout(20000),
+  })
+  if (!response.ok) throw new HttpError(502, `GitHub 页面返回 ${response.status}`)
+  const html = await response.text()
+  const match = html.match(/"stargazerCount":(\d+)/)
+  if (!match) throw new HttpError(502, '页面里没找到 star 数')
+  return Number(match[1]) || 0
+}
+
+async function fetchStars(codeUrl) {
+  const repo = parseRepo(codeUrl)
+  if (!repo) throw new HttpError(400, '看不懂这个仓库地址')
+  const token = process.env.GITHUB_TOKEN || ''
+  const viaApi = await starsFromApi(repo, token).catch(() => null)
+  if (viaApi !== null) return viaApi
+  return starsFromHtml(repo)
+}
+
+function normalizeTitle(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function titleMatches(a, b) {
+  const left = normalizeTitle(a)
+  const right = normalizeTitle(b)
+  if (!left || !right) return false
+  if (left.includes(right) || right.includes(left)) return true
+  const words = new Set(left.split(' ').filter((w) => w.length > 3))
+  const other = right.split(' ').filter((w) => w.length > 3)
+  if (!words.size || !other.length) return false
+  const hit = other.filter((w) => words.has(w)).length
+  return hit / Math.max(words.size, other.length) >= 0.5
+}
+
+async function citationsFromOpenAlex(title) {
+  if (!title) throw new HttpError(502, '没有标题，无法查 OpenAlex')
+  const url =
+    `https://api.openalex.org/works?search=${encodeURIComponent(title)}` +
+    '&per_page=3&select=display_name,cited_by_count&mailto=i@idejie.com'
+
+  let response
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    response = await fetch(url, {
+      headers: { accept: 'application/json', 'user-agent': 'PokemonPaper/0.2 (mailto:i@idejie.com)' },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (response.ok || response.status !== 429) break
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+  }
+  if (!response || !response.ok) {
+    throw new HttpError(502, `OpenAlex 返回 ${response ? response.status : '无响应'}，稍后再试`)
+  }
+  const data = await response.json()
+  const hit = (data.results || []).find((work) => titleMatches(title, work.display_name))
+  if (!hit) throw new HttpError(502, 'OpenAlex 没找到匹配的论文')
+  return Number(hit.cited_by_count) || 0
+}
+
+async function fetchCitations(arxiv, title) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(
+      `https://api.semanticscholar.org/graph/v1/paper/arXiv:${arxiv}?fields=citationCount`,
+      { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15000) },
+    )
+    if (response.ok) {
+      const data = await response.json()
+      return Number(data.citationCount) || 0
+    }
+    if (response.status !== 429) {
+      break
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+  }
+  // Semantic Scholar 限流时退回 OpenAlex
+  return citationsFromOpenAlex(title)
+}
+
 function upsert(paper) {
   const now = new Date().toISOString()
   const existing = paper.arxiv
@@ -454,8 +580,8 @@ function upsert(paper) {
   const status = paper.status ?? 'unread'
   const readAt = status === 'read' ? paper.readAt || now : null
   db.prepare(`
-    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, url, added_at, read_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO papers (id, arxiv, title, authors, venue, year, type, status, rating, tags, notes, abstract, explain, code_url, stars, citations, url, added_at, read_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     paper.arxiv || null,
@@ -470,6 +596,9 @@ function upsert(paper) {
     paper.notes ?? '',
     paper.abstract ?? '',
     paper.explain ?? '',
+    paper.codeUrl ?? '',
+    Number(paper.stars) || 0,
+    Number(paper.citations) || 0,
     paper.url ?? (paper.arxiv ? `https://arxiv.org/abs/${paper.arxiv}` : ''),
     now,
     readAt,
@@ -533,6 +662,46 @@ async function api(req, res, url) {
     return sendJSON(res, 200, { explain })
   }
 
+
+
+  const metricsMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/metrics$/)
+  if (metricsMatch && method === 'POST') {
+    const row = db.prepare('SELECT * FROM papers WHERE id = ?').get(metricsMatch[1])
+    if (!row) return sendJSON(res, 404, { error: 'not found' })
+
+    const notes = []
+    let stars = row.stars ?? 0
+    let citations = row.citations ?? 0
+
+    if (row.code_url) {
+      try {
+        stars = await fetchStars(row.code_url)
+      } catch (error) {
+        notes.push(`Star 抓取失败：${error?.message || error}`)
+      }
+    } else {
+      notes.push('没有填开源仓库，跳过 star')
+    }
+
+    if (row.arxiv) {
+      try {
+        citations = await fetchCitations(row.arxiv, row.title)
+      } catch (error) {
+        notes.push(`引用量抓取失败：${error?.message || error}`)
+      }
+    } else {
+      notes.push('没有 arXiv 编号，跳过引用量')
+    }
+
+    db.prepare('UPDATE papers SET stars = ?, citations = ?, metrics_at = ? WHERE id = ?').run(
+      stars,
+      citations,
+      new Date().toISOString(),
+      row.id,
+    )
+    const fresh = rowToPaper(db.prepare('SELECT * FROM papers WHERE id = ?').get(row.id))
+    return sendJSON(res, 200, { paper: fresh, notes })
+  }
 
   const pdfMatch = pathname.match(/^\/api\/papers\/([\w-]+)\/pdf$/)
   if (pdfMatch) {

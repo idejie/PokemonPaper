@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { buildSprite } from '../core/sprite'
+import { SPRITE_SIZE, buildSprite } from '../core/sprite'
 import type { TypeKey } from '../core/types'
 
 const props = withDefaults(
@@ -16,7 +16,7 @@ const rects = computed(() => buildSprite(props.seed, props.type, props.locked))
 </script>
 
 <template>
-  <svg class="sprite" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+  <svg class="sprite" :viewBox="`-2 -2 ${SPRITE_SIZE + 4} ${SPRITE_SIZE + 4}`" shape-rendering="crispEdges" aria-hidden="true">
     <rect
       v-for="(rect, index) in rects"
       :key="index"

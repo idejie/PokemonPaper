@@ -7,6 +7,7 @@ import { usePapersStore } from '../stores/papers'
 import { useSettingsStore } from '../stores/settings'
 import { useUiStore } from '../stores/ui'
 import { TYPE_KEYS, TYPE_COLORS, TYPES, guessType } from '../core/typeMap'
+import { TIER_COLORS, paperLevel } from '../core/level'
 import { arxivAbsUrl, parseArxivId } from '../core/arxiv'
 import type { Explain, Paper, PaperStatus, TypeKey } from '../core/types'
 
@@ -29,6 +30,9 @@ const form = reactive({
   tags: '',
   notes: '',
   abstract: '',
+  codeUrl: '',
+  stars: 0,
+  citations: 0,
 })
 
 const typeTouched = ref(false)
@@ -36,6 +40,7 @@ const saving = ref(false)
 const fetching = ref(false)
 const pdfBusy = ref(false)
 const explaining = ref(false)
+const syncing = ref(false)
 
 const creating = computed(() => !props.id)
 const paper = computed(() => (props.id ? store.byId(props.id) : undefined))
@@ -43,6 +48,10 @@ const missing = computed(() => !creating.value && !store.loading && !paper.value
 const seed = computed(() => form.arxiv || form.title || 'pokemonpaper-new')
 const typeDef = computed(() => TYPES[form.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[form.type] ?? TYPE_COLORS.normal)
+
+const level = computed(() =>
+  paperLevel({ codeUrl: form.codeUrl, stars: form.stars, citations: form.citations }),
+)
 
 const explainData = computed<Explain | null>(() => {
   const raw = paper.value?.explain
@@ -67,6 +76,9 @@ function apply(entry: Paper) {
   form.tags = entry.tags
   form.notes = entry.notes
   form.abstract = entry.abstract
+  form.codeUrl = entry.codeUrl
+  form.stars = entry.stars
+  form.citations = entry.citations
   typeTouched.value = true
 }
 
@@ -110,6 +122,9 @@ function payload() {
     tags: form.tags.trim(),
     notes: form.notes,
     abstract: form.abstract.trim(),
+    codeUrl: form.codeUrl.trim(),
+    stars: Number(form.stars) || 0,
+    citations: Number(form.citations) || 0,
     url: form.arxiv ? arxivAbsUrl(form.arxiv.trim()) : '',
   }
 }
@@ -190,6 +205,28 @@ async function openPdf() {
   const updated = await store.ensurePdf(props.id)
   pdfBusy.value = false
   if (updated) window.open(api.pdfUrl(props.id), '_blank', 'noopener')
+}
+
+async function syncMetrics() {
+  if (!props.id) {
+    store.notify('先保存这篇论文，再同步指标')
+    return
+  }
+  syncing.value = true
+  try {
+    // 先把仓库地址存下来，服务端才能读到
+    await store.update(props.id, { codeUrl: form.codeUrl.trim() })
+    const result = await store.syncMetrics(props.id)
+    if (result) {
+      form.stars = result.paper.stars
+      form.citations = result.paper.citations
+      store.notify(
+        result.notes.length ? result.notes.join('；') : `已同步：${result.paper.stars} star · ${result.paper.citations} 引用`,
+      )
+    }
+  } finally {
+    syncing.value = false
+  }
 }
 
 async function generateExplain() {
@@ -365,6 +402,46 @@ onBeforeUnmount(() => {
               <span>标签</span>
               <input v-model="form.tags" class="input" placeholder="world model, humanoid" @input="maybeGuessType" />
             </label>
+
+            <div class="levelbar">
+              <div class="lv-badge" :style="{ background: TIER_COLORS[level.tier] }">
+                Lv.{{ level.level }}
+              </div>
+              <div class="lv-info">
+                <b>{{ level.tier }}</b>
+                <span class="mono">
+                  开源 +{{ level.parts.code }} · Star +{{ level.parts.stars }} · 引用 +{{ level.parts.cites }}
+                </span>
+              </div>
+              <button
+                type="button"
+                class="btn sm ghost"
+                :disabled="syncing || creating"
+                @click="syncMetrics"
+              >
+                {{ syncing ? '同步中…' : '同步指标' }}
+              </button>
+            </div>
+
+            <label class="field">
+              <span>开源仓库</span>
+              <input
+                v-model="form.codeUrl"
+                class="input mono"
+                placeholder="https://github.com/owner/repo（留空表示未开源）"
+              />
+            </label>
+
+            <div class="row2">
+              <label class="field">
+                <span>GitHub Stars</span>
+                <input v-model.number="form.stars" class="input mono" type="number" min="0" />
+              </label>
+              <label class="field">
+                <span>引用量</span>
+                <input v-model.number="form.citations" class="input mono" type="number" min="0" />
+              </label>
+            </div>
 
             <label class="field">
               <span>摘要</span>
@@ -655,6 +732,47 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 12px;
   align-content: start;
+}
+
+.levelbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2.5px solid var(--ink);
+  border-radius: 9px;
+  padding: 7px 10px;
+  background: var(--panel-2);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.lv-badge {
+  flex: none;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 2px 8px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.lv-info {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.lv-info b {
+  font-size: 11.5px;
+}
+
+.lv-info span {
+  font-size: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pdfbar {

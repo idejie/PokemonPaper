@@ -83,6 +83,17 @@ export const usePapersStore = defineStore('papers', () => {
     }
   }
 
+  async function syncMetrics(id: string): Promise<{ paper: Paper; notes: string[] } | null> {
+    try {
+      const result = await api.syncMetrics(id)
+      items.value = items.value.map((p) => (p.id === id ? result.paper : p))
+      return result
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '同步失败')
+      return null
+    }
+  }
+
   async function remove(id: string): Promise<boolean> {
     try {
       await api.remove(id)
@@ -127,6 +138,7 @@ export const usePapersStore = defineStore('papers', () => {
     update,
     remove,
     ensurePdf,
+    syncMetrics,
     markRead,
     byId,
     byArxiv,

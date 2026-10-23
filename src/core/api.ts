@@ -49,6 +49,12 @@ export const api = {
     return `/api/papers/${id}/pdf`
   },
 
+  async syncMetrics(id: string): Promise<{ paper: Paper; notes: string[] }> {
+    return request<{ paper: Paper; notes: string[] }>(`/api/papers/${id}/metrics`, {
+      method: 'POST',
+    })
+  },
+
   async remove(id: string): Promise<void> {
     await request<{ ok: boolean }>(`/api/papers/${id}`, { method: 'DELETE' })
   },

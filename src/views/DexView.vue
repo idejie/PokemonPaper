@@ -2,11 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePapersStore } from '../stores/papers'
 import PaperCard from '../components/PaperCard.vue'
+import { paperLevel } from '../core/level'
 
 const store = usePapersStore()
 const query = ref('')
 const filter = ref<'all' | 'read' | 'reading' | 'unread'>('all')
-const sort = ref<'arxiv' | 'added' | 'rating'>('arxiv')
+const sort = ref<'arxiv' | 'added' | 'rating' | 'level'>('arxiv')
 const searchInput = ref<HTMLInputElement | null>(null)
 
 const counts = computed(() => ({
@@ -30,6 +31,7 @@ const filtered = computed(() => {
   return [...list].sort((a, b) => {
     if (sort.value === 'added') return b.addedAt.localeCompare(a.addedAt)
     if (sort.value === 'rating') return b.rating - a.rating || b.arxiv.localeCompare(a.arxiv)
+    if (sort.value === 'level') return paperLevel(b).level - paperLevel(a).level
     return b.arxiv.localeCompare(a.arxiv, undefined, { numeric: true })
   })
 })
@@ -85,6 +87,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
         <option value="arxiv">按编号</option>
         <option value="added">按收录时间</option>
         <option value="rating">按评分</option>
+        <option value="level">按等级</option>
       </select>
     </div>
 

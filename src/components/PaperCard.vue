@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { Paper } from '../core/types'
 import { TYPE_COLORS, TYPES } from '../core/typeMap'
+import { TIER_COLORS, paperLevel } from '../core/level'
 import SpriteSvg from './SpriteSvg.vue'
 
 const props = defineProps<{ paper: Paper }>()
@@ -10,6 +11,10 @@ const locked = computed(() => props.paper.status === 'unread')
 const typeDef = computed(() => TYPES[props.paper.type] ?? TYPES.normal)
 const typeColor = computed(() => TYPE_COLORS[props.paper.type] ?? TYPE_COLORS.normal)
 const seed = computed(() => props.paper.arxiv || props.paper.title)
+const lv = computed(() => paperLevel(props.paper))
+const levelTitle = computed(
+  () => `${lv.value.tier} · 开源 +${lv.value.parts.code} / Star +${lv.value.parts.stars} / 引用 +${lv.value.parts.cites}`,
+)
 const statusText = computed(() => {
   if (props.paper.status === 'read') return '已点亮'
   if (props.paper.status === 'reading') return '在读'
@@ -25,8 +30,13 @@ const statusText = computed(() => {
     :title="paper.title"
   >
     <div class="card-top">
-      <span class="no mono">No.{{ paper.arxiv || '—' }}</span>
-      <span class="status" :class="paper.status">{{ statusText }}</span>
+      <span class="no mono">
+        <i class="dot" :class="paper.status" :title="statusText" />
+        {{ paper.arxiv || '—' }}
+      </span>
+      <span class="lv mono" :style="{ background: TIER_COLORS[lv.tier] }" :title="levelTitle">
+        Lv.{{ lv.level }}
+      </span>
     </div>
 
     <div class="sprite-box">
@@ -76,28 +86,37 @@ const statusText = computed(() => {
   white-space: nowrap;
 }
 
-.status {
-  font-size: 9.5px;
-  font-weight: 800;
-  padding: 1px 6px;
-  border-radius: 999px;
-  border: 1.5px solid var(--ink);
-  white-space: nowrap;
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--ink);
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
-.status.read {
+.dot.read {
   background: var(--gold);
-  color: #221d1a;
 }
 
-.status.reading {
-  background: #ffe8b0;
-  color: #7a5b00;
+.dot.reading {
+  background: #f0b429;
 }
 
-.status.unread {
-  background: #efe7d4;
-  color: var(--dim);
+.dot.unread {
+  background: #d9cdb2;
+}
+
+.lv {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1.5px solid var(--ink);
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 1.5px 1.5px 0 var(--ink);
 }
 
 .sprite-box {

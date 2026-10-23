@@ -32,10 +32,11 @@
 
 | | |
 |---|---|
-| 🧬 **确定性精灵** | 同一 arXiv 号在任何设备、任何时候生成同一只，纯函数 + 固定种子 |
+| 🧬 **确定性精灵** | 32×32 像素，5 种体型（两足/四足/团子/鸟/幽灵），同一 arXiv 号永远生成同一只 |
 | 📥 **批量导入** | 一行一个 arXiv 编号或链接，最多 50 篇；也支持 BibTeX 和 JSON 备份 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
 | 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
+| ⚔️ **论文等级** | Lv.1–100，由开源代码、GitHub star、引用量共同决定，分普通/稀有/史诗/传说 |
 | 🤖 **AI 速读卡** | 一句话 / 问题 / 方法 / 关键数字 / 局限 / 下一步，OpenAI 兼容接口，Key 存本地 |
 | 📄 **PDF 本地化** | 原文存 `data/pdfs/`，库里只记链接和相对路径；没有就从 arXiv 现下 |
 | 🔍 **检索** | 标题 / 作者 / 编号 / 标签 / 会议全文搜索，`/` 聚焦 |
@@ -53,7 +54,7 @@ arXiv 号自带时间信息（`2610` = 2026 年 10 月），既是业务主键�
 buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
 ```
 
-输入一个字符串，输出 16×16 的矩形数组。只用 FNV-1a hash + mulberry32，**没有 `Math.random()`**。所以 `2610.28480` 在任何机器上都是同一只。
+输入一个字符串，输出 32×32 的矩形数组。只用 FNV-1a hash + mulberry32，**没有 `Math.random()`**。所以 `2610.28480` 在任何机器上都是同一只。
 
 生成器不碰 DOM，换框架只换渲染层。
 
@@ -90,6 +91,32 @@ buildSprite(seed: string, type: TypeKey, locked: boolean): SpriteRect[]
 - **Key 只存在浏览器 localStorage**，请求经本地服务转发，不写数据库、不打日志
 - Prompt 明确要求「数字只能来自摘要，没有就留空」，减少编造
 - 生成结果存进 SQLite 的 `explain` 字段，可以随时重新生成覆盖
+
+## 论文等级
+
+每只精灵都有等级，反映论文的实际影响力。三个输入，对数刻度：
+
+| 信号 | 权重 | 来源 |
+|---|---|---|
+| 开源代码 | +15 | 填了 GitHub 仓库地址就算 |
+| GitHub star | 最多 +40 | 点「同步指标」抓取，10k star 拿满 |
+| 引用量 | 最多 +45 | Semantic Scholar，失败时退回 OpenAlex |
+
+```
+level = 1 + 15·[有代码] + 40·log10(1+stars)/log10(10001) + 45·log10(1+cites)/log10(5001)
+```
+
+换算成人话：
+
+| 论文 | 代码 | star | 引用 | 等级 |
+|---|---|---|---|---|
+| 刚挂 arXiv，无代码 | — | 0 | 0 | Lv.1 普通 |
+| 有官方实现，几百 star | ✓ | 800 | 120 | Lv.50 稀有 |
+| 领域经典，社区很大 | ✓ | 4.7k | 600 | Lv.86 传说 |
+
+对数刻度的用意：不让一篇万引综述把所有精灵压成 1 级，也不让新论文永远垫底。
+
+**同步**：详情页点「同步指标」，服务端去 GitHub 和 Semantic Scholar 拉数据。没配置 `GITHUB_TOKEN` 时，GitHub API 容易触发未认证限流，会自动退回抓取仓库页面里的星数。引用量遇到限流会退回 OpenAlex，再失败就保留旧值。
 
 ## PDF 本地化
 
@@ -137,6 +164,7 @@ pnpm start     # http://127.0.0.1:8787
 - 默认库：`data/pokemonpaper.db`，首次启动自动建表并写入两条示例
 - 自定义位置：`POKEMONPAPER_DB=/path/to.db pnpm start`
 - 自定义端口：`PORT=9000 pnpm start`
+- 可选：`GITHUB_TOKEN=ghp_xxx pnpm start`，把 GitHub API 限额从 60 次/时提到 5000
 - 备份：界面右上角「导出」；恢复用「导入」，按 arXiv 号合并
 
 `data/`、`dist/`、`node_modules/` 都在 `.gitignore` 里，不会进版本库。
@@ -148,9 +176,10 @@ server/
   index.mjs          # HTTP API + 静态托管 + SQLite 建表/种子
 src/
   core/
-    sprite.ts        # 精灵生成器（纯函数，16×16 确定性像素）
+    sprite.ts        # 精灵生成器（纯函数，32×32，五种体型）
     typeMap.ts       # 10 种属性定义 + 关键词猜测
     arxiv.ts         # arXiv 编号解析
+    level.ts         # 论文等级公式
     api.ts           # API 客户端
     bibtex.ts        # BibTeX 解析（括号平衡 + 字段扫描）
     providers.ts     # 模型厂商预设
@@ -183,6 +212,7 @@ src/
 | `POST` | `/api/papers/:id/pdf` | 确保 PDF 在本地（没有就下载） |
 | `GET` | `/api/papers/:id/pdf` | 流式返回 PDF（支持 Range） |
 | `POST` | `/api/explain` | 调模型生成速读卡（配置随请求传入） |
+| `POST` | `/api/papers/:id/metrics` | 同步 GitHub star 与引用量 |
 | `GET` | `/api/export` | 全量导出 JSON |
 | `POST` | `/api/import` | 按 arXiv 合并导入 |
 | `GET` | `/api/health` | 健康检查 |
@@ -205,6 +235,10 @@ interface Paper {
   abstract: string       // arXiv 摘要
   explain: string        // AI 速读卡的 JSON 字符串
   pdfPath: string        // 相对 data/pdfs/ 的文件名，空表示未下载
+  codeUrl: string        // 开源仓库，空表示未开源
+  stars: number          // GitHub stars
+  citations: number      // 引用量
+  metricsAt: string | null
   url: string
   addedAt: string
   readAt: string | null
@@ -217,6 +251,8 @@ interface Paper {
 - [x] 批量导入（arXiv / BibTeX / JSON）
 - [x] PDF 本地化与 Range 流式阅读
 - [x] AI 速读卡（OpenAI 兼容，预设 DeepSeek 等）
+- [x] 论文等级：开源 + star + 引用量
+- [ ] 指标定时刷新（现在要手点）
 - [ ] 批量下载缺失 PDF（后台队列 + 进度）
 - [ ] 点亮动效：卡片弹跳 + 经验条增长 + 音效
 - [ ] 统计页：按属性、年份、会议分布
@@ -228,6 +264,8 @@ interface Paper {
 - 单用户、单机，没有登录
 - AI 解读质量取决于所选模型；摘要信息不足时它应该留空，但小模型仍可能脑补
 - 批量下载 PDF 还没做，目前是一篇一篇点
+- 指标来自第三方 API，有速率限制；引用量有几天到几周的滞后
+- 等级是影响力代理，不代表论文质量——新论文天然吃亏
 - 精灵生成器是模板式的，形状会有重复，但配色和细节组合足够区分
 - 未做全文检索，只搜已录入的字段
 
