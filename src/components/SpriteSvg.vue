@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import { SPRITE_SIZE, buildSprite } from '../core/sprite'
 
 const props = withDefaults(
@@ -12,6 +12,9 @@ const props = withDefaults(
 )
 
 const rects = computed(() => buildSprite(props.seed, props.category, props.locked))
+const uid = useId()
+const lightId = computed(() => `sprite-light-${uid}`)
+const maskId = computed(() => `sprite-mask-${uid}`)
 </script>
 
 <template>
@@ -19,9 +22,28 @@ const rects = computed(() => buildSprite(props.seed, props.category, props.locke
     <svg
       class="sprite"
       :viewBox="`-2 -2 ${SPRITE_SIZE + 4} ${SPRITE_SIZE + 4}`"
-      shape-rendering="crispEdges"
+      shape-rendering="geometricPrecision"
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient :id="lightId" x1="0" y1="0" x2="0.85" y2="1">
+          <stop offset="0" stop-color="#fffdf4" stop-opacity="0.3" />
+          <stop offset="0.42" stop-color="#fffdf4" stop-opacity="0" />
+          <stop offset="1" stop-color="#2b2420" stop-opacity="0.24" />
+        </linearGradient>
+        <mask :id="maskId" maskUnits="userSpaceOnUse" x="-2" y="-2" :width="SPRITE_SIZE + 4" :height="SPRITE_SIZE + 4">
+          <rect
+            v-for="(rect, index) in rects"
+            :key="`m-${index}`"
+            :x="rect.x"
+            :y="rect.y"
+            :width="rect.w"
+            :height="rect.h"
+            fill="#fff"
+          />
+        </mask>
+      </defs>
+
       <rect
         v-for="(rect, index) in rects"
         :key="index"
@@ -29,7 +51,18 @@ const rects = computed(() => buildSprite(props.seed, props.category, props.locke
         :y="rect.y"
         :width="rect.w"
         :height="rect.h"
+        rx="0.42"
+        ry="0.42"
         :fill="rect.fill"
+      />
+
+      <rect
+        x="-2"
+        y="-2"
+        :width="SPRITE_SIZE + 4"
+        :height="SPRITE_SIZE + 4"
+        :fill="`url(#${lightId})`"
+        :mask="`url(#${maskId})`"
       />
     </svg>
   </div>
@@ -55,6 +88,7 @@ const rects = computed(() => buildSprite(props.seed, props.category, props.locke
   display: block;
   width: 100%;
   height: 100%;
+  filter: blur(0.6px) saturate(1.06);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -791,8 +791,9 @@ function colorFor(v: number, palette: SpritePalette, locked: boolean): string {
     case DARK:
       return palette.dark
     case EYE:
-    case EDGE:
       return OUTLINE
+    case EDGE:
+      return palette.dark
     case WHITE:
       return GLINT
     case ACCENT:
