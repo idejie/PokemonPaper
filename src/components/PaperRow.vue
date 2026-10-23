@@ -39,7 +39,7 @@ const statusText = computed(() => {
     @keydown.enter="openDetail"
   >
     <div class="pic">
-      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" />
+      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" :status="paper.status" :notes="paper.notes" />
     </div>
 
     <div class="main">

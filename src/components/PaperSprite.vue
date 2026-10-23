@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import SpriteSvg from './SpriteSvg.vue'
+import type { PaperStatus } from '../core/types'
 
 const props = withDefaults(
   defineProps<{
@@ -8,9 +9,18 @@ const props = withDefaults(
     category: string
     locked?: boolean
     spriteUrl?: string | null
+    status?: PaperStatus
+    notes?: string
   }>(),
-  { locked: false, spriteUrl: null },
+  { locked: false, spriteUrl: null, status: undefined, notes: '' },
 )
+
+const stage = computed(() => {
+  const status = props.status ?? (props.locked ? 'unread' : 'read')
+  if (status === 'unread') return 1
+  if (status === 'reading') return 2
+  return props.notes?.trim() ? 4 : 3
+})
 
 const failed = ref(false)
 watch(
@@ -31,7 +41,7 @@ const showImage = computed(() => Boolean(props.spriteUrl) && !props.locked && !f
     alt=""
     @error="failed = true"
   />
-  <SpriteSvg v-else :seed="seed" :category="category" :locked="locked" />
+  <SpriteSvg v-else :seed="seed" :category="category" :locked="locked" :stage="stage" />
 </template>
 
 <style scoped>

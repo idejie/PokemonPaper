@@ -7,18 +7,20 @@ const props = withDefaults(
     seed: string
     category: string
     locked?: boolean
+    stage?: number
   }>(),
-  { locked: false },
+  { locked: false, stage: 3 },
 )
 
-const rects = computed(() => buildSprite(props.seed, props.category, props.locked))
+const rects = computed(() => buildSprite(props.seed, props.category, props.locked, props.stage))
+const stageScale = computed(() => [0, 0.78, 0.9, 1, 1.04][Math.min(4, Math.max(1, props.stage))] ?? 1)
 const uid = useId()
 const lightId = computed(() => `sprite-light-${uid}`)
 const maskId = computed(() => `sprite-mask-${uid}`)
 </script>
 
 <template>
-  <div class="sprite-tilt">
+  <div class="sprite-tilt" :style="{ '--stage-scale': stageScale }">
     <svg
       class="sprite"
       :viewBox="`-2 -2 ${SPRITE_SIZE + 4} ${SPRITE_SIZE + 4}`"
@@ -64,6 +66,12 @@ const maskId = computed(() => `sprite-mask-${uid}`)
         :fill="`url(#${lightId})`"
         :mask="`url(#${maskId})`"
       />
+
+      <g v-if="props.stage >= 4" class="aura">
+        <path d="M 0 -3.4 L 1 -1 L 3.4 0 L 1 1 L 0 3.4 L -1 1 L -3.4 0 L -1 -1 Z" transform="translate(6 9)" />
+        <path d="M 0 -3.4 L 1 -1 L 3.4 0 L 1 1 L 0 3.4 L -1 1 L -3.4 0 L -1 -1 Z" transform="translate(61 13) scale(1.15)" />
+        <path d="M 0 -3.4 L 1 -1 L 3.4 0 L 1 1 L 0 3.4 L -1 1 L -3.4 0 L -1 -1 Z" transform="translate(57 53) scale(0.8)" />
+      </g>
     </svg>
   </div>
 </template>
@@ -72,7 +80,7 @@ const maskId = computed(() => `sprite-mask-${uid}`)
 .sprite-tilt {
   width: 100%;
   height: 100%;
-  transform: perspective(820px) rotateX(9deg) rotateY(-9deg);
+  transform: perspective(820px) rotateX(9deg) rotateY(-9deg) scale(var(--stage-scale, 1));
   transform-origin: 50% 72%;
   filter: drop-shadow(1px 1.3px 0 #2b2420) drop-shadow(1px 1.3px 0 #2b2420)
     drop-shadow(1px 1.3px 0 #2b2420) drop-shadow(1px 1.3px 0 #2b2420)
@@ -81,7 +89,34 @@ const maskId = computed(() => `sprite-mask-${uid}`)
 }
 
 .sprite-tilt:hover {
-  transform: perspective(820px) rotateX(12deg) rotateY(-16deg) translateY(-2px);
+  transform: perspective(820px) rotateX(12deg) rotateY(-16deg) translateY(-2px) scale(var(--stage-scale, 1));
+}
+
+.aura path {
+  fill: #f2c14e;
+  stroke: #2b2420;
+  stroke-width: 0.8;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: aura-twinkle 2.4s ease-in-out infinite;
+}
+
+.aura path:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.aura path:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes aura-twinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .sprite {
@@ -92,6 +127,10 @@ const maskId = computed(() => `sprite-mask-${uid}`)
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .aura path {
+    animation: none;
+  }
+
   .sprite-tilt,
   .sprite-tilt:hover {
     transform: none;

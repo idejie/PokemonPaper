@@ -44,6 +44,11 @@ const fetching = ref(false)
 const pdfBusy = ref(false)
 const spriteBusy = ref(false)
 const cardBusy = ref(false)
+const stageName = computed(() => {
+  if (form.status === 'unread') return '幼体'
+  if (form.status === 'reading') return '成长体'
+  return form.notes.trim() ? '羁绊形态' : '完全体'
+})
 const explaining = ref(false)
 const syncing = ref(false)
 
@@ -331,7 +336,7 @@ onBeforeUnmount(() => {
         <div class="main">
           <aside class="preview">
             <div class="stage" :class="{ dim: form.status === 'unread', lit: form.status === 'read' }">
-              <PaperSprite :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" :sprite-url="paper?.spriteUrl ?? null" />
+              <PaperSprite :seed="seed" :category="form.primaryCategory" :locked="form.status === 'unread'" :sprite-url="paper?.spriteUrl ?? null" :status="form.status" :notes="form.notes" />
             </div>
             <button
               type="button"
@@ -349,6 +354,7 @@ onBeforeUnmount(() => {
             >
               {{ cardBusy ? t('生成中…') : t('分享卡片') }}
             </button>
+            <p class="stage-name">{{ t(stageName) }}</p>
 
             <div class="preview-meta">
               <span class="type-chip" :style="{ background: catColor }">
@@ -715,6 +721,15 @@ onBeforeUnmount(() => {
   opacity: 0.7;
 }
 
+.stage-name {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
 .art-btn {
   width: 100%;
   margin-top: 6px;
@@ -1050,7 +1065,16 @@ onBeforeUnmount(() => {
     grid-area: stage;
   }
 
-  .art-btn {
+  .stage-name {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.art-btn {
   width: 100%;
   margin-top: 6px;
 }

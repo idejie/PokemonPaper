@@ -692,7 +692,7 @@ function drawAccessory(g: Grid, a: Anatomy, rnd: () => number) {
 
 /* --------------------------------------------------------------- shading */
 
-function shade(g: Grid, a: Anatomy, rnd: () => number) {
+function shade(g: Grid, a: Anatomy, rnd: () => number, stage = 3) {
   const height = Math.max(1, a.bottom - a.top)
   const width = Math.max(1, a.right - a.left)
   const belly = rnd() < 0.6
@@ -721,6 +721,7 @@ function shade(g: Grid, a: Anatomy, rnd: () => number) {
     }
   }
 
+  if (stage < 3) return
   const pattern = Math.floor(rnd() * 4)
   if (pattern === 1) {
     for (const dy of [-2, 1, 4]) {
@@ -803,8 +804,8 @@ function colorFor(v: number, palette: SpritePalette, locked: boolean): string {
   }
 }
 
-export function buildSprite(seed: string, category: string, locked = false): SpriteRect[] {
-  const key = `${seed}|${category}|${locked ? 1 : 0}`
+export function buildSprite(seed: string, category: string, locked = false, stage = 3): SpriteRect[] {
+  const key = `${seed}|${category}|${locked ? 1 : 0}|${stage}`
   const hit = cache.get(key)
   if (hit) return hit
 
@@ -836,9 +837,9 @@ export function buildSprite(seed: string, category: string, locked = false): Spr
   else if (kind === 'mech') anatomy = drawMech(g, rnd)
   else anatomy = drawPlant(g, rnd)
 
-  shade(g, anatomy, rnd)
+  shade(g, anatomy, rnd, stage)
   drawFace(g, anatomy, rnd)
-  drawAccessory(g, anatomy, rnd)
+  if (stage >= 2) drawAccessory(g, anatomy, rnd)
   outline(g)
   if (!locked) groundShadow(g, anatomy)
 

@@ -49,7 +49,7 @@ All data stays in a local SQLite file. No cloud. The UI switches between Chinese
 | 🏆 **Leaderboard** | Rank everyone by level, XP, papers read, summaries and likes; your row is highlighted |
 | 🔦 **In-PDF search** | Search across pages, highlight matches, jump prev / next |
 | 🏷️ **arXiv as the key** | Paste `https://arxiv.org/pdf/2610.28480` and the ID is extracted; duplicates are rejected per user |
-| 🌗 **Three states** | Unread silhouette → reading (half color) → read (full color + gold star) |
+| 🌗 **Evolution stages** | Hatchling silhouette → juvenile (reading) → final form (read) → bond form (notes); size, accessories and patterns unlock as it grows |
 | 🎖️ **Trainer levels** | XP from paper level, reading, notes and likes received; 6 titles, 8 badges |
 | 🗂️ **Two layouts** | Cards for sprites, list for information; choice persisted locally |
 | 🏷️ **arXiv categories** | Full official taxonomy (155 categories); cards and rows show `cs.RO`, sprite colors follow the field |
@@ -239,6 +239,7 @@ All endpoints except `/api/health` and auth require a session cookie.
 - [x] Leaderboard (level / XP / reads / summaries / likes)
 - [x] Extruded 3D sprite rendering and lit-sprite idle animation
 - [x] Shareable paper card PNG
+- [x] Four-stage sprite evolution (hatchling → bond form)
 
 Planned ideas and the backlog live in [TODO.md](TODO.md).
 
@@ -282,7 +283,7 @@ MIT © idejie
 | 🏆 **天梯** | 所有人的等级、XP、已读、总结、获赞排行，当前用户高亮 |
 | 🔦 **PDF 内搜索** | 跨页搜索，命中高亮，支持上一处 / 下一处 |
 | 🏷️ **arXiv 即主键** | 粘贴 `https://arxiv.org/pdf/2610.28480` 自动提取编号；重复登记会被拒绝 |
-| 🌗 **三态点亮** | 未读剪影 → 在读半彩 → 已读全彩 + 金星 |
+| 🌗 **四段进化** | 幼体剪影 → 成长体（在读）→ 完全体（已读）→ 羁绊形态（有笔记）；体型、配件和花纹随阅读深度解锁 |
 | 🎖️ **训练家等级** | 论文等级 + 阅读 + 笔记 + 获赞决定 XP；6 个称号、8 枚徽章 |
 | 🗂️ **两种布局** | 卡片看精灵，列表看信息；选择记在本地 |
 | 🏷️ **arXiv 分类** | 内置官方 155 个类目，卡片/列表直接显示 `cs.RO`，精灵按领域配色 |
@@ -734,6 +735,7 @@ interface Like {
 - [x] 天梯：等级 / XP / 已读 / 总结 / 获赞
 - [x] 精灵挤出立体渲染与点亮待机动画
 - [x] 论文分享卡 PNG 导出
+- [x] 四段精灵进化（幼体 → 羁绊形态）
 
 还没做的点子和 backlog 在 [TODO.md](TODO.md)。
 

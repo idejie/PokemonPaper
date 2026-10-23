@@ -68,7 +68,7 @@ function readFull() {
     </div>
 
     <div class="sprite-box">
-      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" />
+      <PaperSprite :seed="seed" :category="paper.primaryCategory" :locked="locked" :sprite-url="paper.spriteUrl" :status="paper.status" :notes="paper.notes" />
       <span v-if="!locked" class="spark" aria-hidden="true">✦</span>
     </div>
 

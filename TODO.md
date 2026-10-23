@@ -7,7 +7,7 @@ commitment; effort is **S** (< 1 day), **M** (1–3 days), **L** (> 3 days).
 
 - [x] **Share card PNG** — export a paper as a card image (sprite, level, type,
       moves, trainer) for X / 朋友圈. Reuses existing data; best growth loop. `S`
-- [ ] **Three-stage evolution** — unread → reading → read is only the first arc;
+- [x] **Three-stage evolution** — unread → reading → read is only the first arc;
       add annotated / reproduced stages and a real juvenile–adult–final sprite
       per seed, so lighting up actually evolves the creature. `M`
 - [ ] **Daily wild paper** — one recommended arXiv paper per day ("a wild paper

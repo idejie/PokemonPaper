@@ -271,4 +271,8 @@ export const dialogsDict: Record<string, string> = {
   '分享卡片': 'Share card',
   '卡片已下载': 'Card downloaded',
   '生成卡片失败': 'Could not render card',
+  '幼体': 'Hatchling',
+  '成长体': 'Juvenile',
+  '完全体': 'Final form',
+  '羁绊形态': 'Bond form',
 }
